@@ -6,8 +6,6 @@
         string DownloadCachePath { get; }
         string LocalVirtualDisksPath { get; }
 
-        // logs and config are stored centrally
-
         bool IsVirtualMachineManagerInstalled();
         bool InstallVirtualMachineManager(out string manualOperationNecessary);
         bool IsVirtualMachineManagerUpToDate();

@@ -20,7 +20,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastru
 		doc\design\infrastructure\README.md = doc\design\infrastructure\README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wordslab.installer", "wordslab.installer\wordslab.installer.csproj", "{6B424426-AAEF-4B28-9BC8-0C85712B5109}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "wordslab.installer", "wordslab.installer\wordslab.installer.csproj", "{6B424426-AAEF-4B28-9BC8-0C85712B5109}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{8F63537D-EDDF-4D1F-8C5F-0A71B02FBE51}"
+	ProjectSection(SolutionItems) = preProject
+		lima-cpu.md = lima-cpu.md
+		vm-gpu.md = vm-gpu.md
+		wsl-gpu.md = wsl-gpu.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wordslab.installer.test", "wordslab.installer.test\wordslab.installer.test.csproj", "{910C8BE9-8FC7-400D-B373-6898CB369636}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +41,10 @@ Global
 		{6B424426-AAEF-4B28-9BC8-0C85712B5109}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B424426-AAEF-4B28-9BC8-0C85712B5109}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B424426-AAEF-4B28-9BC8-0C85712B5109}.Release|Any CPU.Build.0 = Release|Any CPU
+		{910C8BE9-8FC7-400D-B373-6898CB369636}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{910C8BE9-8FC7-400D-B373-6898CB369636}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{910C8BE9-8FC7-400D-B373-6898CB369636}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{910C8BE9-8FC7-400D-B373-6898CB369636}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -40,6 +53,7 @@ Global
 		{D0128A08-DF14-4D69-AF5B-06AC48D470C1} = {5FBE12BD-843F-4355-ABFB-554A34CA7230}
 		{7D9B3AF3-7877-4740-84A8-C411660B5BD1} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
 		{4918B518-8553-41CB-BC57-AAEA85286BF6} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
+		{8F63537D-EDDF-4D1F-8C5F-0A71B02FBE51} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1E574D49-0F7D-4070-9AE4-088FCA10348B}
