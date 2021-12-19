@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace wordslab.installer.infrastructure.commands
 {
@@ -66,6 +67,77 @@ namespace wordslab.installer.infrastructure.commands
                 else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing command {command} {arguments} : exitcode {exitCode} different of 0"); } }
                 
                 return exitCode;
+            }
+        }
+
+        public static CommandOutputParser Output { get { return new CommandOutputParser(); } }
+    }
+
+    public class CommandOutputParser
+    {
+        private List<Tuple<Regex, Action<string>>> valueExtractors = new List<Tuple<Regex, Action<string>>>();
+
+        private List<Tuple<Regex?, Regex, Func<Dictionary<string,string>,object>, List<object>>> listExtractors = new List<Tuple<Regex?, Regex, Func<Dictionary<string,string>,object>, List<object>>>();
+
+        public CommandOutputParser GetValue(string valueRegex, Action<string> setProperty)
+        {
+            valueExtractors.Add(Tuple.Create(new Regex(valueRegex, RegexOptions.Multiline), setProperty));
+            return this;
+        }
+
+        public CommandOutputParser GetList(string headerRegex, string lineRegex, Func<Dictionary<string,string>,object> createObjectFromMatches, List<object> resultList)
+        {
+            listExtractors.Add(Tuple.Create(headerRegex==null?null:new Regex(headerRegex), new Regex(lineRegex), createObjectFromMatches, resultList));
+            return this;
+        }
+
+        public void Run(string output)
+        {
+            if (!String.IsNullOrEmpty(output)) {
+                foreach(var valueExtractor in valueExtractors)
+                {
+                    var valueRegex = valueExtractor.Item1;
+                    var setProperty = valueExtractor.Item2;
+                    var match = valueRegex.Match(output);
+                    if (match.Success)
+                    {
+                        setProperty(match.Groups[1].Value);
+                    }
+                }
+                if (listExtractors.Count > 0)
+                {
+                    int activeHeaderIndex = -1;
+                    var lines = output.Split(new char[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var line in lines) 
+                    {
+                        for (var i = 0; i < listExtractors.Count; i++)
+                        {
+                            var listExtractor = listExtractors[i];
+                            var headerRegex = listExtractor.Item1;
+                            var lineRegex = listExtractor.Item2;
+                            var createObjectFromMatches = listExtractor.Item3;
+                            var resultList = listExtractor.Item4;
+                            if (headerRegex != null || headerRegex.IsMatch(line))
+                            {
+                                activeHeaderIndex = i;
+                            }
+                            else if (headerRegex == null || i == activeHeaderIndex)
+                            {
+                                var match = lineRegex.Match(line);
+                                if(match.Success)
+                                {
+                                    var values = new Dictionary<string,string>();
+                                    foreach(Group group in match.Groups)
+                                    {
+                                        values.Add(group.Name, group.Value);
+                                    }
+                                    var obj = createObjectFromMatches(values);
+                                    resultList.Add(obj);
+                                }
+                            } 
+                        }
+                    }
+                }
             }
         }
     }

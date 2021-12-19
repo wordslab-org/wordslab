@@ -34,18 +34,42 @@
             return true;
         }
 
-        public static bool status()
+        public class StatusResult
         {
-            string output = null;
-            Command.Run("wsl", "--status", outputHandler: o => output=o);
-            if(output != null && output.Contains(": 2"))
+            public bool IsInstalled { get { return DefaultVersion > 0;  } }
+            
+            public int     DefaultVersion;
+            public string  DefaultDistribution;
+            public Version LinuxKernelVersion;
+            public string  LastWSLUpdate;
+        }
+
+        public static StatusResult status()
+        {
+            var result = new StatusResult();
+            try
             {
-                return true;
+                string? distrib = null;
+                string? wslver = null;
+                string? wsldate = null;
+                string? linuxver = null;
+                var outputParser = Command.Output.GetValue(@":\s+(?<distrib>[a-zA-Z]+[^\s]*)\s*$", s => distrib = s).
+                                                  GetValue(@":\s+(?<wslver>[\d])\s*$", s => wslver = s).
+                                                  GetValue(@"\s+(?<wsldate>\d+(?:/\d+)+)\s*$", s => wsldate = s).
+                                                  GetValue(@":\s+(?<linuxver>(?:\d+\.)+\d+)\s*$", s => linuxver = s);
+
+                Command.Run("wsl", "--status", outputHandler: outputParser.Run);
+
+                if (!String.IsNullOrEmpty(wslver)) result.DefaultVersion = Int32.Parse(wslver);
+                if (!String.IsNullOrEmpty(distrib)) result.DefaultDistribution = distrib;
+                if (!String.IsNullOrEmpty(linuxver)) result.LinuxKernelVersion = new Version(linuxver);
+                if (!String.IsNullOrEmpty(wsldate)) result.LastWSLUpdate = wsldate;
             }
-            else
-            {
-                return false;
+            catch (Exception ex)
+            { 
+                // This method is used to check if wsl is installed => do nothing in case of exception
             }
+            return result;
         }
 
         public static bool update(bool rollback = false)

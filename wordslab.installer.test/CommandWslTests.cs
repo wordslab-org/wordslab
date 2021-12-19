@@ -9,7 +9,14 @@ namespace wordslab.installer.test
         [TestMethod]
         public void TestStatus()
         {
-            Assert.IsTrue(wsl.status());
+            var status = wsl.status();
+
+            Assert.IsNotNull(status);
+            Assert.IsTrue(status.IsInstalled);
+            Assert.AreEqual(status.DefaultVersion, 2);
+            Assert.IsNotNull(status.DefaultDistribution);
+            Assert.IsNotNull(status.LinuxKernelVersion);
+            Assert.IsNotNull(status.LastWSLUpdate);
         }
     }
 }
