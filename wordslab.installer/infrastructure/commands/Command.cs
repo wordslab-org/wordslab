@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -14,7 +16,7 @@ namespace wordslab.installer.infrastructure.commands
     // - ArgumentException          : exception occured in output handler, error handler, exit code handler
     public static class Command
     {
-        public static int Run(string command, string arguments="", int timeoutSec=10, bool unicodeEncoding = true, string workingDirectory="",
+        public static int Run(string command, string arguments="", int timeoutSec=10, bool unicodeEncoding = true, string workingDirectory="", bool runAsAdmin=false,
                               Action<string> outputHandler=null, Action<string> errorHandler=null, Action<int> exitCodeHandler=null)
         {
             using (Process proc = new Process())
@@ -28,6 +30,17 @@ namespace wordslab.installer.infrastructure.commands
                 if (unicodeEncoding) proc.StartInfo.StandardErrorEncoding = Encoding.Unicode;
                 proc.StartInfo.RedirectStandardError = true;
                 proc.StartInfo.WorkingDirectory = workingDirectory;
+                if (!IsRunningAsAdministrator())
+                {
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        proc.StartInfo.Verb = "runas";
+                    } 
+                    else
+                    {
+                        throw new InvalidOperationException("This operation needs admin privileges. Please retry this command with sudo.");
+                    }
+                }
 
                 string output = null;
                 string error = null;
@@ -71,6 +84,24 @@ namespace wordslab.installer.infrastructure.commands
         }
 
         public static CommandOutputParser Output { get { return new CommandOutputParser(); } }
+
+
+        [DllImport("libc")]
+        private static extern uint geteuid();
+
+        public static bool IsRunningAsAdministrator()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                WindowsIdentity identity = WindowsIdentity.GetCurrent();
+                WindowsPrincipal principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            else
+            {
+                return geteuid() == 0;
+            }
+        }
     }
 
     public class CommandOutputParser
