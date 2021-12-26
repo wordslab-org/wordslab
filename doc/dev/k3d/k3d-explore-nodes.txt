@@ -1,0 +1,48 @@
+Debug and explore the k3d nodes
+          
+        k3d node list
+
+NAME                              ROLE           CLUSTER              STATUS
+k3d-wordslab-cluster-agent-0    agent          wordslab-cluster   running
+
+        docker exec -it k3d-wordslab-cluster-agent-0 sh
+
+        crictl images
+
+IMAGE                               TAG                 IMAGE ID            SIZE
+docker.io/rancher/klipper-lb        v0.2.0              465db341a9e5b       2.71MB
+docker.io/rancher/library-busybox   1.32.1              388056c9a6838       768kB
+docker.io/rancher/pause             3.1                 da86e6ba6ca19       327kB
+docker.io/yugabytedb/yugabyte       2.7.1.1-b1          ad3a83a790f47       737MB
+
+        crictl ps
+
+CONTAINER           IMAGE               CREATED             STATE               NAME                ATTEMPT             POD ID
+ffba05b14613e       465db341a9e5b       24 hours ago        Running             lb-port-5433        1                   3d3838c11a252
+b43db97b92c5f       465db341a9e5b       24 hours ago        Running             lb-port-9042        1                   3d3838c11a252
+71f62cf85b207       ad3a83a790f47       24 hours ago        Running             yb-cleanup          1                   24173b83480fe
+01a87033f6100       465db341a9e5b       24 hours ago        Running             lb-port-6379        1                   3d3838c11a252
+0290e4e24534f       ad3a83a790f47       24 hours ago        Running             yb-tserver          1                   24173b83480fe
+d7c7e74b6c431       465db341a9e5b       24 hours ago        Running             lb-port-443         3                   910a641dcdebf
+b9f25a4125000       ad3a83a790f47       24 hours ago        Running             yb-cleanup          1                   0e01b35c758dc
+884ef822288bb       465db341a9e5b       24 hours ago        Running             lb-port-80          3                   910a641dcdebf
+506d36178a085       ad3a83a790f47       24 hours ago        Running             yb-master           1                   0e01b35c758dc
+0de35419e0568       465db341a9e5b       24 hours ago        Running             lb-port-7000        1                   3995cbbdecb95
+
+        crictl info
+        
+[k3d-wordslab-cluster-registry:5000]
+
+        crictl stats
+
+CONTAINER           CPU %               MEM                 DISK                INODES
+01a87033f6100       0.00                1.962MB             24.58kB             9
+0290e4e24534f       10.31               90.71MB             45.06kB             14
+0de35419e0568       0.00                1.991MB             24.58kB             9
+506d36178a085       0.77                37.49MB             32.77kB             10
+71f62cf85b207       0.00                4.03MB              45.06kB             13
+884ef822288bb       0.00                2.208MB             24.58kB             9
+b43db97b92c5f       0.00                1.688MB             24.58kB             9
+b9f25a4125000       0.00                5.358MB             45.06kB             13
+d7c7e74b6c431       0.00                1.942MB             24.58kB             9
+ffba05b14613e       0.00                1.331MB             24.58kB             9

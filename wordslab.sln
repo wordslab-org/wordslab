@@ -15,21 +15,193 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "design", "design", "{7D9B3A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{4918B518-8553-41CB-BC57-AAEA85286BF6}"
 	ProjectSection(SolutionItems) = preProject
-		doc\design\infrastructure\architecture.pptx = doc\design\infrastructure\architecture.pptx
-		doc\design\infrastructure\rancher-desktop.md = doc\design\infrastructure\rancher-desktop.md
-		doc\design\infrastructure\README.md = doc\design\infrastructure\README.md
+		doc\design\infrastructure\Infrastructure concepts.md = doc\design\infrastructure\Infrastructure concepts.md
+		doc\design\infrastructure\Install concepts and sequence.txt = doc\design\infrastructure\Install concepts and sequence.txt
+		doc\design\infrastructure\Patform architecture.pptx = doc\design\infrastructure\Patform architecture.pptx
+		doc\design\infrastructure\Platform Design.pptx = doc\design\infrastructure\Platform Design.pptx
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "wordslab.installer", "wordslab.installer\wordslab.installer.csproj", "{6B424426-AAEF-4B28-9BC8-0C85712B5109}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{8F63537D-EDDF-4D1F-8C5F-0A71B02FBE51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "wordslab.installer.test", "wordslab.installer.test\wordslab.installer.test.csproj", "{910C8BE9-8FC7-400D-B373-6898CB369636}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dev", "dev", "{308A9D62-1D2A-4DF7-8676-A0075C8F48FD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{A3ADA73B-27BE-4DAE-98BA-56396E97043E}"
 	ProjectSection(SolutionItems) = preProject
-		lima-cpu.md = lima-cpu.md
-		vm-gpu.md = vm-gpu.md
-		wsl-gpu.md = wsl-gpu.md
+		doc\project\Plan - iteration 1.xlsx = doc\project\Plan - iteration 1.xlsx
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wordslab.installer.test", "wordslab.installer.test\wordslab.installer.test.csproj", "{910C8BE9-8FC7-400D-B373-6898CB369636}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "postgresql", "postgresql", "{0B51DEAD-B491-4A20-9316-248FB53885E4}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\postgresql\postgresql-admin.txt = doc\dev\postgresql\postgresql-admin.txt
+		doc\dev\postgresql\postgresql-commands.txt = doc\dev\postgresql\postgresql-commands.txt
+		doc\dev\postgresql\postgresql-docker.txt = doc\dev\postgresql\postgresql-docker.txt
+		doc\dev\postgresql\postgresql-sql.txt = doc\dev\postgresql\postgresql-sql.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kubernetes", "kubernetes", "{FC62E412-799B-494B-8BDE-1F11523E5C25}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\kubernetes\client-certificate-access.txt = doc\dev\kubernetes\client-certificate-access.txt
+		doc\dev\kubernetes\docker-build-commands.txt = doc\dev\kubernetes\docker-build-commands.txt
+		doc\dev\kubernetes\docker-kubernetes-commands.txt = doc\dev\kubernetes\docker-kubernetes-commands.txt
+		doc\dev\kubernetes\helm-commands.txt = doc\dev\kubernetes\helm-commands.txt
+		doc\dev\kubernetes\Intro to Kubernetes v1 05_2018.txt = doc\dev\kubernetes\Intro to Kubernetes v1 05_2018.txt
+		doc\dev\kubernetes\kubectl-version-commands.txt = doc\dev\kubernetes\kubectl-version-commands.txt
+		doc\dev\kubernetes\nvidia-container-toolkit.txt = doc\dev\kubernetes\nvidia-container-toolkit.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "aspnet", "aspnet", "{67B98886-26B9-4DD1-BA71-DC4CFA0146C3}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\aspnet\entity-framework-core.txt = doc\dev\aspnet\entity-framework-core.txt
+		doc\dev\aspnet\microservices_course.txt = doc\dev\aspnet\microservices_course.txt
+		doc\dev\aspnet\razor-syntax.txt = doc\dev\aspnet\razor-syntax.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "longhorn", "longhorn", "{1E555E97-6D24-443C-861E-A0EE02C9BC87}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\longhorn\longhorn-install.txt = doc\dev\longhorn\longhorn-install.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "openidconnect", "openidconnect", "{A62BF575-7BAC-4338-A4D3-F5E3E35FC5A3}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\opeindconnect\openid-connect.txt = doc\dev\opeindconnect\openid-connect.txt
+		doc\dev\opeindconnect\openid-provider-keycloak.txt = doc\dev\opeindconnect\openid-provider-keycloak.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "webcrawler", "webcrawler", "{E6DCD67B-AC0E-45F0-9D7C-5F157F7B1F55}"
+	ProjectSection(SolutionItems) = preProject
+		doc\design\webcrawler\crawler-design-new.txt = doc\design\webcrawler\crawler-design-new.txt
+		doc\design\webcrawler\crawler-design-old.txt = doc\design\webcrawler\crawler-design-old.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wsl", "wsl", "{5BB86118-B412-4468-878F-A8B18ECAC255}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\wsl\disk_and_memory_requirements.md = doc\dev\wsl\disk_and_memory_requirements.md
+		doc\dev\wsl\Install procedures screenshots.docx = doc\dev\wsl\Install procedures screenshots.docx
+		doc\dev\wsl\Reinstall WSL.docx = doc\dev\wsl\Reinstall WSL.docx
+		doc\dev\wsl\wsl-commands.txt = doc\dev\wsl\wsl-commands.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{22CA881B-3AE8-4E41-A8F7-F50174C6E0BF}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\docker\docker-build-install.txt = doc\dev\docker\docker-build-install.txt
+		doc\dev\docker\docker-version-commands.txt = doc\dev\docker\docker-version-commands.txt
+		doc\dev\docker\Intro to Docker v1 05_2018.txt = doc\dev\docker\Intro to Docker v1 05_2018.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "yugabytedb", "yugabytedb", "{35CBD71A-CE2D-41D8-995E-4C42D12AF506}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\yugabytedb\yugabyte-commands.txt = doc\dev\yugabytedb\yugabyte-commands.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "k3d", "k3d", "{3B6B175C-981E-4F88-AF6A-8BF16EA69F89}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\k3d\k3d-commands.txt = doc\dev\k3d\k3d-commands.txt
+		doc\dev\k3d\k3d-explore-nodes.txt = doc\dev\k3d\k3d-explore-nodes.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "k3s", "k3s", "{BD12799C-4DE1-4D0D-B8D0-57EB58A912E8}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\k3s\Dockerfile = doc\dev\k3s\Dockerfile
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ai", "ai", "{CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "fastai", "fastai", "{A09B1FF9-D321-4CC7-BC18-0505702C9DDE}"
+	ProjectSection(SolutionItems) = preProject
+		doc\ai\fastai\docs.fast.ai.csv = doc\ai\fastai\docs.fast.ai.csv
+		doc\ai\fastai\fastai_docs_v1.pptx = doc\ai\fastai\fastai_docs_v1.pptx
+		doc\ai\fastai\fastaidocs.html = doc\ai\fastai\fastaidocs.html
+		doc\ai\fastai\Generate page.ipynb = doc\ai\fastai\Generate page.ipynb
+		doc\ai\fastai\links.csv = doc\ai\fastai\links.csv
+		doc\ai\fastai\titles.csv = doc\ai\fastai\titles.csv
+		doc\ai\fastai\URL to fastai docs v1.1.txt = doc\ai\fastai\URL to fastai docs v1.1.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pytorch", "pytorch", "{8CA8379C-3DAD-4170-9B8F-125C4C52556F}"
+	ProjectSection(SolutionItems) = preProject
+		doc\ai\pytorch\Pytorch 1.7 API summary.xlsx = doc\ai\pytorch\Pytorch 1.7 API summary.xlsx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "concepts", "concepts", "{F5512606-3264-4F98-A3FF-E6FB484745CB}"
+	ProjectSection(SolutionItems) = preProject
+		doc\ai\concepts\F Chollet - Neurips 2020 - Deep learning Generalization Abstraction.pptx = doc\ai\concepts\F Chollet - Neurips 2020 - Deep learning Generalization Abstraction.pptx
+		doc\ai\concepts\Fondamentaux Machine Learning.pptx = doc\ai\concepts\Fondamentaux Machine Learning.pptx
+		doc\ai\concepts\Méthodologie et bonnes pratiques = doc\ai\concepts\Méthodologie et bonnes pratiques
+		doc\ai\concepts\NLP and deep learning resources.xlsx = doc\ai\concepts\NLP and deep learning resources.xlsx
+		doc\ai\concepts\Services et cas d'utilisation.md = doc\ai\concepts\Services et cas d'utilisation.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "models", "models", "{FA057898-25E1-41F5-BBDB-96857885030A}"
+	ProjectSection(SolutionItems) = preProject
+		doc\ai\models\charnet timings.xlsx = doc\ai\models\charnet timings.xlsx
+		doc\ai\models\charnet-charset-ocr-fr.xlsx = doc\ai\models\charnet-charset-ocr-fr.xlsx
+		doc\ai\models\charnet.pptx = doc\ai\models\charnet.pptx
+		doc\ai\models\FastText algorithm.docx = doc\ai\models\FastText algorithm.docx
+		doc\ai\models\MalongTech-research-charnet.ipynb = doc\ai\models\MalongTech-research-charnet.ipynb
+		doc\ai\models\Object dection models and methods.pptx = doc\ai\models\Object dection models and methods.pptx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python", "python", "{2B3CCA68-5FA3-4E75-9A5E-E1CBF05DB28D}"
+	ProjectSection(SolutionItems) = preProject
+		doc\ai\python\0. Installer un environnement Python.md = doc\ai\python\0. Installer un environnement Python.md
+		doc\ai\python\1. Utiliser Jupyter Notebook.ipynb = doc\ai\python\1. Utiliser Jupyter Notebook.ipynb
+		doc\ai\python\2. Découvrir le langage Python.ipynb = doc\ai\python\2. Découvrir le langage Python.ipynb
+		doc\ai\python\3. Manipuler les données en Python.ipynb = doc\ai\python\3. Manipuler les données en Python.ipynb
+		doc\ai\python\4. Tableaux et matrices numériques avec la librairie Numpy.ipynb = doc\ai\python\4. Tableaux et matrices numériques avec la librairie Numpy.ipynb
+		doc\ai\python\5. Séries et tables de données avec la librairie Pandas.ipynb = doc\ai\python\5. Séries et tables de données avec la librairie Pandas.ipynb
+		doc\ai\python\6. Travailler avec les tables de données Pandas.ipynb = doc\ai\python\6. Travailler avec les tables de données Pandas.ipynb
+		doc\ai\python\annonces_immo.csv = doc\ai\python\annonces_immo.csv
+		doc\ai\python\jupyter.cmd = doc\ai\python\jupyter.cmd
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deeplearning", "deeplearning", "{BD0CAD70-D910-40CA-A3D7-F151BECF7F8D}"
+	ProjectSection(SolutionItems) = preProject
+		doc\ai\deeplearning\Formation Deep Learning par la pratique 2020.md = doc\ai\deeplearning\Formation Deep Learning par la pratique 2020.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rancherdesktop", "rancherdesktop", "{EC61BF1C-F887-4F76-BA72-6B09384711A8}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\rancherdesktop\Rancher Desktop install.docx = doc\dev\rancherdesktop\Rancher Desktop install.docx
+		doc\dev\rancherdesktop\rancher-desktop.md = doc\dev\rancherdesktop\rancher-desktop.md
+		doc\dev\rancherdesktop\wsl-gpu-image.md = doc\dev\rancherdesktop\wsl-gpu-image.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ui", "ui", "{04ECB04D-E6F6-4508-AEAD-8C993DB9AECA}"
+	ProjectSection(SolutionItems) = preProject
+		doc\design\ui\Extraction UI.pptx = doc\design\ui\Extraction UI.pptx
+		doc\design\ui\wordslab-logo.PNG = doc\design\ui\wordslab-logo.PNG
+		doc\design\ui\wordslab-website-layout.pptx = doc\design\ui\wordslab-website-layout.pptx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "googlecloud", "googlecloud", "{73691B34-ACA8-4AE6-BB1C-1471CC167CFE}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\googlecloud\gcloud prices.txt = doc\dev\googlecloud\gcloud prices.txt
+		doc\dev\googlecloud\Google Colab architecture.pptx = doc\dev\googlecloud\Google Colab architecture.pptx
+		doc\dev\googlecloud\Google Colab setup screenshots.docx = doc\dev\googlecloud\Google Colab setup screenshots.docx
+		doc\dev\googlecloud\GPU in the cloud - prices comparison 2019.docx = doc\dev\googlecloud\GPU in the cloud - prices comparison 2019.docx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "macos", "macos", "{877C5DE2-426B-4817-B44F-648610EE0224}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\macos\macos test vm for development.txt = doc\dev\macos\macos test vm for development.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "concepts", "concepts", "{087C0FCC-9188-478E-A817-55897961C606}"
+	ProjectSection(SolutionItems) = preProject
+		doc\design\concepts\Data model design.xlsx = doc\design\concepts\Data model design.xlsx
+		doc\design\concepts\Design principles.md = doc\design\concepts\Design principles.md
+		doc\design\concepts\Drafts - concepts.docx = doc\design\concepts\Drafts - concepts.docx
+		doc\design\concepts\Plateforme cognitive - grandes orientations.docx = doc\design\concepts\Plateforme cognitive - grandes orientations.docx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "abot", "abot", "{DF153C07-0765-406B-8312-973D5909CD97}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\abot\Abot documentation.md = doc\dev\abot\Abot documentation.md
+		doc\dev\abot\patches-new.txt = doc\dev\abot\patches-new.txt
+		doc\dev\abot\patches-old.xlsx = doc\dev\abot\patches-old.xlsx
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,7 +225,32 @@ Global
 		{D0128A08-DF14-4D69-AF5B-06AC48D470C1} = {5FBE12BD-843F-4355-ABFB-554A34CA7230}
 		{7D9B3AF3-7877-4740-84A8-C411660B5BD1} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
 		{4918B518-8553-41CB-BC57-AAEA85286BF6} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
-		{8F63537D-EDDF-4D1F-8C5F-0A71B02FBE51} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
+		{308A9D62-1D2A-4DF7-8676-A0075C8F48FD} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
+		{A3ADA73B-27BE-4DAE-98BA-56396E97043E} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
+		{0B51DEAD-B491-4A20-9316-248FB53885E4} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{FC62E412-799B-494B-8BDE-1F11523E5C25} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{67B98886-26B9-4DD1-BA71-DC4CFA0146C3} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{1E555E97-6D24-443C-861E-A0EE02C9BC87} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{A62BF575-7BAC-4338-A4D3-F5E3E35FC5A3} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{E6DCD67B-AC0E-45F0-9D7C-5F157F7B1F55} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
+		{5BB86118-B412-4468-878F-A8B18ECAC255} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{22CA881B-3AE8-4E41-A8F7-F50174C6E0BF} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{35CBD71A-CE2D-41D8-995E-4C42D12AF506} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{3B6B175C-981E-4F88-AF6A-8BF16EA69F89} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{BD12799C-4DE1-4D0D-B8D0-57EB58A912E8} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{CA433C7A-30BD-416B-BC5E-ECA85FFCFD43} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
+		{A09B1FF9-D321-4CC7-BC18-0505702C9DDE} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
+		{8CA8379C-3DAD-4170-9B8F-125C4C52556F} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
+		{F5512606-3264-4F98-A3FF-E6FB484745CB} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
+		{FA057898-25E1-41F5-BBDB-96857885030A} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
+		{2B3CCA68-5FA3-4E75-9A5E-E1CBF05DB28D} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
+		{BD0CAD70-D910-40CA-A3D7-F151BECF7F8D} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
+		{EC61BF1C-F887-4F76-BA72-6B09384711A8} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{04ECB04D-E6F6-4508-AEAD-8C993DB9AECA} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
+		{73691B34-ACA8-4AE6-BB1C-1471CC167CFE} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{877C5DE2-426B-4817-B44F-648610EE0224} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{087C0FCC-9188-478E-A817-55897961C606} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
+		{DF153C07-0765-406B-8312-973D5909CD97} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1E574D49-0F7D-4070-9AE4-088FCA10348B}

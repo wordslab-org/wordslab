@@ -84,6 +84,7 @@ namespace wordslab.installer.infrastructure.commands
         }
 
         public static CommandOutputParser Output { get { return new CommandOutputParser(); } }
+        public static CommandOutputParser Error { get { return new CommandOutputParser(); } }
 
 
         [DllImport("libc")]

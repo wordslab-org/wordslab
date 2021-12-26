@@ -1,0 +1,40 @@
+﻿# Install NVIDIA Container Toolkit
+
+> STOP Docker Desktop
+
+https://docs.nvidia.com/cuda/wsl-user-guide/index.html
+
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2     
+
+> START Docker Desktop
+
+docker run --gpus all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark  
+
+> Compute 8.6 CUDA device: [NVIDIA GeForce RTX 3070]
+> 47104 bodies, total time for 10 iterations: 39.455 ms
+> = 562.363 billion interactions per second
+> = 11247.257 single-precision GFLOP/s at 20 flops per interaction
+
+docker run --gpus all fastdotai/fastai python -c "import torch;print(torch.cuda.is_available())"
+
+> True
+
+docker run --gpus all -p 8888:8888 fastdotai/fastai ./run_jupyter.sh
+
+> ERROR: Unexpected bus error encountered in worker. This might be caused by insufficient shared memory (shm).
+
+docker run --gpus all --shm-size 4G -p 8888:8888 -d fastdotai/fastai ./run_jupyter.sh
+docker logs 79fbedf9ff469c916a078c484e03e020289d3799448e13d63f1d6c7474ee51a8
+
+> Click on 127.0.0.1 URL
+> Create new notebook
+> Copy the first cell from : https://github.com/laurentprudhon/cours-deeplearning-2020/blob/master/notebooks/01_intro.ipynb
+> epoch	train_loss	valid_loss	error_rate	time
+> 0	0.049866	0.021038	0.008119	00:19
+
+docker stop 79fbedf9ff469c916a078c484e03e020289d3799448e13d63f1d6c7474ee51a8

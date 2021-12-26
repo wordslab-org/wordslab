@@ -49,60 +49,44 @@ namespace wordslab.installer.infrastructure.commands
      */
     public class windows
     {
-        // 1. Check requirements for running WSL 2
-        // https://docs.microsoft.com/en-us/windows/wsl/install-manual#step-2---check-requirements-for-running-wsl-2
-        // 1.1 You must be running Windows 10. For x64 systems: Version 1903 or higher, with Build 18362 or higher.
-        // 1.2 You must enable the Virtual Machine Platform optional feature. Your machine will require virtualization capabilities to use this feature.
-
-        // Additional requirements to enable NVIDIA CUDA on WSL 2
-        // https://docs.microsoft.com/en-us/windows/ai/directml/gpu-cuda-in-wsl
-        // 1.3 Windows 11 and Windows 10, version 21H2 (build 19044) support running existing ML tools, libraries, and popular frameworks that use NVIDIA CUDA for GPU hardware acceleration inside a WSL 2 instance.
-        // 1.4 Download and install the NVIDIA CUDA-enabled driver for WSL to use with your existing CUDA ML workflow
-        // - Windows 11 driver version >= v472.12 (20 sept 2021) : this new Game Ready Driver provides support for the official launch of Windows 11
-        // - Windows 10 21H2 driver version >= 496.76 (16 nov 2021) : 
-        // 1.5 WSL 2 GPU acceleration will be available on Pascal (GTX 1050) and later GPU architecture on both GeForce and Quadro product SKUs in WDDM mode
-        // 1.6 Ensure you are on the latest WSL Kernel: we recommend 5.10.16.3 or later for better performance and functional fixes.
-
-        // 2. Enable WSL2 dependencies
-        // https://docs.microsoft.com/en-us/windows/wsl/install-manual#step-3---enable-virtual-machine-feature
-        // 2.1 Enable Virtual Machine feature (/featurename:VirtualMachinePlatform) - as Administrator
-        // 2.2 Enable the Windows Subsystem for Linux (featurename:Microsoft-Windows-Subsystem-Linux) - as Administrator
-        // 2.3 Download and run the Linux kernel update package (https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi) - as Administrator
-        // 2.4 Reboot the computer
-
-        internal static bool IsOSArchitectureX64()
+        public static bool IsOSArchitectureX64()
         {
             return RuntimeInformation.OSArchitecture == Architecture.X64;
         }
 
-        internal static bool IsWindows10Version1903OrHigher()
+        internal static Version GetOSVersion()
+        {
+            return Environment.OSVersion.Version;
+        }
+
+        public static bool IsWindows10Version1903OrHigher()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 var targetVersion = new Version(10, 0, 18362);
-                return Environment.OSVersion.Version >= targetVersion;
+                return GetOSVersion() >= targetVersion;
             }
             else { return false; }
         }
 
-        internal static bool IsWindows10Version21H2OrHigher()
+        public static bool IsWindows10Version21H2OrHigher()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 var targetVersion = new Version(10, 0, 19044);
-                return Environment.OSVersion.Version >= targetVersion;
+                return GetOSVersion() >= targetVersion;
             }
             else { return false; }
         }
 
-        public static bool IsWindowsVersionOKForWSL2()
+        public static bool IsWindows11Version21HOrHigher()
         {
-            return IsOSArchitectureX64() && IsWindows10Version1903OrHigher();
-        }
-
-        public static bool IsWindowsVersionOKForWSL2WithGPU()
-        {
-            return IsOSArchitectureX64() && IsWindows10Version21H2OrHigher();
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var targetVersion = new Version(11, 0, 22000);
+                return Environment.OSVersion.Version >= targetVersion;
+            }
+            else { return false; }
         }
 
         // Checking HyperV requirements : several alernatives
