@@ -1,6 +1,6 @@
 ﻿namespace wordslab.installer.infrastructure
 {
-    public interface IK8sNamespaceClient
+    public class K8sClusterClient
     {
     }
 }

@@ -23,7 +23,7 @@ The .NET Core command-line interface (CLI) tools can be used on Windows, Linux, 
 
 To update the tools, use the dotnet tool update command.
 
-> dotnet tool update
+> dotnet tool update --global dotnet-ef
 
 Install the latest Microsoft.EntityFrameworkCore.Design package.
 

@@ -1,7 +1,46 @@
 ﻿@page "/"
+@using wordslab.installer.localstorage
+@inject IDbContextFactory<ConfigStore> DbContextFactory
 
 <PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>wordslab installer</h1>
 
-Welcome to your new app.
+<h2>Install directories</h2>
+
+@if (isLoading)
+{
+    <p>Loading ....</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Function</th><th>Path</th></tr>
+        </thead>
+        <tbody>
+        @foreach(var dir in localDirectories)
+        {
+            <tr><td>@dir.Function</td><td>@dir.Path</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    bool isLoading = true;
+
+    List<LocalDirectory> localDirectories;
+
+    protected override void OnInitialized()
+    {
+        using var configStore = DbContextFactory.CreateDbContext();
+        localDirectories = configStore.LocalDirectories.ToList();
+
+        isLoading = false;
+
+        base.OnInitialized();
+    }
+
+}

@@ -1,6 +1,6 @@
 ﻿namespace wordslab.installer.infrastructure
 {
-    public interface IVirtualMachineClient
+    public class MachineClient
     {
 
     }
