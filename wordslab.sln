@@ -203,6 +203,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "abot", "abot", "{DF153C07-0
 		doc\dev\abot\patches-old.xlsx = doc\dev\abot\patches-old.xlsx
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "cuda", "cuda", "{44EADA35-9F98-4167-A21D-DAF189C52A2F}"
+	ProjectSection(SolutionItems) = preProject
+		cuda architecture.txt = cuda architecture.txt
+		intel architecture.txt = intel architecture.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -251,6 +257,7 @@ Global
 		{877C5DE2-426B-4817-B44F-648610EE0224} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
 		{087C0FCC-9188-478E-A817-55897961C606} = {7D9B3AF3-7877-4740-84A8-C411660B5BD1}
 		{DF153C07-0765-406B-8312-973D5909CD97} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{44EADA35-9F98-4167-A21D-DAF189C52A2F} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1E574D49-0F7D-4070-9AE4-088FCA10348B}

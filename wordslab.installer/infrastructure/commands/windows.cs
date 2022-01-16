@@ -2,51 +2,6 @@
 
 namespace wordslab.installer.infrastructure.commands
 {
-    /*
-    https://docs.microsoft.com/en-us/windows/wsl/install-manual
-     
-    # Uninstall (as admin)
-    dism.exe /online /disable-feature /featurename:VirtualMachinePlatform  /norestart
-      > L’opération a réussi.
-    dism.exe /online /disable-feature /featurename:Microsoft-Windows-Subsystem-Linux /norestart
-      > L’opération a réussi.
-
-    # Check status
-    PowerShell: get-windowsoptionalfeature -online -featurename Microsoft-Windows-Subsystem-Linux
-      > State            : Disabled
-    wsl --status
-      > %ERRORLEVEL% = 1
-
-    # Install (as admin)
-    wsl --install
-      > Installation en cours : Plateforme de machine virtuelle
-      > Installation en cours : Sous-système Windows pour Linux
-      > Téléchargement en cours : Ubuntu
-      > Les modifications ne seront pas effectives avant que le système ne soit réamorcé.
-      > %ERRORLEVEL% = 0
-
-    # Files at this point
-    C:\Users\laure\AppData\Local\Temp\Ubuntu.2020.424.0_x64.appx => 442 381 ko
-    C:\Users\laure\AppData\Local\Packages => nothing
-
-    # REBOOT 
-    -> execute appx distribution launcher
-
-    # Files at this point
-    C:\Users\laure\AppData\Local\Temp\Ubuntu.2020.424.0_x64.appx => DELETED
-    C:\Users\laure\AppData\Local\Packages\CanonicalGroupLimited.UbuntuonWindows_79rhkp1fndgsc\LocalState\ext4.vhdx => 1 145 856 Ko
-
-    # Launch distribution for the first time
-    Enter new UNIX username: / New password:
-    passwd: password updated successfully
-
-    # Files at this point
-    C:\Users\laure\AppData\Local\Temp => swap.vhdx : 64 152 Ko
-
-    # Check status
-    wsl --status
-      > %ERRORLEVEL% = 0
-     */
     public class windows
     {
         public static bool IsOSArchitectureX64()
@@ -103,7 +58,28 @@ namespace wordslab.installer.infrastructure.commands
 
         public static bool IsVirtualizationEnabled()
         {
-            return true;
+            string? hyperVisorPresent = null;
+            string? hyperVRequirementDataExecutionPreventionAvailable = null;
+            string? hyperVRequirementSecondLevelAddressTranslation = null;
+            string? hyperVRequirementVirtualizationFirmwareEnabled = null;
+            string? hyperVRequirementVMMonitorModeExtensions = null;
+            var outputParser = Command.Output.GetValue(@"HyperVisorPresent\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVisorPresent = s).
+                                                GetValue(@"HyperVRequirementDataExecutionPreventionAvailable\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementDataExecutionPreventionAvailable = s).
+                                                GetValue(@"HyperVRequirementSecondLevelAddressTranslation\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementSecondLevelAddressTranslation = s).
+                                                GetValue(@"HyperVRequirementVirtualizationFirmwareEnabled\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementVirtualizationFirmwareEnabled = s).
+                                                GetValue(@"HyperVRequirementVMMonitorModeExtensions\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementVMMonitorModeExtensions = s);
+
+            Command.Run("powershell.exe", "get-computerInfo -property \"HyperV *\"", outputHandler: outputParser.Run);
+
+            bool isEnabled = String.Equals(hyperVisorPresent, "true", StringComparison.InvariantCultureIgnoreCase);
+            if(!isEnabled)
+            {
+                isEnabled = String.Equals(hyperVRequirementDataExecutionPreventionAvailable, "true", StringComparison.InvariantCultureIgnoreCase) &&
+                            String.Equals(hyperVRequirementSecondLevelAddressTranslation, "true", StringComparison.InvariantCultureIgnoreCase) &&
+                            String.Equals(hyperVRequirementVirtualizationFirmwareEnabled, "true", StringComparison.InvariantCultureIgnoreCase) &&
+                            String.Equals(hyperVRequirementVMMonitorModeExtensions, "true", StringComparison.InvariantCultureIgnoreCase);
+            }
+            return isEnabled;
         }
 
         // Managing Windows Optional features : several alternatives 
@@ -118,32 +94,65 @@ namespace wordslab.installer.infrastructure.commands
 
         public static bool IsWindowsSubsystemForLinuxEnabled()
         {
-            return true;
+            string? isEnabled = null;
+            var outputParser = Command.Output.GetValue(@"State\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => isEnabled = s);
+
+            bool isElevated = true;
+            Command.Run("powershell.exe", "get-windowsoptionalfeature -online -featurename Microsoft-Windows-Subsystem-Linux", runAsAdmin: true, outputHandler: outputParser.Run, exitCodeHandler: c => isElevated = (c == 0));
+
+            if (!isElevated) throw new InvalidOperationException("get-windowsoptionalfeature PowerShell command requires admin privileges");
+
+            return String.Equals(isEnabled, "enabled", StringComparison.InvariantCultureIgnoreCase);
         }
 
-        public static bool EnableWindowsSubsystemForLinux()
+        public static void EnableWindowsSubsystemForLinux()
         {
-            return true;
+            bool isElevated = true;
+            Command.Run("powershell.exe", "enable-windowsoptionalfeature -online -norestart -featurename Microsoft-Windows-Subsystem-Linux", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+
+            if (!isElevated) throw new InvalidOperationException("enable-windowsoptionalfeature PowerShell command requires admin privileges");
         }
 
-        public static bool DisableWindowsSubsystemForLinux()
+        public static void DisableWindowsSubsystemForLinux()
         {
-            return true;
+            bool isElevated = true;
+            Command.Run("powershell.exe", "disable-windowsoptionalfeature -online -norestart -featurename Microsoft-Windows-Subsystem-Linux", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+
+            if (!isElevated) throw new InvalidOperationException("disable-windowsoptionalfeature PowerShell command requires admin privileges");
         }
 
         public static bool IsVirtualMachinePlatformEnabled()
         {
-            return true;
+            string? isEnabled = null;
+            var outputParser = Command.Output.GetValue(@"State\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => isEnabled = s);
+
+            bool isElevated = true;
+            Command.Run("powershell.exe", "get-windowsoptionalfeature -online -featurename VirtualMachinePlatform", runAsAdmin: true, outputHandler: outputParser.Run, exitCodeHandler: c => isElevated = (c == 0));
+
+            if (!isElevated) throw new InvalidOperationException("get-windowsoptionalfeature PowerShell command requires admin privileges");
+
+            return String.Equals(isEnabled, "enabled", StringComparison.InvariantCultureIgnoreCase);
         }
 
-        public static bool EnableVirtualMachinePlatform()
+        public static void EnableVirtualMachinePlatform()
         {
-            return true;
+            bool isElevated = true;
+            Command.Run("powershell.exe", "enable-windowsoptionalfeature -online -norestart -featurename VirtualMachinePlatform", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+
+            if (!isElevated) throw new InvalidOperationException("enable-windowsoptionalfeature PowerShell command requires admin privileges");
         }
 
-        public static bool DisableVirtualMachinePlatform()
+        public static void DisableVirtualMachinePlatform()
         {
-            return true;
+            bool isElevated = true;
+            Command.Run("powershell.exe", "disable-windowsoptionalfeature -online -norestart -featurename VirtualMachinePlatform", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+
+            if (!isElevated) throw new InvalidOperationException("disable-windowsoptionalfeature PowerShell command requires admin privileges");
+        }
+
+        public static void ShutdownAndRestart()
+        {
+            Command.Run("shutdown.exe", "-r -t 0");
         }
     }
 }

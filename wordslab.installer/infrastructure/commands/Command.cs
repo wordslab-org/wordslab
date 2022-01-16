@@ -109,7 +109,7 @@ namespace wordslab.installer.infrastructure.commands
     {
         private List<Tuple<Regex, Action<string>>> valueExtractors = new List<Tuple<Regex, Action<string>>>();
 
-        private List<Tuple<Regex?, Regex, Func<Dictionary<string,string>,object>, List<object>>> listExtractors = new List<Tuple<Regex?, Regex, Func<Dictionary<string,string>,object>, List<object>>>();
+        private List<Tuple<Regex?, Regex, Func<Dictionary<string,string>,object>, IList<object>>> listExtractors = new List<Tuple<Regex?, Regex, Func<Dictionary<string,string>,object>, IList<object>>>();
 
         public CommandOutputParser GetValue(string valueRegex, Action<string> setProperty)
         {
@@ -117,7 +117,7 @@ namespace wordslab.installer.infrastructure.commands
             return this;
         }
 
-        public CommandOutputParser GetList(string headerRegex, string lineRegex, Func<Dictionary<string,string>,object> createObjectFromMatches, List<object> resultList)
+        public CommandOutputParser GetList(string headerRegex, string lineRegex, Func<Dictionary<string,string>,object> createObjectFromMatches, IList<object> resultList)
         {
             listExtractors.Add(Tuple.Create(headerRegex==null?null:new Regex(headerRegex), new Regex(lineRegex), createObjectFromMatches, resultList));
             return this;

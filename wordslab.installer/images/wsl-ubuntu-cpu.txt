@@ -1,0 +1,465 @@
+﻿[06/01/2022]
+
+# 1. Download OS and k3s distrib
+
+# https://partner-images.canonical.com/oci/ => Minimum Ubuntu images
+
+wget https://partner-images.canonical.com/oci/focal/20220105/ubuntu-focal-oci-amd64-root.tar.gz
+gunzip ubuntu-focal-oci-amd64-root.tar.gz
+mv ubuntu-focal-oci-amd64-root.tar /mnt/c/tmp/ubuntu.tar
+=> ubuntu.tar : 76 Mo
+
+# https://alpinelinux.org/downloads/ => Mini root filesystem
+
+wget https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz
+gunzip alpine-minirootfs-3.15.0-x86_64.tar.gz
+mv alpine-minirootfs-3.15.0-x86_64.tar /mnt/c/tmp/alpine.tar
+=> alpine.tar : 5 Mo
+
+wget https://github.com/k3s-io/k3s/releases/download/v1.22.5+k3s1/k3s -O /mnt/c/tmp/k3s
+=> k3s : 52 Mo
+
+wget https://github.com/k3s-io/k3s/releases/download/v1.22.5+k3s1/k3s-airgap-images-amd64.tar -O /mnt/c/tmp/k3s-airgap-images-amd64.tar
+=> k3s-airgap-images-amd64.tar : 481 Mo
+
+// Not useful because of k3s kubectl
+wget https://storage.googleapis.com/kubernetes-release/release/v1.23.1/bin/linux/amd64/kubectl -O /mnt/c/tmp/kubectl
+=> kubectl : 45 Mo
+
+wget https://get.helm.sh/helm-v3.7.2-linux-amd64.tar.gz 
+tar -zxvf helm-v3.7.2-linux-amd64.tar.gz
+mv linux-amd64/helm /mnt/c/tmp/helm
+rm -rf linux-amd64
+=> helm : 44 Mo
+
+# Create virtual machines
+
+## OS VM
+
+wsl --import --version 2 wordslab-os C:\Users\laure\AppData\Local\wordslab\vm-os C:\tmp\ubuntu.tar
+
+wsl -d wordslab-os -- ./wordslab-os-init.sh "C:\tmp"
+
+=> ext4.vhdx : 130 Mo
+
+cp /mnt/c/tmp/k3s /usr/local/bin/k3s
+chmod a+x /usr/local/bin/k3s
+
+cp /mnt/c/tmp/helm /usr/local/bin/helm
+chmod a+x /usr/local/bin/helm
+
+echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" >> /etc/wsl.conf
+
+mkdir -p /etc/rancher
+mkdir -p /var/lib
+mkdir -p /var/log/rancher
+mkdir -p /var/volume/rancher
+
+apt-get update && apt-get install ca-certificates -y
+
+echo -e "mount -o bind /mnt/wsl/wordslab-cluster/etc/rancher /etc/rancher" >> /root/wordslab-start.sh
+echo -e "mount -o bind /mnt/wsl/wordslab-cluster/var/lib /var/lib" >> /root/wordslab-start.sh
+echo -e "mount -o bind /mnt/wsl/wordslab-cluster/var/log/rancher /var/log/rancher" >> /root/wordslab-start.sh
+echo -e "mount -o bind /mnt/wsl/wordslab-data/var/volume/rancher /var/volume/rancher" >> /root/wordslab-start.sh
+echo -e "mkdir -p /etc/rancher/k3s" >> /root/wordslab-start.sh
+echo -e "rm -f /etc/rancher/k3s/k3s.yaml" >> /root/wordslab-start.sh
+echo -e "k3s --version | grep -o \"v[0-9].*\s\" > /var/lib/rancher/k3s/version" >> /root/wordslab-start.sh
+echo -e "export IPTABLES_MODE=legacy" >> /root/wordslab-start.sh
+echo -e "nohup /usr/local/bin/k3s server --https-listen-port 6443 --log /var/log/rancher/k3s/k3S-20220114.log --default-local-storage-path /var/volume/rancher/k3s </dev/null >/dev/null 2>&1 &" >> /root/wordslab-start.sh
+echo -e "sleep 1" >> /root/wordslab-start.sh
+echo -e "# k3s process id :" >> /root/wordslab-start.sh
+echo -e "ps | grep -o \"[0-9].*k3s-server\" | grep -Eo \"^[0-9]+\" | tee /var/lib/rancher/k3s/pid" >> /root/wordslab-start.sh
+echo -e "# vm ip address :" >> /root/wordslab-start.sh
+echo -e "hostname -I | grep -Eo \"^[0-9\.]+\"" >> /root/wordslab-start.sh
+echo -e "# command to get kubeconfig file :" >> /root/wordslab-start.sh
+echo -e "cat /etc/rancher/k3s/k3s.yaml" >> /root/wordslab-start.sh
+chmod a+x /root/wordslab-start.sh
+
+wsl --terminate wordslab-os
+
+=> ext4.vhdx : 195 Mo
+
+## Cluster & Data VMs
+
+wsl --import --version 2 wordslab-cluster C:\Users\laure\AppData\Local\wordslab\vm-cluster C:\tmp\alpine.tar
+
+wsl -d wordslab-cluster
+
+mkdir -p /var/lib/rancher/k3s/agent/images
+cp /mnt/c/tmp/k3s-airgap-images-amd64.tar /var/lib/rancher/k3s/agent/images/k3s-airgap-images-amd64.tar
+
+echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" >> /etc/wsl.conf
+
+mkdir -p /etc/rancher
+mkdir -p /var/lib
+mkdir -p /var/log/rancher
+
+echo -e "mkdir -p /mnt/wsl/wordslab-cluster\nmount --bind / /mnt/wsl/wordslab-cluster" >> /root/wordslab-start.sh
+chmod a+x /root/wordslab-start.sh
+
+wsl --terminate wordslab-cluster
+
+=> ext4.vhdx : 556 Mo
+
+wsl --import --version 2 wordslab-data C:\Users\laure\AppData\Local\wordslab\vm-data C:\tmp\alpine.tar
+
+wsl -d wordslab-data
+
+echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" >> /etc/wsl.conf
+
+mkdir -p /var/volume/rancher/k3s
+
+echo -e "mkdir -p /mnt/wsl/wordslab-data\nmount --bind / /mnt/wsl/wordslab-data" >> /root/wordslab-start.sh
+chmod a+x /root/wordslab-start.sh
+
+wsl --terminate wordslab-data
+
+=> ext4.vhdx : 64 Mo
+
+# Mount cluster and data distributions
+# !! Need to reexecute this after each shutdown of the wsl VMs !!
+# Launch k3s
+
+wsl -d wordslab-data -- /root/wordslab-start.sh
+wsl -d wordslab-cluster -- /root/wordslab-start.sh
+wsl -d wordslab-os -- /root/wordslab-start.sh
+
+# Test
+
+k3s kubectl get nodes
+=> NAME      STATUS   ROLES                  AGE   VERSION
+=> yoga720   Ready    control-plane,master   38m   v1.22.5+k3s1
+
+cat /etc/rancher/k3s/k3s.yaml > .kube/config
+
+# GPU
+
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+NVIDIA_CONTAINER_RUNTIME_VERSION=3.7.0-1
+
+apt-get update && apt-get -y install gnupg2 curl
+curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+apt-get update && apt-get -y install nvidia-container-runtime=${NVIDIA_CONTAINER_RUNTIME_VERSION}
+
+mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
+cp /mnt/c/tmp/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+
+mkdir -p /var/lib/rancher/k3s/server/manifests
+cp /mnt/c/tmp/device-plugin-daemonset.yaml /var/lib/rancher/k3s/server/manifests/nvidia-device-plugin-daemonset.yaml
+
+k3s kubectl -n kube-system logs nvidia-device-plugin-daemonset-rgb44
+2022/01/15 14:33:55 Loading NVML
+2022/01/15 14:33:55 Failed to initialize NVML: could not load NVML library.
+2022/01/15 14:33:55 If this is a GPU node, did you set the docker default runtime to `nvidia`?
+2022/01/15 14:33:55 You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites
+2022/01/15 14:33:55 You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start
+
+https://github.com/NVIDIA/k8s-device-plugin/issues/207
+
+Ah right, the WSL support for libnvidia-container doesn't include an NVML library (i.e. libnvidia-ml.so).
+Support was added directly into libnvidia-container to support WSL2 without this library.
+Unfortunately, the k8s-device-plugin relies on NVML to enumerate GPUs. 
+You would need a WSL2 specific build of the plugin (which doesn't exist) in order to make this work. 
+There is nothing that can be done until support for that is added.
+
+k3s kubectl -n kube-system get nodes -o wide
+CONTAINER-RUNTIME : containerd://1.5.8-k3s1
+
+
+# TEST
+
+k3s kubectl create -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pvc/pvc.yaml
+k3s kubectl create -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pod/pod.yaml
+
+k3s kubectl get pv
+k3s kubectl get pvc
+k3s kubectl get pod
+
+k3s kubectl exec volume-test -- sh -c "echo local-path-test > /data/test"
+
+k3s kubectl delete -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pod/pod.yaml
+
+k3s kubectl get pod
+
+k3s kubectl create -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pod/pod.yaml
+
+k3s kubectl exec volume-test cat /data/test
+
+k3s kubectl delete -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pod/pod.yaml
+k3s kubectl delete -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pvc/pvc.yaml
+
+-----------------------------
+
+/etc/rancher/k3s/k3s.yaml => kubeconfig
+
+/etc/rancher/node/password => node password
+
+/var/lib/cni
+- networks/cbr0/10.42.0.10 => dc71c76ec9086d372...
+- flannel/dc71c76ec9086d372... => config json ip réseau
+- results/cbr0-dc71c76ec9... => {"kind":"cniCacheV1","containerId":"dc71c76ec9086d37...}
+
+/var/lib/kubelet
+- cpu_manager_state / memory_manager_state
+- device-plugins / plugins / plugins_registry
+- pod-resources
+- pods
+  - 03f11746-67e4-44d9-a02b-2d3f97509bd7
+    - containers
+    - etc-hosts
+    - plugins
+    - volumes
+
+/var/lib/rancher/k3s
+- agent => all files for agent
+  - #certificats
+  - #kubeconfigs
+  - containerd
+    - io.containerd.snapshotter.v1.overlayfs/snapshots/ => layer files
+  - etc
+  - images => downloaded images
+  - pod-manifests
+
+- data => volumes files (current = ipsec VPN)
+  - one directory per volume
+
+- server => all files for sever
+  - cred => #kubeconfigs & password
+  - db => sqllite database with cluster state
+  - manifests => auto-install yaml files on startup
+    - ccm, coredns, local-storage, metrics-server, rolebindings, traefik
+  - static/charts/ => helm charts for traefik
+  - tls => certificates
+  - token
+
+version => v1.22.5+k3s1
+
+--------------------------------------------------------
+
+apt install vim-tiny
+
+apt-get install curl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+mv ./kubectl /usr/local/bin/kubectl
+
+--------------------------------------
+
+
+https://longhorn.io/docs/1.2.3/deploy/install/
+
+Each node in the Kubernetes cluster where Longhorn is installed must fulfill the following requirements:
+
+A container runtime compatible with Kubernetes (Docker v1.13+, containerd v1.3.7+, etc.)
+Kubernetes v1.18+.
+open-iscsi is installed, and the iscsid daemon is running on all the nodes. This is necessary, since Longhorn relies on iscsiadm on the host to provide persistent volumes to Kubernetes. For help installing open-iscsi, refer to this section.
+RWX support requires that each node has a NFSv4 client installed.
+For installing a NFSv4 client, refer to this section.
+The host filesystem supports the file extents feature to store the data. Currently we support:
+ext4
+XFS
+bash, curl, findmnt, grep, awk, blkid, lsblk must be installed.
+Mount propagation must be enabled.
+The Longhorn workloads must be able to run as root in order for Longhorn to be deployed and operated properly.
+
+--- START IGNORE ---
+apt-get update & apt-get install sudo
+
+username=wordslab
+adduser $username
+=>Adding user `wordslab' ...
+Adding new group `wordslab' (1000) ...
+Adding new user `wordslab' (1000) with group `wordslab' ...
+Creating home directory `/home/wordslab' ...
+Copying files from `/etc/skel' ...
+New password:
+Retype new password:
+passwd: password updated successfully
+Changing the user information for wordslab
+Enter the new value, or press ENTER for the default
+        Full Name []:
+        Room Number []:
+        Work Phone []:
+        Home Phone []:
+        Other []:
+
+echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false\n[user]\ndefault=$username" >> /etc/wsl.conf
+-- END IGNORE --
+
+https://update.k3s.io/v1-release/channels => stable = v1.22.5+k3s1
+
+/** The download URL prefix for K3s releases. */
+protected get downloadUrl() {
+- return 'https://github.com/k3s-io/k3s/releases/download';
+}
+
+/** The files we need to download for the current architecture. */
+protected get filenames() {
+- switch (this.arch) {
+  - case 'x86_64':
+  - return {
+        exe:      'k3s',
+        images:   'k3s-airgap-images-amd64.tar',
+        checksum: 'sha256sum-amd64.txt',
+  - case 'aarch64':
+  - return {
+        exe:      'k3s-arm64',
+        images:   'k3s-airgap-images-arm64.tar',
+        checksum: 'sha256sum-arm64.txt',
+}
+
+- fileURL = `${ this.downloadUrl }/${ fullVersion }/${ filename }`;
+
+Install K3s into the VM for execution.
+installK3s(version: ShortVersion) {
+- fullVersion = this.k3sHelper.fullVersion(version);
+- await this.runInstallScript(INSTALL_K3S_SCRIPT,
+  - 'install-k3s', fullVersion, await this.wslify(path.join(paths.cache, 'k3s')));
+
+// /assets/scripts/install-k3s
+INSTALL_K3S_SCRIPT
+- VERSION="${1}"
+- CACHE_DIR="${CACHE_DIR:-${2}}"
+- # Update symlinks for k3s and images to new version
+- K3S_DIR="${CACHE_DIR}/${VERSION}"
+- # Make sure any outdated kubeconfig file is gone
+- mkdir -p /etc/rancher/k3s
+- rm -f /etc/rancher/k3s/k3s.yaml
+- # Add images
+- K3S=k3s
+- ARCH=amd64
+- if [ "$(uname -m)" = "aarch64" ]; then
+  - K3S=k3s-arm64
+  - ARCH=arm64
+- IMAGES="/var/lib/rancher/k3s/agent/images"
+- mkdir -p "${IMAGES}"
+- ln -s -f "${K3S_DIR}/k3s-airgap-images-${ARCH}.tar" "${IMAGES}"
+- # Add k3s binary
+- ln -s -f "${K3S_DIR}/${K3S}" /usr/local/bin/k3s
+- # The file system may be readonly (on macOS)
+- chmod a+x "${K3S_DIR}/${K3S}" || true
+
+
+// Persist the given version into the WSL disk, so we can look it up later.
+persistVersion(version: ShortVersion) {
+- filepath = '/var/lib/rancher/k3s/version';
+- await this.execCommand('/bin/sh', '-c', `echo '${ version }' > /var/lib/rancher/k3s/version`);
+
+startService('k3s', {  PORT: this.#desiredPort.toString(), LOG_DIR: await this.wslify(paths.logs), IPTABLES_MODE: 'legacy' });
+
+// Start the given OpenRC service.
+startService(service: string, conf: Record<string, string> | undefined) {
+- if (conf) { await this.writeConf(service, conf); }
+- await this.execCommand('/usr/local/bin/wsl-service', service, 'start');
+// https://github.com/rancher-sandbox/rancher-desktop-wsl-distro/blob/main/files/wsl-service
+
+// src/assets/scripts/service-k3s
+
+rm -f /tmp/k3s.*
+
+ PORT:                   this.#desiredPort.toString(),
+          LOG_DIR:                await this.wslify(paths.logs),
+          'export IPTABLES_MODE': 'legacy',
+          ENGINE:                 config.containerEngine,
+
+/usr/local/bin/k3s server --https-listen-port 6443 
+
+# /var/log/k3s.log
+
+command_args="server ${ENGINE} --https-listen-port ${PORT} ${K3S_EXEC:-}"
+- K3S_LOGFILE="${K3S_LOGFILE:-${LOG_DIR:-/var/log}/${RC_SVCNAME}.log}"
+- output_log="${K3S_OUTFILE:-${K3S_LOGFILE}}"
+- error_log="${K3S_ERRFILE:-${K3S_LOGFILE}}"
+
+LOGROTATE_K3S_SCRIPT
+- /var/log/k3s {
+-  missingok
+-  notifempty
+-  copytruncate
+- }
+
+logPath = await this.wslify(paths.logs);
+    - rotateConf = LOGROTATE_K3S_SCRIPT.replace(/\r/g, '').replace('/var/log', logPath);
+    - this.writeFile('/etc/logrotate.d/k3s', rotateConf, 0o644);
+
+/** Find the home directory, in a way that is compatible with the @kubernetes/client-node package. */
+protected async findHome() {
+- tryAccess = async(path: string) => {
+      - try { access(path); return true; } 
+      - catch { return false; }
+- if (process.env.HOME && await tryAccess(process.env.HOME)) {
+  - return process.env.HOME;   
+- if (process.env.HOMEDRIVE && process.env.HOMEPATH) {
+  - homePath = path.join(process.env.HOMEDRIVE, process.env.HOMEPATH);
+  - if (await tryAccess(homePath)) { return homePath; }
+- if (process.env.USERPROFILE && tryAccess(process.env.USERPROFILE)) {
+   - return process.env.USERPROFILE;
+- return null;
+ 
+/** Find the kubeconfig file containing the given context; if none is found, return the default kubeconfig path.
+  * @param contextName The name of the context to look for */
+findKubeConfigToUpdate(contextName: string) {
+- candidatePaths = process.env.KUBECONFIG?.split(path.delimiter) || [];
+- for (kubeConfigPath of candidatePaths) {
+  - config = new KubeConfig();
+  - config.loadFromFile(kubeConfigPath, { onInvalidEntry: ActionOnInvalid.FILTER });
+  - if (config.contexts.find(ctx => ctx.name === contextName)) {
+    - return kubeConfigPath;
+  - home = await this.findHome();
+  - if (home) {
+    - kubeDir = path.join(home, '.kube');
+    - mkdir(kubeDir, { recursive: true });
+    - return path.join(kubeDir, 'config');
+
+/** Update the user's kubeconfig such that the K3s context is available and set as the current context.  
+  * This assumes that K3s is already running.
+  * @param configReader A function that returns the kubeconfig from the K3s VM. */
+updateKubeconfig(configReader: () => Promise<string>) {
+- contextName = 'rancher-desktop';
+- workDir = amkdtemp(path.join(os.tmpdir(), 'rancher-desktop-kubeconfig-'));
+- workPath = path.join(workDir, 'kubeconfig');
+- // For some reason, using KubeConfig.loadFromFile presents permissions
+- // errors; doing the same ourselves seems to work better.  Since the file
+- // comes from the WSL container, it must not contain any paths, so there
+- // is no need to fix it up.  This also lets us use an external function to
+- // read the kubeconfig.
+- workConfig = new KubeConfig();
+- workContents = await configReader();
+- workConfig.loadFromString(workContents);
+- // @kubernetes/client-node deosn't have an API to modify the configs...
+- contextIndex = workConfig.contexts.findIndex(context => context.name === workConfig.currentContext);
+- if (contextIndex >= 0) {
+  - context = workConfig.contexts[contextIndex];
+  - userIndex = workConfig.users.findIndex(user => user.name === context.user);
+  - clusterIndex = workConfig.clusters.findIndex(cluster => cluster.name === context.cluster);
+  - if (userIndex >= 0) {
+    - workConfig.users[userIndex] = { ...workConfig.users[userIndex], name: contextName };
+  - if (clusterIndex >= 0) {
+    - workConfig.clusters[clusterIndex] = { ...workConfig.clusters[clusterIndex], name: contextName };
+- workConfig.contexts[contextIndex] = { ...context, name: contextName, user: contextName, cluster: contextName
+- workConfig.currentContext = contextName;
+- userPath = await this.findKubeConfigToUpdate(contextName);
+- userConfig = new KubeConfig();
+- // @kubernetes/client-node throws when merging things that already exist
+- merge = <T extends { name: string }>(list: T[], additions: T[]) => {
+  - for (const addition of additions) {
+    - index = list.findIndex(item => item.name === addition.name);
+- ........ more lines to update the kubeconfig ........
+}
+
+/** Delete state related to Kubernetes.  This will ensure that images are not deleted.
+  * @param execAsRoot A function to run commands on the VM as root.*/
+deleteKubeState(execAsRoot: (...args: string[]) => Promise<void>) {
+- directories = [
+      '/var/lib/kubelet', // https://github.com/kubernetes/kubernetes/pull/86689
+      // We need to keep /var/lib/rancher/k3s/agent/containerd for the images.
+      '/var/lib/rancher/k3s/data',
+      '/var/lib/rancher/k3s/server',
+      '/var/lib/rancher/k3s/storage',
+      '/etc/rancher/k3s',
+      '/run/k3s',
+    ];
+- console.log(`Attempting to remove K3s state: ${ directories.sort().join(' ') }`);
+- await Promise.all(directories.map(d => execAsRoot('rm', '-rf', d)));
+}

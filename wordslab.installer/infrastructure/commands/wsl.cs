@@ -1,4 +1,6 @@
-﻿namespace wordslab.installer.infrastructure.commands
+﻿using wordslab.installer.localstorage;
+
+namespace wordslab.installer.infrastructure.commands
 {
     // Reference documentation :
     // https://docs.microsoft.com/en-us/windows/wsl/basic-commands
@@ -50,9 +52,9 @@
         public static bool IsNvidiaGPUAvailableForWSL2()
         {
             var gpus = nvidia.GetNvidiaGPUs();
-            foreach(var gpuInfo in gpus)
+            foreach (var gpuInfo in gpus)
             {
-                if(gpuInfo.Architecture >= nvidia.GPUArchitectureInfo.Pascal) {  return true; }
+                if (gpuInfo.Architecture >= nvidia.GPUArchitectureInfo.Pascal) { return true; }
             }
             return false;
         }
@@ -68,7 +70,7 @@
             {
                 if (windows.IsWindows11Version21HOrHigher())
                 {
-                    return nvidia.IsNvidiaDriver20Sep21OrLater(); 
+                    return nvidia.IsNvidiaDriver20Sep21OrLater();
                 }
                 else if (windows.IsWindows10Version21H2OrHigher())
                 {
@@ -80,7 +82,7 @@
 
         public static bool IsLinuxKernelVersionOKForWSL2WithGPU()
         {
-            if(IsWSL2AlreadyInstalled())
+            if (IsWSL2AlreadyInstalled())
             {
                 var wslStatus = wsl.status();
                 var targetVersion = new Version(5, 10, 16);
@@ -96,7 +98,11 @@
         // 2.3 Download and run the Linux kernel update package (https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi) - as Administrator
         // 2.4 Reboot the computer
 
-
+        public static void DownloadAndInstallLinuxKernelUpdatePackage(LocalStorageManager localStorage)
+        {
+            var kernelUpdate = localStorage.DownloadFileWithCache("https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi", "wsl_update_x64.msi");
+            Command.Run(kernelUpdate.FullName, runAsAdmin: true);
+        }
 
         // WSL 2 commands
 
@@ -104,40 +110,71 @@
 
         // Execute Linux binary files
 
-        public static bool exec(string commandLine, string distribution = null, string workingDirectory = null, string userName = null)
+        public static int exec(string commandLine, string distribution = null, string workingDirectory = null, string userName = null,
+                               Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
         {
-            return true;
+            string args = "";
+            if (distribution != null) args += $"--distribution {distribution} ";
+            if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
+            if (userName != null) args += $"--user {userName}";
+            return Command.Run("wsl.exe", args + $"--exec \"{commandLine}\"");
         }
 
-        public static bool execShell(string commandLine, string workingDirectory = null)
+        public static int execShell(string commandLine, string distribution = null, string workingDirectory = null, string userName = null,
+                                    Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
         {
-            return true;
+            string args = "";
+            if (distribution != null) args += $"--distribution {distribution} ";
+            if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
+            if (userName != null) args += $"--user {userName}";
+            return Command.Run("wsl.exe", args + $"-- {commandLine}", outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
+        }
+
+        public static bool CheckRunningDistribution(out string distribution, out string version)
+        {
+            string ldistribution = "unknown";
+            string lversion = "?";
+            int exitcode = -1;
+            try
+            {
+                var outputParser = Command.Output.GetValue(@"DISTRIB_ID=\s*(?<distrib>.*)\s*$", s => ldistribution = s).
+                                                  GetValue(@"DISTRIB_RELEASE=\s*(?<distrib>.*)\s*$", s => lversion = s);
+
+                Command.Run("wsl.exe", "-- cat /etc/*-release", outputHandler: outputParser.Run, exitCodeHandler: c => exitcode = c);
+            }
+            catch (Exception) { }
+
+            distribution = ldistribution;
+            version = lversion;
+            return exitcode == 0;
         }
 
         // Manage Windows Subsystem for Linux
 
-        public static bool install(string distributionName = "Ubuntu")
+        public static void install(string distributionName = "Ubuntu")
         {
-            return true;
+            string args = "";
+            if (distributionName != null) args += $"--distribution {distributionName} ";
+            Command.Run("wsl.exe", args + "--install");
         }
 
-        public static bool setDefaultVersion(int version)
+        public static void setDefaultVersion(int version)
         {
-            return true;
+            Command.Run("wsl.exe", $"--set-default-version {version}");
         }
 
-        public static bool shutdown()
+        public static void shutdown()
         {
-            return true;
+            Command.Run("wsl.exe", "--shutdown");
         }
 
         public class StatusResult
         {
-            public bool    IsInstalled = false;            
-            public int     DefaultVersion = 0;
-            public string  DefaultDistribution;
+            public bool IsInstalled = false;
+            public int DefaultVersion = 0;
+            public string DefaultDistribution;
             public Version LinuxKernelVersion;
-            public string  LastWSLUpdate;
+            public string LastWSLUpdate;
         }
 
         public static StatusResult status()
@@ -154,7 +191,7 @@
                                                   GetValue(@"\s+(?<wsldate>\d+(?:/\d+)+)\s*$", s => wsldate = s).
                                                   GetValue(@":\s+(?<linuxver>(?:\d+\.)+\d+)\s*$", s => linuxver = s);
 
-                Command.Run("wsl", "--status", outputHandler: outputParser.Run, exitCodeHandler: c => result.IsInstalled=(c==0));
+                Command.Run("wsl", "--status", outputHandler: outputParser.Run, exitCodeHandler: c => result.IsInstalled = (c == 0));
 
                 if (!String.IsNullOrEmpty(wslver)) result.DefaultVersion = Int32.Parse(wslver);
                 if (!String.IsNullOrEmpty(distrib)) result.DefaultDistribution = distrib;
@@ -162,167 +199,93 @@
                 if (!String.IsNullOrEmpty(wsldate)) result.LastWSLUpdate = wsldate;
             }
             catch (Exception ex)
-            { 
+            {
                 // This method is used to check if wsl is installed => do nothing in case of exception
             }
             return result;
         }
 
-        public static bool update(bool rollback = false)
+        public static void update(bool rollback = false)
         {
-            return true;
+            string args = "";
+            if (rollback) args += "--rollback ";
+            Command.Run("wsl.exe", args + "--update");
         }
 
         // Manage distributions in Windows Subsystem for Linux
 
-        public static bool export(string distribution, string filename)
+        public static void export(string distribution, string filename)
         {
-            return true;
+            Command.Run("wsl.exe", $"--export {distribution} \"{filename}\"");
         }
 
-        public static bool import(string distribution, string installPath, string filename, int version = 2)
+        public static void import(string distribution, string installPath, string filename, int? version = null)
         {
-            return true;
+            string args = "";
+            if (version.HasValue) args += $"--version {version.Value} ";
+            Command.Run("wsl.exe", args + $"--import {distribution} \"{installPath}\" \"{filename}\"");
         }
 
-        public static bool list(bool all = false, bool quiet = false, bool verbose = false, bool online = false)
+        public class ListResult
         {
-            return true;
+            public string Distribution;
+            public string OnlineFriendlyName;
+            public bool IsDefault = false;
+            public bool IsRunning = false;
+            public int WslVersion = 0;
         }
 
-        public static bool setDefaultDistribution(string distributionName)
+        public static List<ListResult> list(bool online = false)
         {
-            return true;
-        }
-
-        public static bool setVersion(string distribution, int version)
-        {
-            return true;
-        }
-
-        public static bool terminate(string distribution)
-        {
-            return true;
-        }
-
-        public static bool unregister(string distribution)
-        {
-            return true;
-        }
-
-        /*
-        // Executes : wsl -l -v
-        // Returns  : 
-        // -1 if WSL2 is not installed
-        //  0 if WSL2 is ready but no distribution was installed
-        //  1 if WSL2 is ready but the default distribution is set to run in WSL version 1
-        //  2 if WSL2 is ready and the default distribution is set to run in WSL version 2
-        public static int CheckWSLVersion()
-        {
-            try
+            var result = new List<ListResult>();
+            if(!online)
             {
-                string output;
-                string error;
-                int exitcode = Process.Run("wsl.exe", "-l -v", 5, out output, out error, true);
-                if (exitcode == 0 && String.IsNullOrEmpty(error))
-                {
-                    if (String.IsNullOrEmpty(output))
-                    {
-                        return 0;
-                    }
-                    var lines = output.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                    if (lines.Length < 2)
-                    {
-                        return 0;
-                    }
-                    for (var i = 1; i < lines.Length; i++)
-                    {
-                        var line = lines[i];
-                        var cols = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (cols.Length == 4)
-                        {
-                            return Int32.Parse(cols[3]);
-                        }
-                    }
-                    return 0;
-                }
+                var outputParser = Command.Output.GetList(
+                    @"NAME\s*STATE\s*VERSION",
+                    @"(?<default>\*?)\s*(?<name>[^\s]*)\s*(?<state>[^\s]*)\s*(?<version>\d)$",
+                    dict => new ListResult() { IsDefault = dict["default"] == "*",
+                                               Distribution = dict["name"],
+                                               IsRunning = dict["state"] != "Stopped",
+                                               WslVersion = Int32.Parse(dict["version"]) },
+                    (IList<object>)result);
+
+                Command.Run("wsl.exe", "--list --verbose", outputHandler: outputParser.Run);
             }
-            catch (Exception)
-            { }
-            return -1;
+            else
+            {
+                var outputParser = Command.Output.GetList(
+                    @"NAME\s*FRIENDLY NAME",
+                    @"(?<name>[^\s]+)\s*(?<friendlyname>.*)$",
+                    dict => new ListResult()
+                    {
+                        Distribution = dict["name"],
+                        OnlineFriendlyName = dict["friendlyname"]
+                    },
+                    (IList<object>)result);
+
+                Command.Run("wsl.exe", "--list --online", outputHandler: outputParser.Run);
+            }
+            return result;
         }
 
-        // Executes : wsl -- uname -r
-        // Returns  :  
-        // Version object if kernel version was correctly parsed
-        // null otherwise
-        public static Version CheckKernelVersion()
+        public static void setDefaultDistribution(string distribution)
         {
-            try
-            {
-                string output;
-                string error;
-                int exitcode = Process.Run("wsl.exe", "-- uname -r", 5, out output, out error);
-                if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
-                {
-                    int firstDot = output.IndexOf('.');
-                    int secondDot = output.IndexOf('.', firstDot + 1);
-                    if(firstDot > 0 && secondDot > firstDot)
-                    {
-                        var major = Int32.Parse(output.Substring(0, firstDot));
-                        var minor = Int32.Parse(output.Substring(firstDot+1, secondDot-firstDot-1));
-                        return new Version(major, minor);
-                    }
-                }
-            }
-            catch (Exception)
-            { }
-            return null;
+            Command.Run("wsl.exe", $"--set-default {distribution}");
         }
 
-        // Executes : wsl -- cat /etc/*-release
-        // Returns  :  
-        // true if the default distribution launched by the wsl command is Ubuntu
-        // false otherwise
-        public static bool CheckUbuntuDistribution(out string distrib, out string version)
+        public static void setVersion(string distribution, int version)
         {
-            distrib = "unknown";
-            version = "?";
-            try
-            {
-                string output;
-                string error;
-                int exitcode = Process.Run("wsl.exe", "-- cat /etc/*-release", 5, out output, out error);
-                if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
-                {
-                    var lines = output.Split('\n');
-                    foreach(var line in lines)
-                    {
-                        if (line.StartsWith("DISTRIB_ID="))
-                        {
-                            distrib = line.Substring(11);
-                        }
-                        else if (line.StartsWith("DISTRIB_RELEASE="))
-                        {
-                            version = line.Substring(16);
-                        }
-                    }
-                    var major = Int32.Parse(version.Substring(0, 2));
-                    if( String.Compare(distrib, "Ubuntu", StringComparison.InvariantCultureIgnoreCase) == 0 &&
-                        major >= 18)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-            }
-            catch (Exception)
-            { }
-            return false;
+            Command.Run("wsl.exe", $"--set-version {distribution} {version}");
         }
-    }*/
+
+        public static void terminate(string distribution)
+        {
+            Command.Run("wsl.exe", $"--terminate {distribution}");
+        }
+
+        public static void unregister(string distribution)
+        {
+            Command.Run("wsl.exe", $"--unregister {distribution}");
+        }
     }
 }
