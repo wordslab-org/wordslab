@@ -1,5 +1,5 @@
-#!/bin/bash
-downloadpath=$(/usr/bin/wslpath "$1")
+#!/bin/ash
+downloadpath=$(wslpath "$1")
 
 echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" >> /etc/wsl.conf
 

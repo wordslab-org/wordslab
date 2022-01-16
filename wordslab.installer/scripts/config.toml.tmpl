@@ -4,6 +4,7 @@
 [plugins.cri]
   stream_server_address = "127.0.0.1"
   stream_server_port = "10010"
+  enable_selinux = false
 
 {{- if .IsRunningInUserNS }}
   disable_cgroup = true
@@ -21,13 +22,22 @@
   conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
 {{end}}
 
-[plugins.cri.containerd.runtimes.runc]
-  # ---- changed from 'io.containerd.runc.v2' for GPU support
-  runtime_type = "io.containerd.runtime.v1.linux"
+[plugins.cri.containerd]
+  snapshotter = "overlayfs"
+  disable_snapshot_annotations = true
+  default_runtime_name = "nvidia"
 
-# ---- added for GPU support
-[plugins.linux]
-  runtime = "nvidia-container-runtime"
+[plugins.cri.containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins.cri.containerd.runtimes.nvidia]
+  privileged_without_host_devices = false
+  runtime_engine = ""
+  runtime_root = ""
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins.cri.containerd.runtimes.nvidia.options]
+  BinaryName = "/usr/bin/nvidia-container-runtime"
 
 {{ if .PrivateRegistryConfig }}
 {{ if .PrivateRegistryConfig.Mirrors }}

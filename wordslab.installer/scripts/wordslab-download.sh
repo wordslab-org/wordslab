@@ -1,8 +1,8 @@
 #!/bin/bash
-downloadpath=$(/usr/bin/wslpath "$1")
+downloadpath=$(wslpath "$1")
 
-mkdir wordslab-downloads
-cd wordslab-downloads
+mkdir ~/wordslab-downloads
+cd ~/wordslab-downloads
 
 # https://partner-images.canonical.com/oci/ => Ubuntu minimum images
 wget https://partner-images.canonical.com/oci/focal/20220105/ubuntu-focal-oci-amd64-root.tar.gz
@@ -23,5 +23,5 @@ wget https://get.helm.sh/helm-v3.7.2-linux-amd64.tar.gz
 tar -zxvf helm-v3.7.2-linux-amd64.tar.gz
 mv linux-amd64/helm $downloadpath/helm
 
-cd ..
-rm -rf wordslab-downloads
+cd ~
+rm -rf ~/wordslab-downloads

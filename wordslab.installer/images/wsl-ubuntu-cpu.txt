@@ -167,6 +167,29 @@ k3s kubectl -n kube-system get nodes -o wide
 CONTAINER-RUNTIME : containerd://1.5.8-k3s1
 
 
+https://developer.nvidia.com/blog/announcing-containerd-support-for-the-nvidia-gpu-operator/
+https://github.com/NVIDIA/gpu-operator/
+https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#operator-install-guide
+
+CONTAINERD_CONFIG="/etc/containerd/config.toml"
+CONTAINERD_SOCKET="/run/containerd/containerd.sock"
+
+version = 2
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      default_runtime_name = "nvidia"
+
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+          privileged_without_host_devices = false
+          runtime_engine = ""
+          runtime_root = ""
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+            BinaryName = "/usr/bin/nvidia-container-runtime"
+
+
 # TEST
 
 k3s kubectl create -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pvc/pvc.yaml
