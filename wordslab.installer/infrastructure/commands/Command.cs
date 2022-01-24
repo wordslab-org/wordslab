@@ -16,7 +16,7 @@ namespace wordslab.installer.infrastructure.commands
     // - ArgumentException          : exception occured in output handler, error handler, exit code handler
     public static class Command
     {
-        public static int Run(string command, string arguments="", int timeoutSec=10, bool unicodeEncoding = true, string workingDirectory="", bool runAsAdmin=false,
+        public static int Run(string command, string arguments="", int timeoutSec=10, bool unicodeEncoding = false, string workingDirectory="", bool mustRunAsAdmin=false,
                               Action<string> outputHandler=null, Action<string> errorHandler=null, Action<int> exitCodeHandler=null)
         {
             using (Process proc = new Process())
@@ -30,11 +30,11 @@ namespace wordslab.installer.infrastructure.commands
                 if (unicodeEncoding) proc.StartInfo.StandardErrorEncoding = Encoding.Unicode;
                 proc.StartInfo.RedirectStandardError = true;
                 proc.StartInfo.WorkingDirectory = workingDirectory;
-                if (!IsRunningAsAdministrator())
+                if (mustRunAsAdmin && !IsRunningAsAdministrator())
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
-                        proc.StartInfo.Verb = "runas";
+                        throw new InvalidOperationException("This operation needs admin privileges. Please run this program as Administrator.");
                     } 
                     else
                     {
@@ -79,6 +79,116 @@ namespace wordslab.installer.infrastructure.commands
                 if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of command {command}", e); } }
                 else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing command {command} {arguments} : exitcode {exitCode} different of 0"); } }
                 
+                return exitCode;
+            }
+        }
+
+        public static void LaunchAndForget(string command, string arguments = "")
+        {
+            using (Process proc = new Process())
+            {
+                proc.StartInfo.FileName = command;
+                proc.StartInfo.Arguments = arguments;
+                proc.StartInfo.UseShellExecute = true;
+                proc.StartInfo.CreateNoWindow = false;
+                try
+                {
+                    proc.Start();
+                }
+                catch (System.ComponentModel.Win32Exception e)
+                {
+                    throw new FileNotFoundException($"Command {command} not found", command, e);
+                }
+            }
+        }
+
+        public static int ExecuteShellScriptAsAdmin(string scriptPath, string scriptArguments, string logOutputDir, 
+                                                    string shellLauncher = null, int timeoutSec = 10, 
+                                                    Action<string> outputHandler = null, Action<int> exitCodeHandler = null)
+        {
+            var scriptFile = new FileInfo(scriptPath);
+            if (!scriptFile.Exists)
+            {
+                throw new FileNotFoundException($"Script file {scriptFile.FullName} not found", scriptFile.FullName);
+            }
+
+            var logDir = new DirectoryInfo(logOutputDir);
+            if (!logDir.Exists)
+            {
+                try
+                {
+                    logDir.Create();
+                }
+                catch (Exception ex)
+                {
+                    throw new IOException($"Failed to create directory to log script output : {logOutputDir}", ex);
+                }
+            }
+            string logFilePrefix = scriptFile.Name + $".{DateTime.Now.ToString("s").Replace(':','-')}";
+            string outputLogFile = Path.Combine(logDir.FullName, logFilePrefix + ".output.txt");
+
+            string redirectOutputSyntax;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (shellLauncher == null) shellLauncher = "powershell.exe";
+                if (String.Equals(shellLauncher, "powershell.exe", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    redirectOutputSyntax = $"| Tee-Object -FilePath \"{outputLogFile}\"";
+                } 
+                else
+                {
+                    redirectOutputSyntax = $"> \"{outputLogFile}\" 2>&1";
+                }
+            }
+            else
+            {
+                if (shellLauncher == null) shellLauncher = "bash";
+                redirectOutputSyntax = $"2>&1 | tee \"{outputLogFile}\"";
+            }
+
+            using (Process proc = new Process())
+            {
+                proc.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
+                proc.StartInfo.FileName = shellLauncher;
+                proc.StartInfo.Arguments = $"{scriptFile.FullName} {scriptArguments} {redirectOutputSyntax}";
+                proc.StartInfo.UseShellExecute = true;
+                proc.StartInfo.Verb = "runas";
+
+                try
+                {
+                    proc.Start();
+                }
+                catch (System.ComponentModel.Win32Exception e)
+                {
+                    throw new FileNotFoundException($"Failed to launch script {scriptPath}", scriptFile.FullName, e);
+                }
+
+                bool exitBeforeTimeout = true;
+                try
+                {
+                    exitBeforeTimeout = proc.WaitForExit(timeoutSec * 1000);
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException($"Failed to execute script {scriptPath} {scriptArguments}", e);
+                }
+                if (!exitBeforeTimeout)
+                {
+                    throw new TimeoutException($"Script {scriptPath} {scriptArguments} did not exit before the timeout of {timeoutSec} sec");
+                }
+
+                string output = "";
+                using(StreamReader srOut = new StreamReader(outputLogFile))
+                {
+                    output = srOut.ReadToEnd();
+                }
+
+                if (outputHandler != null) { try { outputHandler(output); } catch (Exception e) { throw new ArgumentException($"Exception occured in output handler of script {scriptPath}", e); } }
+                
+                int exitCode = proc.ExitCode;
+                if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of script {scriptPath}", e); } }
+                else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing script {scriptPath} {scriptArguments} : exitcode {exitCode} different of 0"); } }
+
                 return exitCode;
             }
         }
@@ -149,7 +259,7 @@ namespace wordslab.installer.infrastructure.commands
                             var lineRegex = listExtractor.Item2;
                             var createObjectFromMatches = listExtractor.Item3;
                             var resultList = listExtractor.Item4;
-                            if (headerRegex != null || headerRegex.IsMatch(line))
+                            if (headerRegex != null && headerRegex.IsMatch(line))
                             {
                                 activeHeaderIndex = i;
                             }

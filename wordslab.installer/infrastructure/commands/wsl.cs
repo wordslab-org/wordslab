@@ -30,14 +30,41 @@ namespace wordslab.installer.infrastructure.commands
         // 1.1 You must be running Windows 10. For x64 systems: Version 1903 or higher, with Build 18362 or higher.
         // 1.2 You must enable the Virtual Machine Platform optional feature. Your machine will require virtualization capabilities to use this feature.
 
+        // Build 18917 : 
+        // - wsl.exe --list --verbose, wsl.exe --list --quiet options
+        // - wsl.exe --import --version options 
+        // - wsl.exe --shutdown option        
+        // Build 19555 :
+        // - wsl.exe present when the Windows Subsystem for Linux optional component is not enabled to improve feature discoverability.
+        // Build 20150 :
+        // - WSL2 GPU compute
+        // - wsl.exe --install command line option to easily set up WSL
+        // - wsl.exe --update command line option to manage updates to the WSL2 kernel
+        // Build 20175 :
+        // - adjust default memory assignment of WSL2 VM to be 50% of host memory or 8GB, whichever is less
+        // - enable nested virtualization for WSL2 by default on amd64
+        // - wsl.exe --update demand start Microsoft Update
+        // Build 20190 : 12 août 2020 - 21H1
+        // - added support for installing the WSL2 kernel and distributions to wsl.exe --install
+        // BACKPORT to 19H1 & 19H2 : 20 août 2020
+        // - if your minor build number is 1049 or higher on Windows builds 18362 or 18363, then you have the backport and the ability to run WSL 2 distros
+        // Build 20211 :
+        // - wsl.exe --mount for mounting physical or virtual disks.
+        // - WSL instances are now terminated when the user logs off
+        // Build 21286 :
+        // - wsl.exe --cd command to set current working directory of a command
+        // - added an option to /etc/wsl.conf to enable start up commands: [boot] command=<string>
+        // Build 21364 :
+        // - GUI apps are now available
+
         public static bool IsWindowsVersionOKForWSL2()
         {
-            return windows.IsOSArchitectureX64() && windows.IsWindows10Version1903OrHigher();
+            return windows10.IsOSArchitectureX64() && windows10.IsWindows10Version1903OrHigher();
         }
 
         public static bool IsVirtualizationEnabled()
         {
-            return windows.IsVirtualMachinePlatformEnabled() || windows.IsVirtualizationEnabled();
+            return windows10.IsVirtualMachinePlatformEnabled() || windows10.IsVirtualizationEnabled();
         }
 
         // Additional requirements to enable NVIDIA CUDA on WSL 2
@@ -61,20 +88,21 @@ namespace wordslab.installer.infrastructure.commands
 
         public static bool IsWindowsVersionOKForWSL2WithGPU()
         {
-            return windows.IsOSArchitectureX64() && windows.IsWindows10Version21H2OrHigher();
+            return windows10.IsOSArchitectureX64() && windows10.IsWindows10Version21H2OrHigher();
         }
 
         public static bool IsNvidiaDriverVersionOKForWSL2WithGPU()
         {
             if (IsNvidiaGPUAvailableForWSL2())
             {
-                if (windows.IsWindows11Version21HOrHigher())
+                var driverVersion = nvidia.GetDriverVersion();
+                if (windows10.IsWindows11Version21HOrHigher())
                 {
-                    return nvidia.IsNvidiaDriver20Sep21OrLater();
+                    return nvidia.IsNvidiaDriver20Sep21OrLater(driverVersion);
                 }
-                else if (windows.IsWindows10Version21H2OrHigher())
+                else if (windows10.IsWindows10Version21H2OrHigher())
                 {
-                    return nvidia.IsNvidiaDriver16Nov21OrLater();
+                    return nvidia.IsNvidiaDriver16Nov21OrLater(driverVersion);
                 }
             }
             return false;
@@ -101,7 +129,7 @@ namespace wordslab.installer.infrastructure.commands
         public static void DownloadAndInstallLinuxKernelUpdatePackage(LocalStorageManager localStorage)
         {
             var kernelUpdate = localStorage.DownloadFileWithCache("https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi", "wsl_update_x64.msi");
-            Command.Run(kernelUpdate.FullName, runAsAdmin: true);
+            Command.Run(kernelUpdate.FullName, mustRunAsAdmin: true);
         }
 
         // WSL 2 commands
@@ -117,7 +145,7 @@ namespace wordslab.installer.infrastructure.commands
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
             if (userName != null) args += $"--user {userName}";
-            return Command.Run("wsl.exe", args + $"--exec \"{commandLine}\"");
+            return Command.Run("wsl.exe", args + $"--exec \"{commandLine}\"", unicodeEncoding: true);
         }
 
         public static int execShell(string commandLine, string distribution = null, string workingDirectory = null, string userName = null,
@@ -127,7 +155,7 @@ namespace wordslab.installer.infrastructure.commands
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
             if (userName != null) args += $"--user {userName}";
-            return Command.Run("wsl.exe", args + $"-- {commandLine}", outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
+            return Command.Run("wsl.exe", args + $"-- {commandLine}", unicodeEncoding: true, outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
         }
 
         public static bool CheckRunningDistribution(out string distribution, out string version)
@@ -140,7 +168,7 @@ namespace wordslab.installer.infrastructure.commands
                 var outputParser = Command.Output.GetValue(@"DISTRIB_ID=\s*(?<distrib>.*)\s*$", s => ldistribution = s).
                                                   GetValue(@"DISTRIB_RELEASE=\s*(?<distrib>.*)\s*$", s => lversion = s);
 
-                Command.Run("wsl.exe", "-- cat /etc/*-release", outputHandler: outputParser.Run, exitCodeHandler: c => exitcode = c);
+                Command.Run("wsl.exe", "-- cat /etc/*-release", unicodeEncoding: true, outputHandler: outputParser.Run, exitCodeHandler: c => exitcode = c);
             }
             catch (Exception) { }
 
@@ -155,17 +183,17 @@ namespace wordslab.installer.infrastructure.commands
         {
             string args = "";
             if (distributionName != null) args += $"--distribution {distributionName} ";
-            Command.Run("wsl.exe", args + "--install");
+            Command.Run("wsl.exe", args + "--install", unicodeEncoding: true);
         }
 
         public static void setDefaultVersion(int version)
         {
-            Command.Run("wsl.exe", $"--set-default-version {version}");
+            Command.Run("wsl.exe", $"--set-default-version {version}", unicodeEncoding: true);
         }
 
         public static void shutdown()
         {
-            Command.Run("wsl.exe", "--shutdown");
+            Command.Run("wsl.exe", "--shutdown", unicodeEncoding: true);
         }
 
         public class StatusResult
@@ -191,7 +219,7 @@ namespace wordslab.installer.infrastructure.commands
                                                   GetValue(@"\s+(?<wsldate>\d+(?:/\d+)+)\s*$", s => wsldate = s).
                                                   GetValue(@":\s+(?<linuxver>(?:\d+\.)+\d+)\s*$", s => linuxver = s);
 
-                Command.Run("wsl", "--status", outputHandler: outputParser.Run, exitCodeHandler: c => result.IsInstalled = (c == 0));
+                Command.Run("wsl", "--status", unicodeEncoding: true, outputHandler: outputParser.Run, exitCodeHandler: c => result.IsInstalled = (c == 0));
 
                 if (!String.IsNullOrEmpty(wslver)) result.DefaultVersion = Int32.Parse(wslver);
                 if (!String.IsNullOrEmpty(distrib)) result.DefaultDistribution = distrib;
@@ -209,24 +237,24 @@ namespace wordslab.installer.infrastructure.commands
         {
             string args = "";
             if (rollback) args += "--rollback ";
-            Command.Run("wsl.exe", args + "--update");
+            Command.Run("wsl.exe", args + "--update", unicodeEncoding: true);
         }
 
         // Manage distributions in Windows Subsystem for Linux
 
         public static void export(string distribution, string filename)
         {
-            Command.Run("wsl.exe", $"--export {distribution} \"{filename}\"");
+            Command.Run("wsl.exe", $"--export {distribution} \"{filename}\"", unicodeEncoding: true);
         }
 
         public static void import(string distribution, string installPath, string filename, int? version = null)
         {
             string args = "";
             if (version.HasValue) args += $"--version {version.Value} ";
-            Command.Run("wsl.exe", args + $"--import {distribution} \"{installPath}\" \"{filename}\"");
+            Command.Run("wsl.exe", args + $"--import {distribution} \"{installPath}\" \"{filename}\"", unicodeEncoding: true);
         }
 
-        public class ListResult
+        public class DistributionInfo
         {
             public string Distribution;
             public string OnlineFriendlyName;
@@ -235,57 +263,57 @@ namespace wordslab.installer.infrastructure.commands
             public int WslVersion = 0;
         }
 
-        public static List<ListResult> list(bool online = false)
+        public static List<DistributionInfo> list(bool online = false)
         {
-            var result = new List<ListResult>();
+            var result = new List<object>();
             if(!online)
             {
                 var outputParser = Command.Output.GetList(
                     @"NAME\s*STATE\s*VERSION",
                     @"(?<default>\*?)\s*(?<name>[^\s]*)\s*(?<state>[^\s]*)\s*(?<version>\d)$",
-                    dict => new ListResult() { IsDefault = dict["default"] == "*",
+                    dict => new DistributionInfo() { IsDefault = dict["default"] == "*",
                                                Distribution = dict["name"],
                                                IsRunning = dict["state"] != "Stopped",
                                                WslVersion = Int32.Parse(dict["version"]) },
-                    (IList<object>)result);
+                    result);
 
-                Command.Run("wsl.exe", "--list --verbose", outputHandler: outputParser.Run);
+                Command.Run("wsl.exe", "--list --verbose", unicodeEncoding: true, outputHandler: outputParser.Run);
             }
             else
             {
                 var outputParser = Command.Output.GetList(
                     @"NAME\s*FRIENDLY NAME",
                     @"(?<name>[^\s]+)\s*(?<friendlyname>.*)$",
-                    dict => new ListResult()
+                    dict => new DistributionInfo()
                     {
                         Distribution = dict["name"],
                         OnlineFriendlyName = dict["friendlyname"]
                     },
-                    (IList<object>)result);
+                    result);
 
-                Command.Run("wsl.exe", "--list --online", outputHandler: outputParser.Run);
+                Command.Run("wsl.exe", "--list --online", unicodeEncoding: true, outputHandler: outputParser.Run);
             }
-            return result;
+            return result.Cast<DistributionInfo>().ToList();
         }
 
         public static void setDefaultDistribution(string distribution)
         {
-            Command.Run("wsl.exe", $"--set-default {distribution}");
+            Command.Run("wsl.exe", $"--set-default {distribution}", unicodeEncoding: true);
         }
 
         public static void setVersion(string distribution, int version)
         {
-            Command.Run("wsl.exe", $"--set-version {distribution} {version}");
+            Command.Run("wsl.exe", $"--set-version {distribution} {version}", unicodeEncoding: true);
         }
 
         public static void terminate(string distribution)
         {
-            Command.Run("wsl.exe", $"--terminate {distribution}");
+            Command.Run("wsl.exe", $"--terminate {distribution}", unicodeEncoding: true);
         }
 
         public static void unregister(string distribution)
         {
-            Command.Run("wsl.exe", $"--unregister {distribution}");
+            Command.Run("wsl.exe", $"--unregister {distribution}", unicodeEncoding: true);
         }
     }
 }

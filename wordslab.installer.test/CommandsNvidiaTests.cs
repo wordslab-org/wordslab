@@ -7,16 +7,34 @@ namespace wordslab.installer.test
     public class CommandsNvidiaTests
     {
         [TestMethod]
-        public void TestStatus()
+        public void TestDriverVersion()
         {
-            var status = wsl.status();
+            var driverVersion = nvidia.GetDriverVersion();
+            Assert.IsTrue(driverVersion.Major > 0);
+            Assert.IsTrue(driverVersion.Minor > 0);
+            Assert.IsTrue(driverVersion.Revision == -1);
+            Assert.IsTrue(driverVersion.Build == -1); ;
 
-            Assert.IsNotNull(status);
-            Assert.IsTrue(status.IsInstalled);
-            Assert.AreEqual(status.DefaultVersion, 2);
-            Assert.IsNotNull(status.DefaultDistribution);
-            Assert.IsNotNull(status.LinuxKernelVersion);
-            Assert.IsNotNull(status.LastWSLUpdate);
+            Assert.IsTrue(nvidia.IsNvidiaDriver20Sep21OrLater(driverVersion));
+            Assert.IsTrue(nvidia.IsNvidiaDriver16Nov21OrLater(driverVersion));
+        }
+
+        [TestMethod]
+        public void TestOpenNvidiaUpdate()
+        {
+            nvidia.TryOpenNvidiaUpdate();
+        }
+
+        [TestMethod]
+        public void TestGPUInfo()
+        {
+            var gpus = nvidia.GetNvidiaGPUs();
+            Assert.IsTrue(gpus.Count > 0);
+            foreach (var gpu in gpus)
+            {
+                Assert.IsTrue(gpu.MemoryMB > 1000);
+                Assert.IsTrue(gpu.Architecture != nvidia.GPUArchitectureInfo.Unknown);
+            }
         }
     }
 }

@@ -7,16 +7,101 @@ namespace wordslab.installer.test
     public class CommandsWindowsTests
     {
         [TestMethod]
-        public void TestStatus()
+        public void TestOSArchitectureX64()
         {
-            var status = wsl.status();
+            var result = windows10.IsOSArchitectureX64();
+            Assert.IsTrue(result);
+        }
 
-            Assert.IsNotNull(status);
-            Assert.IsTrue(status.IsInstalled);
-            Assert.AreEqual(status.DefaultVersion, 2);
-            Assert.IsNotNull(status.DefaultDistribution);
-            Assert.IsNotNull(status.LinuxKernelVersion);
-            Assert.IsNotNull(status.LastWSLUpdate);
+        [TestMethod]
+        public void TestOSVersion()
+        {
+            var version = windows10.GetOSVersion();
+            Assert.IsNotNull(version);
+            Assert.IsTrue(version.Major >= 10);
+            Assert.IsTrue(version.Build >= 17000);
+        }
+
+        [TestMethod]
+        public void TestWindows10Version1903OrHigher()
+        {
+            var result = windows10.IsWindows10Version1903OrHigher();
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void TestWindows10Version21H2OrHigher()
+        {
+            var result = windows10.IsWindows10Version21H2OrHigher();
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void TestWindows11Version21HOrHigher()
+        {
+            var result = windows10.IsWindows11Version21HOrHigher();
+            Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public void TestOpenWindowsUpdate()
+        {
+            windows10.OpenWindowsUpdate();
+        }
+
+        [TestMethod]
+        public void TestVirtualizationEnabled()
+        {
+            var result = windows10.IsVirtualizationEnabled();
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void TestWindowsSubsystemForLinuxEnabled()
+        {
+            var result = windows10.IsWindowsSubsystemForLinuxEnabled();
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void TestEnableWindowsSubsystemForLinux()
+        {
+            var needsRestart = windows10.EnableWindowsSubsystemForLinux();
+            Assert.IsTrue(needsRestart);
+        }
+
+        [TestMethod]
+        public void TestDisableWindowsSubsystemForLinux()
+        {
+            var needsRestart = windows10.DisableWindowsSubsystemForLinux();
+            Assert.IsTrue(needsRestart);
+        }
+
+        [TestMethod]
+        public void TestVirtualMachinePlatformEnabled()
+        {
+            var result = windows10.IsVirtualMachinePlatformEnabled();
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void TestEnableVirtualMachinePlatform()
+        {
+            var needsRestart = windows10.EnableVirtualMachinePlatform();
+            Assert.IsTrue(needsRestart);
+        }
+
+        [TestMethod]
+        public void TestDisableVirtualMachinePlatform()
+        {
+            var needsRestart = windows10.DisableVirtualMachinePlatform();
+            Assert.IsTrue(needsRestart);
+        }
+
+        [TestMethod]
+        public void TestShutdownAndRestart()
+        {
+            windows10.ShutdownAndRestart();
         }
     }
 }

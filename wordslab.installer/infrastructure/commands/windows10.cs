@@ -2,14 +2,14 @@
 
 namespace wordslab.installer.infrastructure.commands
 {
-    public class windows
+    public class windows10
     {
         public static bool IsOSArchitectureX64()
         {
             return RuntimeInformation.OSArchitecture == Architecture.X64;
         }
 
-        internal static Version GetOSVersion()
+        public static Version GetOSVersion()
         {
             return Environment.OSVersion.Version;
         }
@@ -44,6 +44,11 @@ namespace wordslab.installer.infrastructure.commands
             else { return false; }
         }
 
+        public static void OpenWindowsUpdate()
+        {
+            Command.LaunchAndForget("control.exe", "update");
+        }
+
         // Checking HyperV requirements : several alernatives
         // https://docs.microsoft.com/fr-fr/windows-server/administration/windows-commands/systeminfo // https://www.technorms.com/8208/check-if-processor-supports-virtualization
         // https://docs.microsoft.com/en-us/virtualization/api/hypervisor-platform/funcs/whvgetcapability // HypervisorSharp : https://git.9net.org/-/snippets/5
@@ -69,10 +74,10 @@ namespace wordslab.installer.infrastructure.commands
                                                 GetValue(@"HyperVRequirementVirtualizationFirmwareEnabled\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementVirtualizationFirmwareEnabled = s).
                                                 GetValue(@"HyperVRequirementVMMonitorModeExtensions\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementVMMonitorModeExtensions = s);
 
-            Command.Run("powershell.exe", "get-computerInfo -property \"HyperV *\"", outputHandler: outputParser.Run);
+            Command.Run("powershell.exe", "Get-ComputerInfo -Property \"HyperV*\"", outputHandler: outputParser.Run);
 
             bool isEnabled = String.Equals(hyperVisorPresent, "true", StringComparison.InvariantCultureIgnoreCase);
-            if(!isEnabled)
+            if (!isEnabled)
             {
                 isEnabled = String.Equals(hyperVRequirementDataExecutionPreventionAvailable, "true", StringComparison.InvariantCultureIgnoreCase) &&
                             String.Equals(hyperVRequirementSecondLevelAddressTranslation, "true", StringComparison.InvariantCultureIgnoreCase) &&
@@ -92,62 +97,75 @@ namespace wordslab.installer.infrastructure.commands
         // https://docs.microsoft.com/en-us/powershell/module/dism/enable-windowsoptionalfeature?view=windowsserver2022-ps
         // https://docs.microsoft.com/en-us/powershell/module/dism/disable-windowsoptionalfeature?view=windowsserver2022-ps 
 
+        private static readonly string SCRIPT_PATH;
+        private static readonly string LOGS_PATH;
+
+        static windows10() 
+        {
+            SCRIPT_PATH = @"c:\tmp";
+            LOGS_PATH = @"c:\tmp";
+        }
+
         public static bool IsWindowsSubsystemForLinuxEnabled()
         {
-            string? isEnabled = null;
-            var outputParser = Command.Output.GetValue(@"State\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => isEnabled = s);
-
-            bool isElevated = true;
-            Command.Run("powershell.exe", "get-windowsoptionalfeature -online -featurename Microsoft-Windows-Subsystem-Linux", runAsAdmin: true, outputHandler: outputParser.Run, exitCodeHandler: c => isElevated = (c == 0));
-
-            if (!isElevated) throw new InvalidOperationException("get-windowsoptionalfeature PowerShell command requires admin privileges");
-
-            return String.Equals(isEnabled, "enabled", StringComparison.InvariantCultureIgnoreCase);
+            bool isEnabled = true;
+            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH,"check-wsl.ps1"), "", LOGS_PATH, exitCodeHandler: c => isEnabled = (c == 0));
+            return isEnabled;
         }
 
-        public static void EnableWindowsSubsystemForLinux()
+        public static bool EnableWindowsSubsystemForLinux()
         {
-            bool isElevated = true;
-            Command.Run("powershell.exe", "enable-windowsoptionalfeature -online -norestart -featurename Microsoft-Windows-Subsystem-Linux", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+            int exitCode = -1;
+            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "enable-wsl.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
 
-            if (!isElevated) throw new InvalidOperationException("enable-windowsoptionalfeature PowerShell command requires admin privileges");
+            bool restartNeeded = false;
+            if(exitCode == 0)       { restartNeeded = false; }
+            else if (exitCode == 1) { restartNeeded = true; }
+            else                    { throw new InvalidOperationException($"Failed to enable Windows Subsystem for Linux : see script log file in {LOGS_PATH}"); }
+            return restartNeeded;
         }
 
-        public static void DisableWindowsSubsystemForLinux()
+        public static bool DisableWindowsSubsystemForLinux()
         {
-            bool isElevated = true;
-            Command.Run("powershell.exe", "disable-windowsoptionalfeature -online -norestart -featurename Microsoft-Windows-Subsystem-Linux", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+            int exitCode = -1;
+            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "disable-wsl.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
 
-            if (!isElevated) throw new InvalidOperationException("disable-windowsoptionalfeature PowerShell command requires admin privileges");
+            bool restartNeeded = false;
+            if (exitCode == 0) { restartNeeded = false; }
+            else if (exitCode == 1) { restartNeeded = true; }
+            else { throw new InvalidOperationException($"Failed to disable Windows Subsystem for Linux : see script log file in {LOGS_PATH}"); }
+            return restartNeeded;
         }
 
         public static bool IsVirtualMachinePlatformEnabled()
         {
-            string? isEnabled = null;
-            var outputParser = Command.Output.GetValue(@"State\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => isEnabled = s);
-
-            bool isElevated = true;
-            Command.Run("powershell.exe", "get-windowsoptionalfeature -online -featurename VirtualMachinePlatform", runAsAdmin: true, outputHandler: outputParser.Run, exitCodeHandler: c => isElevated = (c == 0));
-
-            if (!isElevated) throw new InvalidOperationException("get-windowsoptionalfeature PowerShell command requires admin privileges");
-
-            return String.Equals(isEnabled, "enabled", StringComparison.InvariantCultureIgnoreCase);
+            bool isEnabled = true;
+            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "check-vmd.ps1"), "", LOGS_PATH, exitCodeHandler: c => isEnabled = (c == 0));
+            return isEnabled;
         }
 
-        public static void EnableVirtualMachinePlatform()
+        public static bool EnableVirtualMachinePlatform()
         {
-            bool isElevated = true;
-            Command.Run("powershell.exe", "enable-windowsoptionalfeature -online -norestart -featurename VirtualMachinePlatform", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+            int exitCode = -1;
+            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "enable-vmd.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
 
-            if (!isElevated) throw new InvalidOperationException("enable-windowsoptionalfeature PowerShell command requires admin privileges");
+            bool restartNeeded = false;
+            if (exitCode == 0) { restartNeeded = false; }
+            else if (exitCode == 1) { restartNeeded = true; }
+            else { throw new InvalidOperationException($"Failed to enable Windows Virtual Machine Platform : see script log file in {LOGS_PATH}"); }
+            return restartNeeded;
         }
 
-        public static void DisableVirtualMachinePlatform()
+        public static bool DisableVirtualMachinePlatform()
         {
-            bool isElevated = true;
-            Command.Run("powershell.exe", "disable-windowsoptionalfeature -online -norestart -featurename VirtualMachinePlatform", runAsAdmin: true, exitCodeHandler: c => isElevated = (c == 0));
+            int exitCode = -1;
+            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "disable-vmd.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
 
-            if (!isElevated) throw new InvalidOperationException("disable-windowsoptionalfeature PowerShell command requires admin privileges");
+            bool restartNeeded = false;
+            if (exitCode == 0) { restartNeeded = false; }
+            else if (exitCode == 1) { restartNeeded = true; }
+            else { throw new InvalidOperationException($"Failed to disable Windows Virtual Machine Platform : see script log file in {LOGS_PATH}"); }
+            return restartNeeded;
         }
 
         public static void ShutdownAndRestart()

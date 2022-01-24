@@ -17,6 +17,7 @@ namespace wordslab.installer.localstorage
             string logsPath = null;
             string downloadCachePath = null;
             string virtualMachineOSPath = null;
+            string virtualMachineClusterPath = null;
             string virtualMachineDataPath = null;
             string localBackupPath = null;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -31,6 +32,7 @@ namespace wordslab.installer.localstorage
                 logsPath = Path.Combine(localAppData, APP_NAME, "logs");
                 downloadCachePath = Path.Combine(localAppData, APP_NAME, "cache");
                 virtualMachineOSPath = Path.Combine(localAppData, APP_NAME, "vm-os");
+                virtualMachineClusterPath = Path.Combine(localAppData, APP_NAME, "vm-cluster");
                 virtualMachineDataPath = Path.Combine(localAppData, APP_NAME, "vm-data");
                 localBackupPath = Path.Combine(localAppData, APP_NAME, "backup");
             } 
@@ -41,6 +43,7 @@ namespace wordslab.installer.localstorage
                 logsPath = Path.Combine(homeFolderPath, "Library", "Logs", APP_NAME);
                 downloadCachePath = Path.Combine(homeFolderPath, "Library", "Caches", APP_NAME);
                 virtualMachineOSPath = Path.Combine(appPath, "vm-os");
+                virtualMachineClusterPath = Path.Combine(appPath, "vm-cluster");
                 virtualMachineDataPath = Path.Combine(appPath, "vm-data");
                 localBackupPath = Path.Combine(appPath, "backup");
             }
@@ -58,6 +61,7 @@ namespace wordslab.installer.localstorage
                 logsPath = Path.Combine(dataHome, APP_NAME, "logs");
                 downloadCachePath = Path.Combine(cacheHome, APP_NAME);
                 virtualMachineOSPath = Path.Combine(dataHome, APP_NAME, "vm-os");
+                virtualMachineClusterPath = Path.Combine(dataHome, APP_NAME, "vm-cluster");
                 virtualMachineDataPath = Path.Combine(dataHome, APP_NAME, "vm-data");
                 localBackupPath = Path.Combine(dataHome, APP_NAME, "backup");
             }
@@ -78,6 +82,9 @@ namespace wordslab.installer.localstorage
             VirtualMachineOSDirectory = new DirectoryInfo(virtualMachineOSPath);
             if (!VirtualMachineOSDirectory.Exists) VirtualMachineOSDirectory.Create();
 
+            VirtualMachineClusterDirectory = new DirectoryInfo(virtualMachineClusterPath);
+            if (!VirtualMachineClusterDirectory.Exists) VirtualMachineClusterDirectory.Create();
+
             VirtualMachineDataDirectory = new DirectoryInfo(virtualMachineDataPath);
             if (!VirtualMachineDataDirectory.Exists) VirtualMachineDataDirectory.Create();
 
@@ -93,6 +100,7 @@ namespace wordslab.installer.localstorage
             localDirectories.Add(new LocalDirectory(StorageFunction.Logs, LogsDirectory.FullName));
             localDirectories.Add(new LocalDirectory(StorageFunction.DownloadCache, DownloadCacheDirectory.FullName));
             localDirectories.Add(new LocalDirectory(StorageFunction.VirtualMachineOS, VirtualMachineOSDirectory.FullName));
+            localDirectories.Add(new LocalDirectory(StorageFunction.VirtualMachineCluster, VirtualMachineClusterDirectory.FullName));
             localDirectories.Add(new LocalDirectory(StorageFunction.VirtualMachineData, VirtualMachineDataDirectory.FullName));
             localDirectories.Add(new LocalDirectory(StorageFunction.LocalBackup, LocalBackupDirectory.FullName));
             return localDirectories;
@@ -107,6 +115,8 @@ namespace wordslab.installer.localstorage
         public DirectoryInfo DownloadCacheDirectory { get; private set; }
 
         public DirectoryInfo VirtualMachineOSDirectory { get; private set; }
+
+        public DirectoryInfo VirtualMachineClusterDirectory { get; private set; }
 
         public DirectoryInfo VirtualMachineDataDirectory { get; private set; }
 
@@ -132,6 +142,14 @@ namespace wordslab.installer.localstorage
             var sourcePath = VirtualMachineOSDirectory.FullName;
             VirtualMachineOSDirectory = new DirectoryInfo(destinationPath);
             if (!VirtualMachineOSDirectory.Exists) VirtualMachineOSDirectory.Create();
+            MoveDirectoryTo(sourcePath, destinationPath);
+        }
+
+        public void MoveVirtualMachineClusterDirectoryTo(string destinationPath)
+        {
+            var sourcePath = VirtualMachineClusterDirectory.FullName;
+            VirtualMachineClusterDirectory = new DirectoryInfo(destinationPath);
+            if (!VirtualMachineClusterDirectory.Exists) VirtualMachineClusterDirectory.Create();
             MoveDirectoryTo(sourcePath, destinationPath);
         }
 
