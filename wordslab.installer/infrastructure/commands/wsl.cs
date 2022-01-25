@@ -64,7 +64,7 @@ namespace wordslab.installer.infrastructure.commands
 
         public static bool IsVirtualizationEnabled()
         {
-            return windows10.IsVirtualMachinePlatformEnabled() || windows10.IsVirtualizationEnabled();
+            return windows10.IsVirtualizationEnabled();
         }
 
         // Additional requirements to enable NVIDIA CUDA on WSL 2
@@ -126,10 +126,17 @@ namespace wordslab.installer.infrastructure.commands
         // 2.3 Download and run the Linux kernel update package (https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi) - as Administrator
         // 2.4 Reboot the computer
 
-        public static void DownloadAndInstallLinuxKernelUpdatePackage(LocalStorageManager localStorage)
+        public static async Task LegacyDownloadAndInstallLinuxKernelUpdatePackage(LocalStorageManager localStorage)
         {
-            var kernelUpdate = localStorage.DownloadFileWithCache("https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi", "wsl_update_x64.msi");
-            Command.Run(kernelUpdate.FullName, mustRunAsAdmin: true);
+            var kernelUpdate = await localStorage.DownloadFileWithCache("https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi", "wsl_update_x64.msi");
+            Command.Run("msiexec.exe", "/i " + kernelUpdate.FullName, timeoutSec: 60);
+        }
+        
+        public static void UpdateLinuxKernelVersion(bool rollback = false)
+        {
+            string args = "";
+            if (rollback) args += "--rollback ";
+            Command.Run("wsl.exe", args + "--update", timeoutSec: 30, unicodeEncoding: true);
         }
 
         // WSL 2 commands
@@ -139,26 +146,30 @@ namespace wordslab.installer.infrastructure.commands
         // Execute Linux binary files
 
         public static int exec(string commandLine, string distribution = null, string workingDirectory = null, string userName = null,
+                               int timeoutSec = 10, bool unicodeEncoding = false,
                                Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
         {
             string args = "";
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
-            if (userName != null) args += $"--user {userName}";
-            return Command.Run("wsl.exe", args + $"--exec \"{commandLine}\"", unicodeEncoding: true);
+            if (userName != null) args += $"--user {userName} ";
+            return Command.Run("wsl.exe", args + $"--exec {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding, 
+                                          outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
         }
 
         public static int execShell(string commandLine, string distribution = null, string workingDirectory = null, string userName = null,
+                                    int timeoutSec = 10, bool unicodeEncoding = false,
                                     Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
         {
             string args = "";
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
-            if (userName != null) args += $"--user {userName}";
-            return Command.Run("wsl.exe", args + $"-- {commandLine}", unicodeEncoding: true, outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
+            if (userName != null) args += $"--user {userName} ";
+            return Command.Run("wsl.exe", args + $"-- {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
+                                          outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
         }
 
-        public static bool CheckRunningDistribution(out string distribution, out string version)
+        public static bool CheckRunningDistribution(string wslDistribution, out string linuxDistributionName, out string linuxDistributionVersion)
         {
             string ldistribution = "unknown";
             string lversion = "?";
@@ -168,12 +179,12 @@ namespace wordslab.installer.infrastructure.commands
                 var outputParser = Command.Output.GetValue(@"DISTRIB_ID=\s*(?<distrib>.*)\s*$", s => ldistribution = s).
                                                   GetValue(@"DISTRIB_RELEASE=\s*(?<distrib>.*)\s*$", s => lversion = s);
 
-                Command.Run("wsl.exe", "-- cat /etc/*-release", unicodeEncoding: true, outputHandler: outputParser.Run, exitCodeHandler: c => exitcode = c);
+                wsl.execShell("cat /etc/*-release", wslDistribution, outputHandler: outputParser.Run, exitCodeHandler: c => exitcode = c);
             }
             catch (Exception) { }
 
-            distribution = ldistribution;
-            version = lversion;
+            linuxDistributionName = ldistribution;
+            linuxDistributionVersion = lversion;
             return exitcode == 0;
         }
 
@@ -181,14 +192,15 @@ namespace wordslab.installer.infrastructure.commands
 
         public static void install(string distributionName = "Ubuntu")
         {
-            string args = "";
-            if (distributionName != null) args += $"--distribution {distributionName} ";
-            Command.Run("wsl.exe", args + "--install", unicodeEncoding: true);
+            Command.Run("wsl.exe", $"--install --distribution {distributionName}", timeoutSec: 300, unicodeEncoding: true);
         }
 
         public static void setDefaultVersion(int version)
         {
-            Command.Run("wsl.exe", $"--set-default-version {version}", unicodeEncoding: true);
+            if (wsl.status().DefaultVersion != version)
+            {
+                Command.Run("wsl.exe", $"--set-default-version {version}", unicodeEncoding: true);
+            }
         }
 
         public static void shutdown()
@@ -233,25 +245,20 @@ namespace wordslab.installer.infrastructure.commands
             return result;
         }
 
-        public static void update(bool rollback = false)
-        {
-            string args = "";
-            if (rollback) args += "--rollback ";
-            Command.Run("wsl.exe", args + "--update", unicodeEncoding: true);
-        }
+       
 
         // Manage distributions in Windows Subsystem for Linux
 
         public static void export(string distribution, string filename)
         {
-            Command.Run("wsl.exe", $"--export {distribution} \"{filename}\"", unicodeEncoding: true);
+            Command.Run("wsl.exe", $"--export {distribution} \"{filename}\"", timeoutSec: 60, unicodeEncoding: true);
         }
 
         public static void import(string distribution, string installPath, string filename, int? version = null)
         {
             string args = "";
             if (version.HasValue) args += $"--version {version.Value} ";
-            Command.Run("wsl.exe", args + $"--import {distribution} \"{installPath}\" \"{filename}\"", unicodeEncoding: true);
+            Command.Run("wsl.exe", args + $"--import {distribution} \"{installPath}\" \"{filename}\"", timeoutSec: 60, unicodeEncoding: true);
         }
 
         public class DistributionInfo
@@ -313,7 +320,7 @@ namespace wordslab.installer.infrastructure.commands
 
         public static void unregister(string distribution)
         {
-            Command.Run("wsl.exe", $"--unregister {distribution}", unicodeEncoding: true);
+            Command.Run("wsl.exe", $"--unregister {distribution}", timeoutSec: 30, unicodeEncoding: true);
         }
     }
 }

@@ -1,6 +1,10 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using wordslab.installer.infrastructure.commands;
+using wordslab.installer.localstorage;
 
 namespace wordslab.installer.test
 {
@@ -31,67 +35,112 @@ namespace wordslab.installer.test
         [TestMethod]
         public void TestNvidiaGPUAvailableForWSL2()
         {
-            // bool IsNvidiaGPUAvailableForWSL2()
+            var nvidiaGPUAvailable = wsl.IsNvidiaGPUAvailableForWSL2();
+            Assert.IsTrue(nvidiaGPUAvailable);
         }
 
         [TestMethod]
         public void TestWindowsVersionOKForWSL2WithGPU()
         {
-            // bool IsWindowsVersionOKForWSL2WithGPU()
+            var windowsOKforWSL2withGPU = wsl.IsWindowsVersionOKForWSL2WithGPU();
+            Assert.IsTrue(windowsOKforWSL2withGPU);
         }
 
         [TestMethod]
         public void TestNvidiaDriverVersionOKForWSL2WithGPU()
         {
-            // bool IsNvidiaDriverVersionOKForWSL2WithGPU()
+            var nvidiaDriverOKforWSL2withGPU = wsl.IsNvidiaDriverVersionOKForWSL2WithGPU();
+            Assert.IsTrue(nvidiaDriverOKforWSL2withGPU);
         }
 
         [TestMethod]
         public void TestLinuxKernelVersionOKForWSL2WithGPU()
         {
-            // bool IsLinuxKernelVersionOKForWSL2WithGPU()
+            var linuxKernelOKforWSL2withGPU = wsl.IsLinuxKernelVersionOKForWSL2WithGPU();
+            Assert.IsTrue(linuxKernelOKforWSL2withGPU);
         }
 
         [TestMethod]
-        public void TestDownloadAndInstallLinuxKernelUpdatePackage()
+        public void TestLegacyDownloadAndInstallLinuxKernelUpdatePackage()
         {
-            // void DownloadAndInstallLinuxKernelUpdatePackage(LocalStorageManager localStorage)
+            LocalStorageManager localStorage = new LocalStorageManager();
+            wsl.LegacyDownloadAndInstallLinuxKernelUpdatePackage(localStorage).GetAwaiter().GetResult();
+            var status = wsl.status();
+            Assert.IsTrue(status.LinuxKernelVersion.Major >= 5);
+        }
+
+        [TestMethod]
+        public void TestUpdateLinuxKernelVersion()
+        {
+            wsl.UpdateLinuxKernelVersion();
+            var status = wsl.status();
+            Assert.IsTrue(status.LinuxKernelVersion.Major >= 5);
         }
 
         [TestMethod]
         public void TestExec()
         {
-            // int exec(string commandLine, string distribution = null, string workingDirectory = null, string userName = null, Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
+            string output = null;
+            wsl.exec("cat /etc/os-release", "wordslab-os", outputHandler: o => output = o);
+            Assert.IsTrue(output.Contains("NAME=\"Ubuntu\""));
         }
 
         [TestMethod]
         public void TestExecShell()
         {
-            // int execShell(string commandLine, string distribution = null, string workingDirectory = null, string userName = null, Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
+            string output = null;
+            wsl.execShell("echo $NAME", "wordslab-os", outputHandler: o => output = o);
+            Assert.IsTrue(output.StartsWith("YOGA720"));
         }
 
         [TestMethod]
         public void TestCheckRunningDistribution()
         {
-            // bool CheckRunningDistribution(out string distribution, out string version)
+            string distribution;
+            string version; ;
+            wsl.CheckRunningDistribution("wordslab-os", out distribution, out version);
+            Assert.AreEqual(distribution, "Ubuntu");
+            Assert.AreEqual(version, "20.04");
         }
 
         [TestMethod]
         public void TestInstall()
         {
-            // void install(string distributionName = "Ubuntu")
+            var availableDistribs = wsl.list(online: true);
+            var distribution = availableDistribs[6].Distribution;
+            
+            var installedDistribs = wsl.list();
+            Assert.IsFalse(installedDistribs.Any(d => d.Distribution == distribution));
+
+            wsl.install(distribution);
+            
+            installedDistribs = wsl.list();
+            Assert.IsTrue(installedDistribs.Any(d => d.Distribution == distribution));
+
+            wsl.unregister(distribution);
+
+            installedDistribs = wsl.list();
+            Assert.IsFalse(installedDistribs.Any(d => d.Distribution == distribution));
         }
 
         [TestMethod]
         public void TestSetDefaultVersion()
         {
-            // void setDefaultVersion(int version)
+            wsl.setDefaultVersion(2);
+            Assert.AreEqual(2, wsl.status().DefaultVersion);
         }
 
         [TestMethod]
         public void TestShutdown()
         {
-            // void shutdown()
+            wsl.exec("echo 0", "wordslab-cluster");
+            wsl.exec("echo 0", "wordslab-data");
+            Assert.IsTrue(wsl.list().Where(d => d.IsRunning).Count() == 2);
+
+            wsl.shutdown();
+
+            Assert.IsTrue(wsl.list().Where(d => d.IsRunning).Count() == 0);
+
         }
 
 
@@ -109,21 +158,17 @@ namespace wordslab.installer.test
         }
 
         [TestMethod]
-        public void TestUpdate()
-        {
-            // void update(bool rollback = false)
-        }
-
-        [TestMethod]
         public void TestExport()
         {
-            // void export(string distribution, string filename)
+            wsl.export("wordslab-cluster", @"c:\tmp\distrotest.tar");
+            Assert.IsTrue(File.Exists(@"c:\tmp\distrotest.tar"));
         }
 
         [TestMethod]
         public void TestImport()
         {
-            // void import(string distribution, string installPath, string filename, int? version = null)
+            wsl.import("wordslab-cluster2", @"c:\tmp", @"c:\tmp\distrotest.tar");
+            wsl.exec("echo 0", "wordslab-cluster2");
         }
 
         [TestMethod]
@@ -150,25 +195,35 @@ namespace wordslab.installer.test
         [TestMethod]
         public void TestDefaultDistribution()
         {
-            // void setDefaultDistribution(string distribution)
+            Assert.IsFalse(wsl.list().Any(d => d.Distribution == "wordslab -os" && d.IsDefault));
+            wsl.setDefaultDistribution("wordslab-os");
+            Assert.IsTrue(wsl.list().Any(d => d.Distribution == "wordslab-os" && d.IsDefault));
+            wsl.setDefaultDistribution("docker-desktop");
         }
 
         [TestMethod]
         public void TestSetVersion()
         {
-            // void setVersion(string distribution, int version)
+            wsl.setVersion("wordslab-cluster", 2);
+            Assert.IsTrue(wsl.list().Any(d => d.Distribution == "wordslab-cluster" && d.WslVersion == 2));
         }
 
         [TestMethod]
         public void TestTerminate()
         {
-            // void terminate(string distribution)
+            wsl.exec("echo 0", "wordslab-cluster");
+            Assert.IsTrue(wsl.list().Where(d => d.IsRunning).Count() == 1);
+
+            wsl.terminate("wordslab-cluster");
+            Assert.IsTrue(wsl.list().Where(d => d.IsRunning).Count() == 0);
         }
 
         [TestMethod]
         public void TestUnregister()
         {
-            // void unregister(string distribution)
+            Assert.IsTrue(wsl.list().Any(d => d.Distribution == "Debian"));
+            wsl.unregister("Debian");
+            Assert.IsFalse(wsl.list().Any(d => d.Distribution == "Debian"));
         }
 
     }

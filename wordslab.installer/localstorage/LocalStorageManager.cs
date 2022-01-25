@@ -198,15 +198,20 @@ namespace wordslab.installer.localstorage
             }
         }
 
-        public FileInfo DownloadFileWithCache(string remoteURL, string localFileName, HttpDownloader.ProgressChangedHandler progressCallback = null)
+        public async Task<FileInfo> DownloadFileWithCache(string remoteURL, string localFileName, HttpDownloader.ProgressChangedHandler progressCallback = null)
         {
             var localFileInfo = new FileInfo(Path.Combine(DownloadCacheDirectory.FullName, localFileName));
             if (!localFileInfo.Exists)
             {
-                var downloader = new HttpDownloader(remoteURL, localFileInfo.FullName);
+                using var downloader = new HttpDownloader(remoteURL, localFileInfo.FullName);
                 if (progressCallback != null)
                 {
                     downloader.ProgressChanged += progressCallback;
+                }
+                await downloader.StartDownload();
+                if (progressCallback != null)
+                {
+                    downloader.ProgressChanged -= progressCallback;
                 }
             }
             return localFileInfo;
