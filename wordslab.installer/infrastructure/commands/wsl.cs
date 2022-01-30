@@ -9,7 +9,7 @@ namespace wordslab.installer.infrastructure.commands
     public static class wsl
     {
         // 0. Check if WSL 2 is already installed
-
+        
         public static bool IsWSL2AlreadyInstalled()
         {
             if (IsWindowsVersionOKForWSL2())
@@ -62,11 +62,6 @@ namespace wordslab.installer.infrastructure.commands
             return windows10.IsOSArchitectureX64() && windows10.IsWindows10Version1903OrHigher();
         }
 
-        public static bool IsVirtualizationEnabled()
-        {
-            return windows10.IsVirtualizationEnabled();
-        }
-
         // Additional requirements to enable NVIDIA CUDA on WSL 2
         // https://docs.microsoft.com/en-us/windows/ai/directml/gpu-cuda-in-wsl
         // 1.3 WSL 2 GPU acceleration will be available on Pascal (GTX 1050) and later GPU architecture on both GeForce and Quadro product SKUs in WDDM mode
@@ -76,14 +71,14 @@ namespace wordslab.installer.infrastructure.commands
         // - Windows 10 21H2 driver version >= 496.76 (16 nov 2021) : 
         // 1.6 Ensure you are on the latest WSL Kernel: we recommend 5.10.16.3 or later for better performance and functional fixes.
 
-        public static bool IsNvidiaGPUAvailableForWSL2()
+        public static string GetNvidiaGPUAvailableForWSL2()
         {
             var gpus = nvidia.GetNvidiaGPUs();
             foreach (var gpuInfo in gpus)
             {
-                if (gpuInfo.Architecture >= nvidia.GPUArchitectureInfo.Pascal) { return true; }
+                if (gpuInfo.Architecture >= nvidia.GPUArchitectureInfo.Pascal) { return $"{gpuInfo.Name} ({gpuInfo.MemoryMB} MB)"; }
             }
-            return false;
+            return null;
         }
 
         public static bool IsWindowsVersionOKForWSL2WithGPU()
@@ -93,7 +88,7 @@ namespace wordslab.installer.infrastructure.commands
 
         public static bool IsNvidiaDriverVersionOKForWSL2WithGPU()
         {
-            if (IsNvidiaGPUAvailableForWSL2())
+            if (GetNvidiaGPUAvailableForWSL2() != null)
             {
                 var driverVersion = nvidia.GetDriverVersion();
                 if (windows10.IsWindows11Version21HOrHigher())

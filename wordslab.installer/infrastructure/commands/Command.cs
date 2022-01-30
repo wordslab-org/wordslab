@@ -102,17 +102,39 @@ namespace wordslab.installer.infrastructure.commands
             }
         }
 
-        public static int ExecuteShellScriptAsAdmin(string scriptPath, string scriptArguments, string logOutputDir, 
-                                                    string shellLauncher = null, int timeoutSec = 10, 
-                                                    Action<string> outputHandler = null, Action<int> exitCodeHandler = null)
+        private static readonly string SCRIPT_PATH;
+        public static readonly string LOGS_PATH;
+
+        static Command()
         {
+            SCRIPT_PATH = @"c:\tmp";
+            LOGS_PATH = @"c:\tmp";
+        }
+
+        private static FileInfo GetScriptFile(string scriptName)
+        {
+            var scriptPath = Path.Combine(SCRIPT_PATH, "check-wsl.ps1");
             var scriptFile = new FileInfo(scriptPath);
             if (!scriptFile.Exists)
             {
                 throw new FileNotFoundException($"Script file {scriptFile.FullName} not found", scriptFile.FullName);
             }
+            return scriptFile;
+        }
 
-            var logDir = new DirectoryInfo(logOutputDir);
+        public static string GetScriptContent(string scriptName)
+        {
+            var scriptFile = GetScriptFile(scriptName);
+            using (StreamReader sr = new StreamReader(scriptFile.FullName)) { return sr.ReadToEnd(); }
+        }
+
+        public static int ExecuteShellScript(string scriptName, string scriptArguments, int timeoutSec = 10,
+                                                    bool runAsAdmin = false, bool usePowershell = false, string shellLauncher = null,
+                                                    Action<string> outputHandler = null, Action<int> exitCodeHandler = null)
+        {
+            var scriptFile = GetScriptFile(scriptName);
+
+            var logDir = new DirectoryInfo(LOGS_PATH);
             if (!logDir.Exists)
             {
                 try
@@ -121,7 +143,7 @@ namespace wordslab.installer.infrastructure.commands
                 }
                 catch (Exception ex)
                 {
-                    throw new IOException($"Failed to create directory to log script output : {logOutputDir}", ex);
+                    throw new IOException($"Failed to create directory to log script output : {LOGS_PATH}", ex);
                 }
             }
             string logFilePrefix = scriptFile.Name + $".{DateTime.Now.ToString("s").Replace(':','-')}";
@@ -130,7 +152,12 @@ namespace wordslab.installer.infrastructure.commands
             string redirectOutputSyntax;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                if (shellLauncher == null) shellLauncher = "powershell.exe";
+                if (shellLauncher == null)
+                {
+                    if(usePowershell) { shellLauncher = "powershell.exe"; }
+                    else              { shellLauncher = "cmd.exe";        }
+                    
+                }
                 if (String.Equals(shellLauncher, "powershell.exe", StringComparison.InvariantCultureIgnoreCase))
                 {
                     redirectOutputSyntax = $"| Tee-Object -FilePath \"{outputLogFile}\"";
@@ -151,8 +178,26 @@ namespace wordslab.installer.infrastructure.commands
                 proc.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
                 proc.StartInfo.FileName = shellLauncher;
                 proc.StartInfo.Arguments = $"{scriptFile.FullName} {scriptArguments} {redirectOutputSyntax}";
-                proc.StartInfo.UseShellExecute = true;
-                proc.StartInfo.Verb = "runas";
+                if (runAsAdmin)
+                {
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        proc.StartInfo.UseShellExecute = true;
+                        proc.StartInfo.Verb = "runas";
+                    }
+                    else
+                    {
+                        if (!IsRunningAsAdministrator())
+                        {
+                            throw new InvalidOperationException("This operation needs admin privileges. Please retry this command with sudo.");
+                        }
+                    }
+                }
+                else
+                {
+                    proc.StartInfo.UseShellExecute = false;
+                    proc.StartInfo.CreateNoWindow = true;
+                }
 
                 try
                 {
@@ -160,7 +205,7 @@ namespace wordslab.installer.infrastructure.commands
                 }
                 catch (System.ComponentModel.Win32Exception e)
                 {
-                    throw new FileNotFoundException($"Failed to launch script {scriptPath}", scriptFile.FullName, e);
+                    throw new FileNotFoundException($"Failed to launch script {scriptName}", scriptFile.FullName, e);
                 }
 
                 bool exitBeforeTimeout = true;
@@ -170,11 +215,11 @@ namespace wordslab.installer.infrastructure.commands
                 }
                 catch (Exception e)
                 {
-                    throw new InvalidOperationException($"Failed to execute script {scriptPath} {scriptArguments}", e);
+                    throw new InvalidOperationException($"Failed to execute script {scriptName} {scriptArguments}", e);
                 }
                 if (!exitBeforeTimeout)
                 {
-                    throw new TimeoutException($"Script {scriptPath} {scriptArguments} did not exit before the timeout of {timeoutSec} sec");
+                    throw new TimeoutException($"Script {scriptName} {scriptArguments} did not exit before the timeout of {timeoutSec} sec");
                 }
 
                 string output = "";
@@ -183,11 +228,11 @@ namespace wordslab.installer.infrastructure.commands
                     output = srOut.ReadToEnd();
                 }
 
-                if (outputHandler != null) { try { outputHandler(output); } catch (Exception e) { throw new ArgumentException($"Exception occured in output handler of script {scriptPath}", e); } }
+                if (outputHandler != null) { try { outputHandler(output); } catch (Exception e) { throw new ArgumentException($"Exception occured in output handler of script {scriptName}", e); } }
                 
                 int exitCode = proc.ExitCode;
-                if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of script {scriptPath}", e); } }
-                else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing script {scriptPath} {scriptArguments} : exitcode {exitCode} different of 0"); } }
+                if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of script {scriptName}", e); } }
+                else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing script {scriptName} {scriptArguments} : exitcode {exitCode} different of 0"); } }
 
                 return exitCode;
             }

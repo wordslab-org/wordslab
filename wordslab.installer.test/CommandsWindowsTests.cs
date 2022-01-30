@@ -78,27 +78,6 @@ namespace wordslab.installer.test
         }
 
         [TestMethod]
-        public void TestVirtualMachinePlatformEnabled()
-        {
-            var result = windows10.IsVirtualMachinePlatformEnabled();
-            Assert.IsTrue(result);
-        }
-
-        [TestMethod]
-        public void TestEnableVirtualMachinePlatform()
-        {
-            var needsRestart = windows10.EnableVirtualMachinePlatform();
-            Assert.IsTrue(needsRestart);
-        }
-
-        [TestMethod]
-        public void TestDisableVirtualMachinePlatform()
-        {
-            var needsRestart = windows10.DisableVirtualMachinePlatform();
-            Assert.IsTrue(needsRestart);
-        }
-
-        [TestMethod]
         public void TestShutdownAndRestart()
         {
             windows10.ShutdownAndRestart();

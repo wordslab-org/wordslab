@@ -97,74 +97,51 @@ namespace wordslab.installer.infrastructure.commands
         // https://docs.microsoft.com/en-us/powershell/module/dism/enable-windowsoptionalfeature?view=windowsserver2022-ps
         // https://docs.microsoft.com/en-us/powershell/module/dism/disable-windowsoptionalfeature?view=windowsserver2022-ps 
 
-        private static readonly string SCRIPT_PATH;
-        private static readonly string LOGS_PATH;
 
-        static windows10() 
+
+        public static string IsWindowsSubsystemForLinuxEnabled_script()
         {
-            SCRIPT_PATH = @"c:\tmp";
-            LOGS_PATH = @"c:\tmp";
+            return Command.GetScriptContent("check-wsl.ps1");
         }
 
         public static bool IsWindowsSubsystemForLinuxEnabled()
         {
             bool isEnabled = true;
-            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH,"check-wsl.ps1"), "", LOGS_PATH, exitCodeHandler: c => isEnabled = (c == 0));
+            Command.ExecuteShellScript("check-wsl.ps1", "", usePowershell: true, runAsAdmin: true, exitCodeHandler: c => isEnabled = (c == 0));
             return isEnabled;
+        }
+
+        public static string EnableWindowsSubsystemForLinux_script()
+        {
+            return Command.GetScriptContent("enable-wsl.ps1");
         }
 
         public static bool EnableWindowsSubsystemForLinux()
         {
             int exitCode = -1;
-            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "enable-wsl.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript("enable-wsl.ps1", "", usePowershell: true, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if(exitCode == 0)       { restartNeeded = false; }
             else if (exitCode == 1) { restartNeeded = true; }
-            else                    { throw new InvalidOperationException($"Failed to enable Windows Subsystem for Linux : see script log file in {LOGS_PATH}"); }
+            else                    { throw new InvalidOperationException($"Failed to enable Windows Subsystem for Linux : see script log file in {Command.LOGS_PATH}"); }
             return restartNeeded;
+        }
+
+        public static string DisableWindowsSubsystemForLinux_script()
+        {
+            return Command.GetScriptContent("disable-wsl.ps1");
         }
 
         public static bool DisableWindowsSubsystemForLinux()
         {
             int exitCode = -1;
-            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "disable-wsl.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript("disable-wsl.ps1", "", usePowershell: true, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if (exitCode == 0) { restartNeeded = false; }
             else if (exitCode == 1) { restartNeeded = true; }
-            else { throw new InvalidOperationException($"Failed to disable Windows Subsystem for Linux : see script log file in {LOGS_PATH}"); }
-            return restartNeeded;
-        }
-
-        public static bool IsVirtualMachinePlatformEnabled()
-        {
-            bool isEnabled = true;
-            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "check-vmd.ps1"), "", LOGS_PATH, exitCodeHandler: c => isEnabled = (c == 0));
-            return isEnabled;
-        }
-
-        public static bool EnableVirtualMachinePlatform()
-        {
-            int exitCode = -1;
-            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "enable-vmd.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
-
-            bool restartNeeded = false;
-            if (exitCode == 0) { restartNeeded = false; }
-            else if (exitCode == 1) { restartNeeded = true; }
-            else { throw new InvalidOperationException($"Failed to enable Windows Virtual Machine Platform : see script log file in {LOGS_PATH}"); }
-            return restartNeeded;
-        }
-
-        public static bool DisableVirtualMachinePlatform()
-        {
-            int exitCode = -1;
-            Command.ExecuteShellScriptAsAdmin(Path.Combine(SCRIPT_PATH, "disable-vmd.ps1"), "", LOGS_PATH, exitCodeHandler: c => exitCode = c);
-
-            bool restartNeeded = false;
-            if (exitCode == 0) { restartNeeded = false; }
-            else if (exitCode == 1) { restartNeeded = true; }
-            else { throw new InvalidOperationException($"Failed to disable Windows Virtual Machine Platform : see script log file in {LOGS_PATH}"); }
+            else { throw new InvalidOperationException($"Failed to disable Windows Subsystem for Linux : see script log file in {Command.LOGS_PATH}"); }
             return restartNeeded;
         }
 

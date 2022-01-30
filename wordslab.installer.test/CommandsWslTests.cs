@@ -35,8 +35,8 @@ namespace wordslab.installer.test
         [TestMethod]
         public void TestNvidiaGPUAvailableForWSL2()
         {
-            var nvidiaGPUAvailable = wsl.IsNvidiaGPUAvailableForWSL2();
-            Assert.IsTrue(nvidiaGPUAvailable);
+            var nvidiaGPUAvailable = wsl.GetNvidiaGPUAvailableForWSL2();
+            Assert.IsTrue(nvidiaGPUAvailable == "GTX 1050 (4 MB)");
         }
 
         [TestMethod]
