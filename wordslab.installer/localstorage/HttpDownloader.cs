@@ -1,10 +1,13 @@
-﻿namespace wordslab.installer.localstorage
+﻿using System.IO.Compression;
+
+namespace wordslab.installer.localstorage
 {
     // https://stackoverflow.com/questions/20661652/progress-bar-with-httpclient
     public class HttpDownloader : IDisposable
     {
         private readonly string _downloadUrl;
         private readonly string _destinationFilePath;
+        private readonly bool _gunzip;
 
         private HttpClient _httpClient;
 
@@ -12,10 +15,11 @@
 
         public event ProgressChangedHandler ProgressChanged;
 
-        public HttpDownloader(string downloadUrl, string destinationFilePath)
+        public HttpDownloader(string downloadUrl, string destinationFilePath, bool gunzip = false)
         {
             _downloadUrl = downloadUrl;
             _destinationFilePath = destinationFilePath;
+            _gunzip = gunzip;
         }
 
         public async Task StartDownload()
@@ -38,6 +42,11 @@
 
         private async Task ProcessContentStream(long? totalDownloadSize, Stream contentStream)
         {
+            if(_gunzip)
+            {
+                contentStream = new GZipStream(contentStream, CompressionMode.Decompress);
+            }
+
             var totalBytesRead = 0L;
             var readCount = 0L;
             var buffer = new byte[8192];

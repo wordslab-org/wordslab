@@ -13,11 +13,11 @@ mkdir -p /var/lib
 mkdir -p /var/log/rancher
 mkdir -p /var/volume/rancher
 
-cp $downloadpath/k3s /usr/local/bin/k3s
+cp $downloadpath/$2 /usr/local/bin/k3s
 chmod a+x /usr/local/bin/k3s
 echo -e "alias kubectl='k3s kubectl'" >> ~/.bash_aliases
 
-cp $downloadpath/helm /usr/local/bin/helm
+cp $downloadpath/$3 /usr/local/bin/helm
 chmod a+x /usr/local/bin/helm
 
 cp $downloadpath/wordslab-gpu-init.sh /root/wordslab-gpu-init.sh

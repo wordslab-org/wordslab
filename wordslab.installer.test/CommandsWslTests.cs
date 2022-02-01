@@ -26,13 +26,6 @@ namespace wordslab.installer.test
         }
 
         [TestMethod]
-        public void TestVirtualizationEnabled()
-        {
-            var virtEnabled = wsl.IsVirtualizationEnabled();
-            Assert.IsTrue(virtEnabled);
-        }
-
-        [TestMethod]
         public void TestNvidiaGPUAvailableForWSL2()
         {
             var nvidiaGPUAvailable = wsl.GetNvidiaGPUAvailableForWSL2();
@@ -63,7 +56,7 @@ namespace wordslab.installer.test
         [TestMethod]
         public void TestLegacyDownloadAndInstallLinuxKernelUpdatePackage()
         {
-            LocalStorageManager localStorage = new LocalStorageManager();
+            LocalStorageManager localStorage = LocalStorageManager.Instance;
             wsl.LegacyDownloadAndInstallLinuxKernelUpdatePackage(localStorage).GetAwaiter().GetResult();
             var status = wsl.status();
             Assert.IsTrue(status.LinuxKernelVersion.Major >= 5);

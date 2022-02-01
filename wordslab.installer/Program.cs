@@ -12,7 +12,7 @@ Console.WriteLine("Starting application :");
 Console.WriteLine($"- Executable : {Process.GetCurrentProcess().MainModule.FileName}");
 
 // Initialize local storage
-var localStorageManager = new LocalStorageManager();
+var localStorageManager = LocalStorageManager.Instance;
 
 // Configure logging to file
 // https://github.com/serilog/serilog-aspnetcore

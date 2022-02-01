@@ -1,12 +1,29 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.IO.Compression;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace wordslab.installer.localstorage
 {
     public class LocalStorageManager
     {
+        private static LocalStorageManager instance;    
+
+        public static LocalStorageManager Instance
+        { 
+            get 
+            { 
+                if(instance == null)
+                {
+                    instance = new LocalStorageManager();
+                }
+                return instance;
+            } 
+        }
+
         public const string APP_NAME = "wordslab";
 
-        public LocalStorageManager()
+        private LocalStorageManager()
         {
             // Local storage is located by default under the current user home directory
             var homeFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -79,6 +96,8 @@ namespace wordslab.installer.localstorage
             DownloadCacheDirectory = new DirectoryInfo(downloadCachePath);
             if (!DownloadCacheDirectory.Exists) DownloadCacheDirectory.Create();
 
+            ExtractScriptsInAppDirectory(DownloadCacheDirectory);
+
             VirtualMachineOSDirectory = new DirectoryInfo(virtualMachineOSPath);
             if (!VirtualMachineOSDirectory.Exists) VirtualMachineOSDirectory.Create();
 
@@ -90,6 +109,25 @@ namespace wordslab.installer.localstorage
 
             LocalBackupDirectory = new DirectoryInfo(localBackupPath);
             if (!LocalBackupDirectory.Exists) LocalBackupDirectory.Create();
+        }
+
+        private string EMBEDDED_SCRIPTS_PATH = "wordslab.installer.infrastructure.scripts.";
+
+        private void ExtractScriptsInAppDirectory(DirectoryInfo scriptsDir)
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var resources = assembly.GetManifestResourceNames();
+            foreach (var resourceName in resources.Where(r => r.StartsWith(EMBEDDED_SCRIPTS_PATH)))
+            {
+                using (var resourceStream = assembly.GetManifestResourceStream(resourceName))
+                {
+                    var targetFilePath = Path.Combine(scriptsDir.FullName, resourceName.Substring(EMBEDDED_SCRIPTS_PATH.Length));
+                    using (var file = new FileStream(targetFilePath, FileMode.Create, FileAccess.Write))
+                    {
+                        resourceStream.CopyTo(file);
+                    }
+                }
+            }
         }
 
         internal List<LocalDirectory> GetDirectories()
@@ -113,6 +151,8 @@ namespace wordslab.installer.localstorage
         public DirectoryInfo LogsDirectory { get; private set; }
 
         public DirectoryInfo DownloadCacheDirectory { get; private set; }
+
+        public DirectoryInfo ScriptsDirectory { get; init; }
 
         public DirectoryInfo VirtualMachineOSDirectory { get; private set; }
 
@@ -198,12 +238,12 @@ namespace wordslab.installer.localstorage
             }
         }
 
-        public async Task<FileInfo> DownloadFileWithCache(string remoteURL, string localFileName, HttpDownloader.ProgressChangedHandler progressCallback = null)
+        public async Task<FileInfo> DownloadFileWithCache(string remoteURL, string localFileName, bool gunzip = false, HttpDownloader.ProgressChangedHandler progressCallback = null)
         {
             var localFileInfo = new FileInfo(Path.Combine(DownloadCacheDirectory.FullName, localFileName));
             if (!localFileInfo.Exists)
             {
-                using var downloader = new HttpDownloader(remoteURL, localFileInfo.FullName);
+                using var downloader = new HttpDownloader(remoteURL, localFileInfo.FullName, gunzip);
                 if (progressCallback != null)
                 {
                     downloader.ProgressChanged += progressCallback;
@@ -215,6 +255,70 @@ namespace wordslab.installer.localstorage
                 }
             }
             return localFileInfo;
+        }
+
+        public static void DecompressGZipFile(string compressedFilePath, string decompressedFilePath)
+        {
+            using FileStream compressedFileStream = File.Open(compressedFilePath, FileMode.Open);
+            using FileStream outputFileStream = File.Create(decompressedFilePath);
+            using var decompressor = new GZipStream(compressedFileStream, CompressionMode.Decompress);
+            decompressor.CopyTo(outputFileStream);
+        }
+
+        // https://gist.github.com/ForeverZer0/a2cd292bd2f3b5e114956c00bb6e872b
+
+        /// <summary>
+		/// Extractes a <c>tar</c> archive to the specified directory.
+		/// </summary>
+		/// <param name="filename">The <i>.tar</i> to extract.</param>
+		/// <param name="outputDir">Output directory to write the files.</param>
+		public static void ExtractTar(string filename, string outputDir)
+        {
+            using (var stream = File.OpenRead(filename))
+                ExtractTar(stream, outputDir);
+        }
+
+        /// <summary>
+        /// Extractes a <c>tar</c> archive to the specified directory.
+        /// </summary>
+        /// <param name="stream">The <i>.tar</i> to extract.</param>
+        /// <param name="outputDir">Output directory to write the files.</param>
+        public static void ExtractTar(Stream stream, string outputDir)
+        {
+            var buffer = new byte[100];
+            while (true)
+            {
+                stream.Read(buffer, 0, 100);
+                var name = Encoding.ASCII.GetString(buffer).Trim('\0');
+                if (String.IsNullOrWhiteSpace(name))
+                    break;
+                stream.Seek(24, SeekOrigin.Current);
+                stream.Read(buffer, 0, 12);
+                var size = Convert.ToInt64(Encoding.UTF8.GetString(buffer, 0, 12).Trim('\0').Trim(), 8);
+
+                stream.Seek(376L, SeekOrigin.Current);
+
+                var output = Path.Combine(outputDir, name);
+                if (!Directory.Exists(Path.GetDirectoryName(output)))
+                    Directory.CreateDirectory(Path.GetDirectoryName(output));
+                if (!name.Equals("./", StringComparison.InvariantCulture))
+                {
+                    using (var str = File.Open(output, FileMode.OpenOrCreate, FileAccess.Write))
+                    {
+                        var buf = new byte[size];
+                        stream.Read(buf, 0, buf.Length);
+                        str.Write(buf, 0, buf.Length);
+                    }
+                }
+
+                var pos = stream.Position;
+
+                var offset = 512 - (pos % 512);
+                if (offset == 512)
+                    offset = 0;
+
+                stream.Seek(offset, SeekOrigin.Current);
+            }
         }
     }
 }

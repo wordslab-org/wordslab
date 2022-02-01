@@ -1,24 +1,140 @@
-﻿@page "/"
-@using wordslab.installer.localstorage
+﻿@using wordslab.installer.localstorage
+@using wordslab.installer.infrastructure
+@implements InstallationUI
+
+@page "/"
 @inject IDbContextFactory<ConfigStore> DbContextFactory
 
 <PageTitle>Windows - Install local cluster</PageTitle>
 
 <h1>Install local cluster</h1>
 
-
-
-
+<ul>
+@foreach(var step in installSteps)
+{
+   <li>
+       <div>@step.Description</div>
+        @if(step.IsQuestion)
+        {
+            <div><button @onclick="() => OnClick(step,true)">YES</button> <button @onclick="() => OnClick(step,false)"n>NO</button></div>  
+        }
+        else
+        {
+            <div>Status: @step.Status</div>
+            if(step.MaxValue > 0)
+            {
+            <div>Progress: @step.CurrentValue / @step.MaxValue @step.Unit</div>
+            }
+        }
+        @if(!String.IsNullOrEmpty(step.ResultInfo))
+        {
+            <div>@step.ResultInfo</div>
+        }
+   </li>          
+}
+</ul>
 
 @code {
+
+    enum InstallStatus
+    {
+        InProgress,
+        Success,
+        Failed
+    }
+
+    class InstallStep
+    {
+        public InstallStep(string description, bool isQuestion = false)
+        {
+            Description = description;
+            Status = InstallStatus.InProgress;
+            ResultInfo = null;
+            IsQuestion = isQuestion;
+            if (isQuestion)
+            {
+                SendAnswer = new TaskCompletionSource<bool>();
+            }
+            else
+            {
+                SendAnswer = null;
+            }
+        }
+
+        public string Description;
+        public InstallStatus Status;
+        public long CurrentValue;
+        public long MaxValue;
+        public string Unit;
+        public string ResultInfo;
+
+        public bool IsQuestion;
+        public TaskCompletionSource<bool> SendAnswer;
+    }
+
+    List<InstallStep> installSteps;
 
     bool isLoading = true;
 
     protected override void OnInitialized()
     {
-        isLoading = false;
-
         base.OnInitialized();
+        
+        installSteps = new List<InstallStep>();
+
+        WindowsLocalVMClusterInstall.Install(this);
     }
 
+    private void OnClick(InstallStep step, bool choice)
+    {
+        step.SendAnswer.SetResult(choice);
+    }
+
+    public int DisplayCommandLaunch(string commandDescription)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(commandDescription);
+        installSteps.Add(command);
+        return commandId;
+    }
+
+    public int DisplayCommandLaunchWithProgress(string commandDescription, long maxValue, string unit)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(commandDescription);
+        command.MaxValue = maxValue;
+        command.Unit = unit;
+        installSteps.Add(command);
+        return commandId;
+    }
+
+    public void DisplayCommandProgress(int commandId, long currentValue)
+    {
+        var command = installSteps[commandId];
+        command.CurrentValue = currentValue;
+    }
+
+    public void DisplayCommandResult(int commandId, bool success, string? resultInfo = null, string? errorMessage= null)
+    {        
+        var command = installSteps[commandId];
+        command.Status = success ? InstallStatus.Success : InstallStatus.Failed;
+        command.ResultInfo = resultInfo;
+    }
+
+    public Task<bool> DisplayQuestionAsync(string question)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(question, true);
+        installSteps.Add(command);
+        return command.SendAnswer.Task;
+    }
+
+    public Task<bool> DisplayAdminScriptQuestionAsync(string scriptDescription, string scriptContent)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(scriptDescription, true);
+        command.ResultInfo = scriptContent;
+        installSteps.Add(command);
+        return command.SendAnswer.Task;
+    }
 }

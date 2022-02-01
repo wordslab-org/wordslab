@@ -1,4 +1,5 @@
 ﻿using wordslab.installer.infrastructure.commands;
+using wordslab.installer.localstorage;
 
 namespace wordslab.installer.infrastructure
 {
@@ -8,9 +9,9 @@ namespace wordslab.installer.infrastructure
     {
         int DisplayCommandLaunch(string commandDescription);
 
-        int DisplayCommandLaunchWithProgress(string commandDescription, int maxValue, string unit);
+        int DisplayCommandLaunchWithProgress(string commandDescription, long maxValue, string unit);
 
-        void DisplayCommandProgress(int commandId, int currentValue);
+        void DisplayCommandProgress(int commandId, long currentValue);
 
         void DisplayCommandResult(int commandId, bool success, string? resultInfo = null, string? errorMessage= null);
 
@@ -21,7 +22,7 @@ namespace wordslab.installer.infrastructure
 
     public class WindowsLocalVMClusterInstall
     {
-        public async Task<bool> Install(InstallationUI ui)
+        public static async Task<bool> Install(InstallationUI ui)
         {
 
             var c1 = ui.DisplayCommandLaunch("Checking if a recent Nvidia GPU (> GTX 1050) is available [optional]");
@@ -153,9 +154,74 @@ namespace wordslab.installer.infrastructure
                 }
             }
 
+            // -- Versions last updated : January 9 2022 --
 
+            // Alpine mini root filesystem: https://alpinelinux.org/downloads/
+            var alpineVersion = "3.15.0";
+            var alpineImageURL = $"https://dl-cdn.alpinelinux.org/alpine/v{alpineVersion.Substring(0,4)}/releases/x86_64/alpine-minirootfs-{alpineVersion}-x86_64.tar.gz";
+            var alpineImageSize = 2731445;
+            var alpineFileName = $"alpine-{alpineVersion}.tar";
 
+            // Ubuntu minimum images: https://partner-images.canonical.com/oci/
+            var ubuntuRelease = "focal";
+            var ubuntuVersion = "20220105";
+            var ubuntuImageURL = $"https://partner-images.canonical.com/oci/{ubuntuRelease}/{ubuntuVersion}/ubuntu-{ubuntuRelease}-oci-amd64-root.tar.gz";
+            var ubuntuImageSize = 27746207;
+            var ubuntuFileName = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}.tar";
 
+            // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/
+            var k3sVersion = "1.22.5+k3s1";
+            var k3sExecutableURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s";
+            var k3sExecutableSize = 53473280;
+            var k3sExecutableFileName = $"k3s-{k3sVersion}";
+            var k3sImagesURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s-airgap-images-amd64.tar";
+            var k3sImagesSize = 492856320;
+            var k3sImagesFileName = $"k3s-airgap-images-{k3sVersion}.tar";      
+
+            // Helm releases: https://github.com/helm/helm/releases
+            var helmVersion = "3.7.2";
+            var helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
+            var helmExecutableSize = 13870692;
+            var helmFileName = $"k3s-airgap-images-{k3sVersion}.tar";
+
+            // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases
+            var nvidiaContainerRuntimeVersion = "3.7.0-1";
+
+            var storage = LocalStorageManager.Instance;
+
+            var c10 = ui.DisplayCommandLaunchWithProgress($"Downloading Alpine Linux operating system image (v{alpineVersion})", alpineImageSize, "Bytes");
+            var download1 = storage.DownloadFileWithCache(alpineImageURL, alpineFileName, gunzip:true, progressCallback:(totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c10, totalBytesDownloaded));
+
+            var c11 = ui.DisplayCommandLaunchWithProgress($"Downloading Ubuntu Linux operating system image ({ubuntuRelease} {ubuntuVersion})", ubuntuImageSize, "Bytes");
+            var download2 = storage.DownloadFileWithCache(ubuntuImageURL, ubuntuFileName, gunzip:true, progressCallback:(totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c11, totalBytesDownloaded));
+
+            var c12 = ui.DisplayCommandLaunchWithProgress($"Downloading Rancher K3s executable (v{k3sVersion})", k3sExecutableSize, "Bytes");
+            var download3 = storage.DownloadFileWithCache(k3sExecutableURL, k3sExecutableFileName, progressCallback:(totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c12, totalBytesDownloaded));
+
+            var c13 = ui.DisplayCommandLaunchWithProgress($"Downloading Rancher K3s containers images (v{k3sVersion})", k3sImagesSize, "Bytes");
+            var download4 = storage.DownloadFileWithCache(k3sImagesURL, k3sImagesFileName, progressCallback:(totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c13, totalBytesDownloaded));
+
+            var c14 = ui.DisplayCommandLaunchWithProgress($"Downloading Helm executable (v{helmVersion})", helmExecutableSize, "Bytes");
+            var download5 = storage.DownloadFileWithCache(helmExecutableURL, helmFileName, gunzip:true, progressCallback:(totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c14, totalBytesDownloaded));
+
+            Task.WaitAll(download1, download2, download3, download4, download5);
+
+            // Extract helm executable from the downloaded tar file
+            var helmTarFile = Path.Combine(storage.DownloadCacheDirectory.FullName, helmFileName);
+            var helmTmpDir = Path.Combine(storage.DownloadCacheDirectory.FullName, "helm-temp");
+            Directory.CreateDirectory(helmTmpDir);
+            LocalStorageManager.ExtractTar(helmTarFile, helmTmpDir);
+            File.Move(Path.Combine(helmTmpDir,"linux-amd64","helm"), Path.Combine(storage.DownloadCacheDirectory.FullName,"helm"));
+            Directory.Delete(helmTmpDir, true);
+
+            // --- Initialize and start VM ---
+
+            var c15 = ui.DisplayCommandLaunch("Creating, installing and launching wordslab virtual machine and k3s cluster");
+            Command.ExecuteShellScript(Path.Combine(storage.DownloadCacheDirectory.FullName, "wordslab-install.bat"),
+                $"{storage.DownloadCacheDirectory.FullName} {alpineFileName} {ubuntuFileName} {k3sExecutableFileName} {k3sImagesFileName} {helmFileName} {nvidiaContainerRuntimeVersion} " +
+                $"{storage.VirtualMachineOSDirectory.FullName} {storage.VirtualMachineClusterDirectory.FullName} {storage.VirtualMachineDataDirectory.FullName}",
+                timeoutSec: 300);
+            ui.DisplayCommandResult(c15, true);
 
             return true;
         }
