@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
+using wordslab.installer.localstorage;
 
 namespace wordslab.installer.infrastructure.commands
 {
@@ -102,18 +103,12 @@ namespace wordslab.installer.infrastructure.commands
             }
         }
 
-        private static readonly string SCRIPT_PATH;
-        public static readonly string LOGS_PATH;
-
-        static Command()
-        {
-            SCRIPT_PATH = @"c:\tmp";
-            LOGS_PATH = @"c:\tmp";
-        }
+        public static string SCRIPT_PATH { get { return LocalStorageManager.Instance.ScriptsDirectory.FullName; } }
+        public static string LOGS_PATH { get { return LocalStorageManager.Instance.LogsDirectory.FullName; } }
 
         private static FileInfo GetScriptFile(string scriptName)
         {
-            var scriptPath = Path.Combine(SCRIPT_PATH, "check-wsl.ps1");
+            var scriptPath = Path.Combine(SCRIPT_PATH, scriptName);
             var scriptFile = new FileInfo(scriptPath);
             if (!scriptFile.Exists)
             {
@@ -177,7 +172,11 @@ namespace wordslab.installer.infrastructure.commands
             {
                 proc.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
                 proc.StartInfo.FileName = shellLauncher;
-                proc.StartInfo.Arguments = $"{scriptFile.FullName} {scriptArguments} {redirectOutputSyntax}";
+                proc.StartInfo.Arguments = $"\"{scriptFile.FullName}\" {scriptArguments} {redirectOutputSyntax}";
+                if(shellLauncher == "cmd.exe")
+                {
+                    proc.StartInfo.Arguments = "/C " + proc.StartInfo.Arguments;
+                }
                 if (runAsAdmin)
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

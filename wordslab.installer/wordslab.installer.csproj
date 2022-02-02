@@ -26,7 +26,6 @@
     <None Remove="infrastructure\scripts\wordslab-os-start.sh" />
     <None Remove="infrastructure\scripts\wordslab-start.bat" />
     <None Remove="infrastructure\scripts\wordslab-stop.bat" />
-    <None Remove="infrastructure\scripts\wordslab-uninstall.bat" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,7 +47,6 @@
     <EmbeddedResource Include="infrastructure\scripts\wordslab-os-start.sh" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-start.bat" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-stop.bat" />
-    <EmbeddedResource Include="infrastructure\scripts\wordslab-uninstall.bat" />
   </ItemGroup>
 
   <ItemGroup>

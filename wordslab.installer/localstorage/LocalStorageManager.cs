@@ -152,7 +152,7 @@ namespace wordslab.installer.localstorage
 
         public DirectoryInfo DownloadCacheDirectory { get; private set; }
 
-        public DirectoryInfo ScriptsDirectory { get; init; }
+        public DirectoryInfo ScriptsDirectory { get { return DownloadCacheDirectory; } }
 
         public DirectoryInfo VirtualMachineOSDirectory { get; private set; }
 
@@ -254,6 +254,10 @@ namespace wordslab.installer.localstorage
                     downloader.ProgressChanged -= progressCallback;
                 }
             }
+            else
+            {
+                progressCallback(localFileInfo.Length, localFileInfo.Length, 100);
+            }
             return localFileInfo;
         }
 
@@ -301,7 +305,7 @@ namespace wordslab.installer.localstorage
                 var output = Path.Combine(outputDir, name);
                 if (!Directory.Exists(Path.GetDirectoryName(output)))
                     Directory.CreateDirectory(Path.GetDirectoryName(output));
-                if (!name.Equals("./", StringComparison.InvariantCulture))
+                if (!name.EndsWith("/", StringComparison.InvariantCulture))
                 {
                     using (var str = File.Open(output, FileMode.OpenOrCreate, FileAccess.Write))
                     {

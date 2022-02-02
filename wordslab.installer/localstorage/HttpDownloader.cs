@@ -40,11 +40,12 @@ namespace wordslab.installer.localstorage
                 await ProcessContentStream(totalBytes, contentStream);
         }
 
-        private async Task ProcessContentStream(long? totalDownloadSize, Stream contentStream)
+        private async Task ProcessContentStream(long? totalDownloadSize, Stream downloadStream)
         {
+            Stream contentStream = downloadStream;
             if(_gunzip)
             {
-                contentStream = new GZipStream(contentStream, CompressionMode.Decompress);
+                contentStream = new GZipStream(downloadStream, CompressionMode.Decompress);
             }
 
             var totalBytesRead = 0L;

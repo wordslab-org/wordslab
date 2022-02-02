@@ -129,9 +129,9 @@ namespace wordslab.installer.infrastructure.commands
         
         public static void UpdateLinuxKernelVersion(bool rollback = false)
         {
-            string args = "";
-            if (rollback) args += "--rollback ";
-            Command.Run("wsl.exe", args + "--update", timeoutSec: 30, unicodeEncoding: true);
+            string options = "";
+            if (rollback) options += "--rollback ";
+            Command.Run("wsl.exe", $"--update {options}", timeoutSec: 30, unicodeEncoding: true);
         }
 
         // WSL 2 commands
@@ -251,9 +251,9 @@ namespace wordslab.installer.infrastructure.commands
 
         public static void import(string distribution, string installPath, string filename, int? version = null)
         {
-            string args = "";
-            if (version.HasValue) args += $"--version {version.Value} ";
-            Command.Run("wsl.exe", args + $"--import {distribution} \"{installPath}\" \"{filename}\"", timeoutSec: 60, unicodeEncoding: true);
+            string options = "";
+            if (version.HasValue) options += $"--version {version.Value} ";
+            Command.Run("wsl.exe", $"--import {distribution} \"{installPath}\" \"{filename}\" {options}", timeoutSec: 60, unicodeEncoding: true);
         }
 
         public class DistributionInfo
