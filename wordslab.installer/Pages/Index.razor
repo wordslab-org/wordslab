@@ -9,16 +9,33 @@
 
 <h1>Local cluster manager</h1>
 
-<div>
-    @if(installInProgress == null || installInProgress.Status!=InstallStatus.InProgress) 
+@if(installInProgress == null || installInProgress.Status!=InstallStatus.InProgress) 
+{
+    @if(vmState == VMState.NotInstalled)
     {
-        <button @onclick="Install">Install</button> <button @onclick="Uninstall">Uninstall</button>
+        <div>Local cluster is not installed : <button @onclick="Install">Install</button></div>
     }
-    else
+    @if(vmState == VMState.Stopped)
     {
-        <button disabled="disabled">Install</button> <button disabled="disabled">Uninstall</button>
+        <div>Local cluster is stopped : <button @onclick="Start">Start</button></div>
     }
-</div>
+    @if(vmState == VMState.Started)
+    {
+        <div>Local cluster is running : <button @onclick="Stop">Stop</button></div>
+    }
+    @if(vmState == VMState.InstallFailed)
+    {
+        <div>Install or Uninstall operation failed : your local cluster is not in a consistent state, you should reset it by clicking on Uninstall below.</div>
+    }
+    @if (vmState == VMState.Stopped || vmState == VMState.InstallFailed)
+    {
+        <div><span>DANGEROUS - You can reset your local cluster, but all data will be lost : </span> <button @onclick="Uninstall">Uninstall</button></div>
+    }        
+}
+else
+{
+    <li>Operation in progress ...</li>
+}
 
 @if(installInProgress != null) 
 {
@@ -57,6 +74,16 @@
 }
 
 @code {
+
+    enum VMState
+    {
+        NotInstalled,
+        InstallFailed,
+        Stopped,
+        Started
+    }
+
+    VMState vmState = VMState.NotInstalled;
 
     class InstallInfo
     {
@@ -110,6 +137,23 @@
     InstallInfo installInProgress;
     List<InstallStep> installSteps;
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if(WindowsLocalVMClusterInstall.IsInstalled())
+        {
+            if(WindowsLocalVMClusterInstall.IsClusterRunning())
+            {
+                vmState = VMState.Started;
+            }
+            else
+            {
+                vmState = VMState.Stopped;
+            }
+        }
+    }
+
     private async void Install()
     {
         if (installInProgress == null || installInProgress.Status!=InstallStatus.InProgress)
@@ -118,6 +162,7 @@
             installSteps = new List<InstallStep>();
             var installSuccess = await Task<bool>.Run(() => WindowsLocalVMClusterInstall.Install(this));
             installInProgress.Status = installSuccess ? InstallStatus.Success : InstallStatus.Failed;
+            vmState = installSuccess ? VMState.Started : VMState.InstallFailed;
             InvokeAsync(StateHasChanged);
         }
     }
@@ -130,8 +175,23 @@
             installSteps = new List<InstallStep>();
             var installSuccess = await Task<bool>.Run(() => WindowsLocalVMClusterInstall.Uninstall(this));
             installInProgress.Status = installSuccess ? InstallStatus.Success : InstallStatus.Failed;
+            vmState = installSuccess ? VMState.NotInstalled : VMState.InstallFailed;
             InvokeAsync(StateHasChanged);
         }
+    }
+
+    private void Start()
+    {
+        int vmIP;
+        string kubeconfigPath;
+        WindowsLocalVMClusterInstall.StartCluster(LocalStorageManager.Instance, out vmIP, out kubeconfigPath);
+        vmState = VMState.Started;
+    }
+
+    private void Stop()
+    {
+        WindowsLocalVMClusterInstall.StopCluster();
+        vmState = VMState.Stopped;
     }
 
     public int DisplayCommandLaunch(string commandDescription)

@@ -24,6 +24,17 @@ namespace wordslab.installer.infrastructure
 
     public class WindowsLocalVMClusterInstall
     {
+        public static bool IsInstalled()
+        {
+            try
+            {
+                wsl.execShell("ls /usr/local/bin/k3s", "wordslab-os");
+                return true;
+            } 
+            catch { }
+            return false;
+        }
+
         public static async Task<bool> Install(InstallationUI ui)
         {
             try
@@ -38,7 +49,9 @@ namespace wordslab.installer.infrastructure
                 var useGpu = false;
                 if (gpuAvailable)
                 {
-                    useGpu = await ui.DisplayQuestionAsync("Do you want to use this GPU in your local cluster ?");
+                    // Usage will tell us if this question is useful or not ?
+                    // useGpu = await ui.DisplayQuestionAsync("Do you want to use this GPU in your local cluster ?");
+                    useGpu = true;
                     if (useGpu)
                     {
                         var c1_2 = ui.DisplayCommandLaunch("Checking Nvidia driver version");
@@ -139,7 +152,9 @@ namespace wordslab.installer.infrastructure
                 var updateKernel = true;
                 if (kernelVersionOK)
                 {
-                    updateKernel = await ui.DisplayQuestionAsync("Do you want to update Windows Subsystem for Linux to the latest version ?");
+                    // Usage will tell us if this question is useful or not ?
+                    // updateKernel = await ui.DisplayQuestionAsync("Do you want to update Windows Subsystem for Linux to the latest version ?");
+                    updateKernel = false;
                 }
                 if (updateKernel)
                 {
@@ -164,14 +179,14 @@ namespace wordslab.installer.infrastructure
                 // Alpine mini root filesystem: https://alpinelinux.org/downloads/
                 var alpineVersion = "3.15.0";
                 var alpineImageURL = $"https://dl-cdn.alpinelinux.org/alpine/v{alpineVersion.Substring(0, 4)}/releases/x86_64/alpine-minirootfs-{alpineVersion}-x86_64.tar.gz";
-                var alpineImageSize = 2731445;
+                var alpineImageSize = 5867520; // 2731445 compressed
                 var alpineFileName = $"alpine-{alpineVersion}.tar";
 
                 // Ubuntu minimum images: https://partner-images.canonical.com/oci/
                 var ubuntuRelease = "focal";
                 var ubuntuVersion = "20220105";
                 var ubuntuImageURL = $"https://partner-images.canonical.com/oci/{ubuntuRelease}/{ubuntuVersion}/ubuntu-{ubuntuRelease}-oci-amd64-root.tar.gz";
-                var ubuntuImageSize = 27746207;
+                var ubuntuImageSize = 78499840; // 27746207 compressed
                 var ubuntuFileName = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}.tar";
 
                 // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/
@@ -186,7 +201,7 @@ namespace wordslab.installer.infrastructure
                 // Helm releases: https://github.com/helm/helm/releases
                 var helmVersion = "3.7.2";
                 var helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
-                var helmExecutableSize = 13870692;
+                var helmExecutableSize = 45731840; // 13870692 compressed
                 var helmFileName = $"heml-{helmVersion}.tar";
 
                 // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases
@@ -225,43 +240,60 @@ namespace wordslab.installer.infrastructure
 
                 // --- Initialize and start VM ---
 
+                var wslDistribs = wsl.list();
                 var cachePath = storage.DownloadCacheDirectory.FullName;
 
-                var c15 = ui.DisplayCommandLaunch("Initializing wordslab-data virtual disk");
-                wsl.import("wordslab-data", storage.VirtualMachineDataDirectory.FullName, Path.Combine(cachePath, alpineFileName), 2);
-                wsl.execShell($"cp $(wslpath '{cachePath}')/wordslab-data-init.sh /root/wordslab-data-init.sh", "wordslab-data");
-                wsl.execShell("chmod a+x /root/wordslab-data-init.sh", "wordslab-data");
-                wsl.execShell($"/root/wordslab-data-init.sh '{cachePath}'", "wordslab-data");
-                wsl.terminate("wordslab-data");
-                ui.DisplayCommandResult(c15, true);
-
-                var c16 = ui.DisplayCommandLaunch("Initializing wordslab-cluster virtual disk");
-                wsl.import("wordslab-cluster", storage.VirtualMachineClusterDirectory.FullName, Path.Combine(cachePath, alpineFileName), 2);
-                wsl.execShell($"cp $(wslpath '{cachePath}')/wordslab-cluster-init.sh /root/wordslab-cluster-init.sh", "wordslab-cluster");
-                wsl.execShell("chmod a+x /root/wordslab-cluster-init.sh", "wordslab-cluster");
-                wsl.execShell($"/root/wordslab-cluster-init.sh '{cachePath}' '{k3sImagesFileName}'", "wordslab-cluster");
-                wsl.terminate("wordslab-cluster");
-                ui.DisplayCommandResult(c16, true);
-
-                var c17 = ui.DisplayCommandLaunch("Initializing wordslab-os virtual machine");
-                wsl.import("wordslab-os", storage.VirtualMachineOSDirectory.FullName, Path.Combine(cachePath, ubuntuFileName), 2);
-                wsl.execShell($"cp $(wslpath '{cachePath}')/wordslab-os-init.sh /root/wordslab-os-init.sh", "wordslab-os");
-                wsl.execShell("chmod a+x /root/wordslab-os-init.sh", "wordslab-os");
-                ui.DisplayCommandResult(c17, true);
-
-                var c18 = ui.DisplayCommandLaunch("Installing Rancher K3s software inside virtual machine");
-                wsl.execShell($"/root/wordslab-os-init.sh '{cachePath}' '{k3sExecutableFileName}' '{helmFileName}'", "wordslab-os");
-                ui.DisplayCommandResult(c18, true);
-
-                if (useGpu)
+                if (!wslDistribs.Any(d => d.Distribution == "wordslab-data"))
                 {
-                    var c19 = ui.DisplayCommandLaunch("Installing nvidia GPU software inside virtual machine");
-                    wsl.execShell("nvidia-smi -L", "wordslab-os");
-                    wsl.execShell($"/root/wordslab-gpu-init.sh '{cachePath}' '{nvidiaContainerRuntimeVersion}'", "wordslab-os");
-                    ui.DisplayCommandResult(c19, true);
+                    var c15 = ui.DisplayCommandLaunch("Initializing wordslab-data virtual disk");
+                    wsl.import("wordslab-data", storage.VirtualMachineDataDirectory.FullName, Path.Combine(cachePath, alpineFileName), 2);
+                    wsl.execShell($"cp $(wslpath '{cachePath}')/wordslab-data-init.sh /root/wordslab-data-init.sh", "wordslab-data");
+                    wsl.execShell("chmod a+x /root/wordslab-data-init.sh", "wordslab-data");
+                    wsl.execShell($"/root/wordslab-data-init.sh '{cachePath}'", "wordslab-data");
+                    wsl.terminate("wordslab-data");
+                    ui.DisplayCommandResult(c15, true);
                 }
 
-                wsl.terminate("wordslab-os");
+                if (!wslDistribs.Any(d => d.Distribution == "wordslab-cluster"))
+                {
+                    var c16 = ui.DisplayCommandLaunch("Initializing wordslab-cluster virtual disk");
+                    wsl.import("wordslab-cluster", storage.VirtualMachineClusterDirectory.FullName, Path.Combine(cachePath, alpineFileName), 2);
+                    wsl.execShell($"cp $(wslpath '{cachePath}')/wordslab-cluster-init.sh /root/wordslab-cluster-init.sh", "wordslab-cluster");
+                    wsl.execShell("chmod a+x /root/wordslab-cluster-init.sh", "wordslab-cluster");
+                    wsl.execShell($"/root/wordslab-cluster-init.sh '{cachePath}' '{k3sImagesFileName}'", "wordslab-cluster");
+                    wsl.terminate("wordslab-cluster");
+                    ui.DisplayCommandResult(c16, true);
+                }
+
+                if (!wslDistribs.Any(d => d.Distribution == "wordslab-os"))
+                {
+                    var c17 = ui.DisplayCommandLaunch("Initializing wordslab-os virtual machine");
+                    wsl.import("wordslab-os", storage.VirtualMachineOSDirectory.FullName, Path.Combine(cachePath, ubuntuFileName), 2);
+                    wsl.execShell($"cp $(wslpath '{cachePath}')/wordslab-os-init.sh /root/wordslab-os-init.sh", "wordslab-os");
+                    wsl.execShell("chmod a+x /root/wordslab-os-init.sh", "wordslab-os");
+                    ui.DisplayCommandResult(c17, true);
+
+                    var c18 = ui.DisplayCommandLaunch("Installing Rancher K3s software inside virtual machine");
+                    string error = null;
+                    wsl.execShell($"/root/wordslab-os-init.sh '{cachePath}' '{k3sExecutableFileName}' '{helmFileName}'", "wordslab-os",
+                        errorHandler: e => error = e);
+                    if(!String.IsNullOrEmpty(error))
+                    {
+                        if(error.StartsWith("perl: warning")) { /* just a warning, do nothing */ }
+                        else { throw new InvalidOperationException($"Error while executing script /root/wordslab-os-init.sh in wordslab-os : \"{error}\""); }
+                    }
+                    ui.DisplayCommandResult(c18, true);
+
+                    if (useGpu)
+                    {
+                        var c19 = ui.DisplayCommandLaunch("Installing nvidia GPU software inside virtual machine");
+                        wsl.execShell("nvidia-smi -L", "wordslab-os");
+                        wsl.execShell($"/root/wordslab-gpu-init.sh '{cachePath}' '{nvidiaContainerRuntimeVersion}'", "wordslab-os");
+                        ui.DisplayCommandResult(c19, true);
+                    }
+
+                    wsl.terminate("wordslab-os");
+                }
 
                 var c20 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
                 int vmIP;
@@ -276,27 +308,6 @@ namespace wordslab.installer.infrastructure
                 ui.DisplayCommandError(ex.Message);
                 return false;
             }
-        }
-
-        private static void StartCluster(LocalStorageManager storage, out int vmIP, out string kubeconfigPath)
-        {
-            wsl.execShell("/root/wordslab-data-start.sh", "wordslab-data");
-            wsl.execShell("/root/wordslab-cluster-start.sh", "wordslab-cluster");
-            wsl.execShell("/root/wordslab-os-start.sh", "wordslab-os");
-            vmIP = wsl.execShell("hostname - I | grep - Eo \"^[0-9\\.]+\"", "wordslab-os");
-            var kubeconfig = wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", "wordslab-os");
-            kubeconfigPath = Path.Combine(storage.ConfigDirectory.FullName, ".kube", "config");
-            using (StreamWriter sw = new StreamWriter(kubeconfigPath))
-            {
-                sw.Write(kubeconfig);
-            }
-        }
-
-        private static void StopCluster()
-        {
-            wsl.terminate("wordslab-os");
-            wsl.terminate("wordslab-cluster");
-            wsl.terminate("wordslab-data");
         }
 
         public static async Task<bool> Uninstall(InstallationUI ui)
@@ -331,6 +342,39 @@ namespace wordslab.installer.infrastructure
                 ui.DisplayCommandError(ex.Message);
                 return false;
             }
+        }
+
+        public static bool IsClusterRunning()
+        {
+            if (!IsInstalled()) { return false; }
+            try
+            {
+                var wslDistribs = wsl.list();
+                return wslDistribs.Any(d => d.Distribution == "wordslab-os" && d.IsRunning);
+            }
+            catch { }
+            return false;
+        }
+
+        public static void StartCluster(LocalStorageManager storage, out int vmIP, out string kubeconfigPath)
+        {
+            wsl.execShell("/root/wordslab-data-start.sh", "wordslab-data");
+            wsl.execShell("/root/wordslab-cluster-start.sh", "wordslab-cluster");
+            wsl.execShell("/root/wordslab-os-start.sh", "wordslab-os");
+            vmIP = wsl.execShell("hostname - I | grep - Eo \"^[0-9\\.]+\"", "wordslab-os");
+            var kubeconfig = wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", "wordslab-os");
+            kubeconfigPath = Path.Combine(storage.ConfigDirectory.FullName, ".kube", "config");
+            using (StreamWriter sw = new StreamWriter(kubeconfigPath))
+            {
+                sw.Write(kubeconfig);
+            }
+        }
+
+        public static void StopCluster()
+        {
+            wsl.terminate("wordslab-os");
+            wsl.terminate("wordslab-cluster");
+            wsl.terminate("wordslab-data");
         }
     }
 }
