@@ -21,7 +21,6 @@
     <None Remove="infrastructure\scripts\wordslab-download.sh" />
     <None Remove="infrastructure\scripts\wordslab-gpu-init.sh" />
     <None Remove="infrastructure\scripts\wordslab-gpu-test.bat" />
-    <None Remove="infrastructure\scripts\wordslab-install.bat" />
     <None Remove="infrastructure\scripts\wordslab-os-init.sh" />
     <None Remove="infrastructure\scripts\wordslab-os-start.sh" />
     <None Remove="infrastructure\scripts\wordslab-start.bat" />
@@ -42,7 +41,6 @@
     <EmbeddedResource Include="infrastructure\scripts\wordslab-download.sh" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-gpu-init.sh" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-gpu-test.bat" />
-    <EmbeddedResource Include="infrastructure\scripts\wordslab-install.bat" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-os-init.sh" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-os-start.sh" />
     <EmbeddedResource Include="infrastructure\scripts\wordslab-start.bat" />
