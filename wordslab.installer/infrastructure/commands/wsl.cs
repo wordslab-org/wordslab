@@ -148,20 +148,32 @@ namespace wordslab.installer.infrastructure.commands
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
             if (userName != null) args += $"--user {userName} ";
-            return Command.Run("wsl.exe", args + $"--exec {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding, 
+            return Command.Run("wsl.exe", args + $"--exec {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
                                           outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
         }
 
         public static int execShell(string commandLine, string distribution = null, string workingDirectory = null, string userName = null,
-                                    int timeoutSec = 10, bool unicodeEncoding = false,
+                                    int timeoutSec = 10, bool unicodeEncoding = false, string ignoreError = null,
                                     Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
         {
+            string error = null;
+            if(errorHandler==null && !String.IsNullOrEmpty(ignoreError))
+            {
+                errorHandler = e => error = e;
+            }
+
             string args = "";
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
             if (userName != null) args += $"--user {userName} ";
-            return Command.Run("wsl.exe", args + $"-- {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
+            int exitCode = Command.Run("wsl.exe", args + $"-- {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
                                           outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
+
+            if (!String.IsNullOrEmpty(error))
+            {
+                if (!error.Contains(ignoreError)) { throw new InvalidOperationException($"Error while executing command {commandLine} : \"{error}\""); }
+            }
+            return exitCode;
         }
 
         public static bool CheckRunningDistribution(string wslDistribution, out string linuxDistributionName, out string linuxDistributionVersion)

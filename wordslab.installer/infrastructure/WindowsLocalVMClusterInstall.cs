@@ -274,21 +274,16 @@ namespace wordslab.installer.infrastructure
                     ui.DisplayCommandResult(c17, true);
 
                     var c18 = ui.DisplayCommandLaunch("Installing Rancher K3s software inside virtual machine");
-                    string error = null;
-                    wsl.execShell($"/root/wordslab-os-init.sh '{cachePath}' '{k3sExecutableFileName}' '{helmFileName}'", "wordslab-os",
-                        errorHandler: e => error = e);
-                    if(!String.IsNullOrEmpty(error))
-                    {
-                        if(error.StartsWith("perl: warning")) { /* just a warning, do nothing */ }
-                        else { throw new InvalidOperationException($"Error while executing script /root/wordslab-os-init.sh in wordslab-os : \"{error}\""); }
-                    }
+                    wsl.execShell($"/root/wordslab-os-init.sh '{cachePath}' '{k3sExecutableFileName}' '{helmFileName}'", "wordslab-os", ignoreError: "perl: warning");
                     ui.DisplayCommandResult(c18, true);
 
                     if (useGpu)
                     {
                         var c19 = ui.DisplayCommandLaunch("Installing nvidia GPU software inside virtual machine");
+                        wsl.execShell($"/root/wordslab-cluster-start.sh", "wordslab-cluster");
                         wsl.execShell("nvidia-smi -L", "wordslab-os");
-                        wsl.execShell($"/root/wordslab-gpu-init.sh '{cachePath}' '{nvidiaContainerRuntimeVersion}'", "wordslab-os");
+                        wsl.execShell($"/root/wordslab-gpu-init.sh '{cachePath}' '{nvidiaContainerRuntimeVersion}'", "wordslab-os", ignoreError: "perl: warning");
+                        wsl.terminate("wordslab-cluster");
                         ui.DisplayCommandResult(c19, true);
                     }
 
@@ -360,10 +355,12 @@ namespace wordslab.installer.infrastructure
         {
             wsl.execShell("/root/wordslab-data-start.sh", "wordslab-data");
             wsl.execShell("/root/wordslab-cluster-start.sh", "wordslab-cluster");
-            wsl.execShell("/root/wordslab-os-start.sh", "wordslab-os");
-            vmIP = wsl.execShell("hostname - I | grep - Eo \"^[0-9\\.]+\"", "wordslab-os");
+            wsl.execShell("/root/wordslab-os-start.sh", "wordslab-os", ignoreError:"screen size is bogus");
+
+            vmIP = wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", "wordslab-os");
             var kubeconfig = wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", "wordslab-os");
             kubeconfigPath = Path.Combine(storage.ConfigDirectory.FullName, ".kube", "config");
+            Directory.CreateDirectory(kubeconfigPath);
             using (StreamWriter sw = new StreamWriter(kubeconfigPath))
             {
                 sw.Write(kubeconfig);

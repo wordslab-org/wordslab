@@ -16,9 +16,9 @@ export IPTABLES_MODE=legacy
 nohup /usr/local/bin/k3s server --https-listen-port 6443 --log /var/log/rancher/k3s/k3s-$(date +%Y%m%d-%H%M%S).log --default-local-storage-path /var/volume/rancher/k3s </dev/null >/dev/null 2>&1 &
 sleep 1
 
-# Output 1: k3s process id
-ps | grep -o \"[0-9].*k3s-server\" | grep -Eo \"^[0-9]+\" | tee /var/lib/rancher/k3s/pid
-# Output 2: VM ip address
-hostname -I | grep -Eo \"^[0-9\.]+\"
-# Output 3: Command to get kubeconfig file
-echo "wsl -d wordslab-os -- cat /etc/rancher/k3s/k3s.yaml"
+ps | grep -o "[0-9].*k3s\sserver" | grep -Eo "^[0-9]+" > /var/lib/rancher/k3s/pid
+
+# K3s version    : cat /var/lib/rancher/k3s/version
+# K3s process id : cat /var/lib/rancher/k3s/pid
+# VM IP address  : hostname -I | grep -Eo "^[0-9\.]+"
+# Kubeconfig file: cat /etc/rancher/k3s/k3s.yaml
