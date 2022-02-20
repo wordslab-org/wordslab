@@ -31,6 +31,18 @@ ssh-keygen (3x Enter)
 cat ~/.ssh/id_rsa.pub
 vi user-data.yaml <- update ssh key
 
+>> START trace of cloud-localds script execution on ubuntu
+mktemp -d /tmp/cloud-localds.XXXXXX
+TEMP_D=/tmp/cloud-localds.23Y0E5
+cp metadata.yaml /tmp/cloud-localds.23Y0E5/meta-data
+cp user-data.yaml /tmp/cloud-localds.23Y0E5/user-data
+img=/tmp/cloud-localds.23Y0E5/seed-data
+genisoimage -output /tmp/cloud-localds.23Y0E5/seed-data -volid cidata -joliet -rock /tmp/cloud-localds.23Y0E5/user-data /tmp/cloud-localds.23Y0E5/meta-data
+cp /tmp/cloud-localds.23Y0E5/seed-data seed.img
+debug 1 'wrote seed.img with filesystem=iso9660 and diskformat=raw'
+rm -Rf /tmp/cloud-localds.23Y0E5
+>> END
+
 brew install cdrtools
 
 mv metadata.yaml meta-data
@@ -71,5 +83,3 @@ vi wordslab-vm-start.sh <- remove cpu line, using default qemu model
 
 ./wordslab-vm-start.sh
 => working !!
-
-
