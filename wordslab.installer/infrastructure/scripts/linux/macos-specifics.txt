@@ -16,18 +16,18 @@ curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-d
 curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-start.sh
 
 curl -O https://cloud-images.ubuntu.com/minimal/releases/focal/release-20220201/ubuntu-20.04-minimal-cloudimg-amd64.img
-curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5+k3s1/k3s
-curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5+k3s1/k3s-airgap-images-amd64.tar
+curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s
+curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s-airgap-images-amd64.tar
 curl -O https://get.helm.sh/helm-v3.7.2-linux-amd64.tar.gz
 
 qemu-system-x86_64 --version
 QEMU emulator version 6.2.0
 Copyright (c) 2003-2021 Fabrice Bellard and the QEMU Project developers
 
-if:kvm-ok
+ls -al ~/.ssh
+ls: /Users/laurent/.ssh: No such file or directory
 
-apt-get install -y qemu qemu-utils qemu-kvm 
+ssh-keygen (3x Enter)
+cat ~/.ssh/id_rsa.pub
+vi user-data.yaml
 
-if not:~/.ssh/id_rsa
-
-ssh-keygen
