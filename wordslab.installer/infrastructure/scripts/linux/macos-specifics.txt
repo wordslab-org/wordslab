@@ -41,6 +41,7 @@ genisoimage -output /tmp/cloud-localds.23Y0E5/seed-data -volid cidata -joliet -r
 cp /tmp/cloud-localds.23Y0E5/seed-data seed.img
 debug 1 'wrote seed.img with filesystem=iso9660 and diskformat=raw'
 rm -Rf /tmp/cloud-localds.23Y0E5
+=> -rw-rw-r--  1 laurent laurent     374784 févr. 20 17:51 seed.img
 >> END
 
 brew install cdrtools
