@@ -44,4 +44,6 @@ chmod u+x *.sh
 ./wordslab-vm-delete.sh 
 ./wordslab-vm-delete.sh: line 1: ﻿#!/bin/bash: No such file or directory
 
-
+vi wordslab-vm-start.sh <- accel=hvf <- $(nproc) ... $(sysctl -n hw.physicalcpu)
+./wordslab-vm-start.sh
+qemu-system-x86_64: Error: HV_ERROR
