@@ -44,6 +44,26 @@ rm -Rf /tmp/cloud-localds.23Y0E5
 => -rw-rw-r--  1 laurent laurent     374784 févr. 20 17:51 seed.img
 >> END
 
+>> START trace of cloud-init on Ubuntu
+Reading from /var/lib/cloud/seed/nocloud/user-data
+..
+Reading from /var/lib/cloud/seed/nocloud-net/user-data
+..
+blkid -tTYPE=vfat -odevice => /dev/vda15
+blkid -tTYPE=iso9660 -odevice => /dev/vdb 
+blkid -tLABEL=CIDATA -odevice => ()
+blkid -tLABEL=cidata -odevice => /dev/vdb
+blkid tLABEL_FATBOOT=cidata -odevice => ()
+Attempting to use data from /dev/vdb
+Reading from /proc/mounts
+mount -o ro -t auto /dev/vdb /run/cloud-init/tmp/tmpj658f3gz
+Reading from /run/cloud-init/tmp/tmpj658f3gz//user-data
+Reading from /run/cloud-init/tmp/tmpj658f3gz//meta-data
+Reading from /run/cloud-init/tmp/tmpj658f3gz//vendor-data 
+Reading from /run/cloud-init/tmp/tmpj658f3gz//network-config
+umount /run/cloud-init/tmp/tmpj658f3gz
+>> END
+
 brew install cdrtools
 
 mv metadata.yaml meta-data
