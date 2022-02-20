@@ -59,3 +59,17 @@ codesign -s - --entitlements app.entitlements --force /usr/local/bin/qemu-system
 ./wordslab-vm-start.sh
 qemu-system-x86_64: Error: HV_ERROR
 
+sysctl -a | grep machdep.cpu.features
+-> no VMX feature in Virtualbox
+
+vi wordslab-vm-start.sh <- remove accel=hvf to test ...
+
+./wordslab-vm-start.sh
+qemu-system-x86_64: CPU model 'host' requires KVM or HVF
+
+vi wordslab-vm-start.sh <- remove cpu line, using default qemu model
+
+./wordslab-vm-start.sh
+=> working !!
+
+
