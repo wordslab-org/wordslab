@@ -29,5 +29,19 @@ ls: /Users/laurent/.ssh: No such file or directory
 
 ssh-keygen (3x Enter)
 cat ~/.ssh/id_rsa.pub
-vi user-data.yaml
+vi user-data.yaml <- update ssh key
+
+brew install cdrtools
+
+mv metadata.yaml meta-data
+mv user-data.yaml user-data
+mkisofs -output seed.img -volid cidata -joliet -rock user-data meta-data    (genisoimage on Ubuntu)
+# qemu-img convert -f raw -O raw cidata.iso seed.img
+
+vi wordslab-vm-create.sh <- remove cloud-localds line <- specifify explcit backing file format : qemu-img create -F qcow2 -b ubuntu-20.04-minimal-cloudimg-amd64.img -f qcow2 wordslab-os.img
+
+chmod u+x *.sh
+./wordslab-vm-delete.sh 
+./wordslab-vm-delete.sh: line 1: ﻿#!/bin/bash: No such file or directory
+
 
