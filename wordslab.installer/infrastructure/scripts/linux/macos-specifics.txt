@@ -47,3 +47,15 @@ chmod u+x *.sh
 vi wordslab-vm-start.sh <- accel=hvf <- $(nproc) ... $(sysctl -n hw.physicalcpu)
 ./wordslab-vm-start.sh
 qemu-system-x86_64: Error: HV_ERROR
+
+vi app.entitlements
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"> <dict> <key>com.apple.security.hypervisor</key> <true/> </dict> </plist>
+
+codesign -s - --entitlements app.entitlements --force /usr/local/bin/qemu-system-x86_64
+/usr/local/bin/qemu-system-x86_64: replacing existing signature
+
+./wordslab-vm-start.sh
+qemu-system-x86_64: Error: HV_ERROR
+
