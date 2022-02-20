@@ -1,0 +1,18 @@
+pwd
+/Users/laurent
+
+mkdir vm
+cd vm
+
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/metadata.yaml
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/user-data.yaml
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-k3s-install.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-k3s-start.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-ubuntu-prepare.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-create.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-delete.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-k3s-install.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-k3s-start.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-start.sh
+
+
