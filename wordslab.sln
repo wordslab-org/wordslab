@@ -179,6 +179,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ui", "ui", "{04ECB04D-E6F6-
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "googlecloud", "googlecloud", "{73691B34-ACA8-4AE6-BB1C-1471CC167CFE}"
 	ProjectSection(SolutionItems) = preProject
+		2022_02_GPU VM config and price.txt = 2022_02_GPU VM config and price.txt
+		alternative_datacrunch.io.txt = alternative_datacrunch.io.txt
 		doc\dev\googlecloud\gcloud prices.txt = doc\dev\googlecloud\gcloud prices.txt
 		doc\dev\googlecloud\Google Colab architecture.pptx = doc\dev\googlecloud\Google Colab architecture.pptx
 		doc\dev\googlecloud\Google Colab setup screenshots.docx = doc\dev\googlecloud\Google Colab setup screenshots.docx

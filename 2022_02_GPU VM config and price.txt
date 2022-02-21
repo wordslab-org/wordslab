@@ -1,0 +1,599 @@
+https://cloud.google.com/compute/docs/gpus
+
+Compute Engine provides NVIDIA GPUs for your VMs in passthrough mode so that your VMs have direct control over the GPUs and their associated memory.
+
+Attach one or more GPUs to your instances to accelerate specific workloads or offload work from your vCPUs. 
+Each GPU adds to the cost of your instance in addition to the cost of the machine type. 
+
+If you did not attach GPUs during VM creation, you can add GPUs to your existing VMs to suit your application needs as they arise.
+If you attached GPUs during or after VM creation, you can detach these GPUs from these VMs when you no longer need them.
+
+You can attach GPUs only to VMs with predefined or custom machine types. 
+GPUs are not supported on shared-core or memory-optimized machine types.
+
+the process to add or remove a GPU from an existing VM is as follows:
+1. Check that your VM has a boot disk size of at least 40 GB.
+2. Prepare your VM for the modification.
+3. Stop the VM.
+4. Add or remove the GPU.
+5. If you are adding a GPU, you need to complete the following steps:
+- Modify the host maintenance setting for the VM. VMs with GPUs cannot live migrate because they are assigned to specific hardware devices. 
+- Change the machine type. GPUs are only supported on select machine types.
+- Install a GPU driver on your VM, so that your system can use the device.
+
+You can add or remove GPUs from your VM by stopping the VM and editing the VM configuration.
+- Click the name of the VM where you want to add GPUs. The VM instance details page opens.
+- On the stopped VM, click Edit and complete the following steps
+- From the Machine configuration section, complete the following steps.
+  - Under Series, select N1.
+  - Under Machine type, select the N1 machine type that you want.
+  - Expand the CPU platform and GPU section.
+  - Click Add GPU.
+  - Specify the GPU type and Number of GPUs.
+- Scroll to the On host maintenance section: When you add GPUs to a VM, the host maintenance setting is automatically set to Terminate VM instance.
+- Click Save to apply your changes.
+- Click Start/Resume to restart the VM.
+
+You increase or decrease your A100 GPU count by switching between A2 machine types.
+If you are using an A2 machine and no longer require GPUs, you need to change your machine from A2 to another machine type.
+
+For VMs with attached GPUs, the following restrictions apply:
+- GPUs are currently only supported with general-purpose N1 or accelerator-optimized A2 machine types.
+- To protect Compute Engine systems and users, new projects have a global GPU quota, which limits the total number of GPUs you can create in any supported zone. 
+- VMs with one or more GPUs have a maximum number of vCPUs for each GPU that you add to the instance.
+- GPUs require device drivers in order to function properly.
+
+When you request a GPU quota, you must request a quota for the GPU models that you want to create in each region, and an additional global quota for the total number of GPUs of all types in all zones.
+VM quotas are managed at the regional level. VM instance, instance group, disk quotas, and CPU can be consumed by any VM in the region, regardless of zone. 
+Use the regions describe command to ensure that you have sufficient GPU quota in the region where you want to create VMs with GPUs.
+
+If you need additional GPU quota, request a quota increase. 
+There is no charge for requesting a quota increase. Your costs increase only if you use more resources.
+If your project has an established billing history, it will receive quota automatically after you submit the request.
+
+Plan and request additional resources at least a few days in advance to ensure that there is enough time to fulfill your request.
+
+A request to decrease quota is rejected by default. 
+If you must reduce your quota, reply to the support email with an explanation of your requirements. 
+A support representative from the Compute Engine team will respond to your request within 24 to 48 hours.
+
+Resource quotas are the maximum number of resources you can create of that resource type, if those resources are available. 
+Quotas do not guarantee that resources are always available. 
+If a resource is not available, or if the region you choose is out of the resource, you can't create new resources of that type, even if you have remaining quota in your region or project.
+
+When you request a GPU quota, you must request a quota for the GPU models that you want to create in each region, and an additional global quota for the total number of GPUs of all types in all zones. 
+Request preemptible GPU quota to use those resources.
+- A100	NVIDIA_A100_GPUS	PREEMPTIBLE_NVIDIA_A100_GPUS
+- T4	NVIDIA_T4_GPUS		PREEMPTIBLE_NVIDIA_T4_GPUS
+- V100	NVIDIA_V100_GPUS	PREEMPTIBLE_NVIDIA_V100_GPUS
+
+NVIDIA GPUs running on Compute Engine must use a minimum driver version.
+For A100 GPUs:
+- Linux : 450.80.02 - 495.29.05
+For all other GPU models:
+- Linux : 410.79 - 495.29.05
+Caution: The NVIDIA 510 driver version is not yet supported on Compute Engine.
+
+One way to install the NVIDIA driver on most VMs is to install the NVIDIA CUDA Toolkit.
+1. Select a CUDA toolkit that supports the minimum driver that you need.
+2. Connect to the VM where you want to install the driver.
+3. On your VM, download and install the CUDA toolkit.
+NVIDIA A100 : 
+- Linux: CUDA Toolkit 11.1 https://developer.nvidia.com/cuda-11.1.0-download-archive?target_os=Linux&target_arch=x86_64
+- Linux: CUDA 11.1 installation guide https://docs.nvidia.com/cuda/archive/11.1.1/cuda-installation-guide-linux/index.html
+NVIDIA T4 / NVIDIA V100 :
+- Linux: CUDA Toolkit 10.1 update2 https://developer.nvidia.com/cuda-10.1-download-archive-update2?target_os=Linux&target_arch=x86_64
+- Linux: CUDA 10.1 installation guide https://docs.nvidia.com/cuda/archive/10.1/cuda-installation-guide-linux/index.html#about-this-document
+You can use the following scripts to automate the installation process.
+- curl https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py
+- sudo python3 install_gpu_driver.py
+The script takes some time to run. It might restart your VM. If the VM restarts, run the script again to continue the installation.
+After completing the driver installation steps, verify that the driver installed and initialized properly.
+- sudo nvidia-smi
+
+You can add GPUs to your preemptible VM instances at lower spot prices for the GPUs. 
+GPUs attached to preemptible instances work like normal GPUs but persist only for the life of the instance. 
+
+Preemptible VM instances are available at much lower price—a 60-91% discount—compared to the price of standard VMs. 
+However, Compute Engine might stop (preempt) these instances if it needs to reclaim the compute capacity for allocation to other VMs. 
+Preemptible instances use excess Compute Engine capacity, so their availability varies with usage.
+- Compute Engine might stop preemptible instances at any time due to system events. 
+- The probability that Compute Engine stops a preemptible instance for a system event is generally low, but might vary from day to day and from zone to zone depending on current conditions.
+- Compute Engine always stops preemptible instances after they run for 24 hours.
+- Preemptible instances can't live migrate to a regular VM instance, or be set to automatically restart when there is a maintenance event.
+- Due to the preceding limitations, preemptible instances are not covered by any Service Level Agreement and are excluded from the Compute Engine SLA.
+
+Spot VMs (Preview) are the latest version of preemptible VM instances. 
+Preemptible VMs continue to be supported for new and existing VMs, and preemptible VMs now use the same pricing model as Spot VMs. 
+However, Spot VMs provide new features that are not supported for preemptible VMs. 
+For example, preemptible VMs can only run for up to 24 hours at a time, but Spot VMs do not have a maximum runtime.
+
+If your apps are fault-tolerant and can withstand possible instance preemptions, then preemptible instances can reduce your Compute Engine costs significantly.
+Preemptible instances with GPUs follow the same preemption process as all preemptible instances.
+- Compute Engine sends a preemption notice to the instance in the form of an ACPI G2 Soft Off signal. 
+- You can use a shutdown script to handle the preemption notice and complete cleanup actions before the instance stops.
+- If the instance does not stop after 30 seconds, Compute Engine sends an ACPI G3 Mechanical Off signal to the operating system.
+- Compute Engine transitions the instance to a TERMINATED state.
+- You can simulate an instance preemption by stopping the instance.
+
+You can restart a preempted instance as many times as you would like, as long as there is capacity. 
+Restarting a preemptible instance resets the preemptible process.
+
+Consider requesting dedicated Preemptible GPU quota to use for GPUs on preemptible instances.
+
+If you want a warning before your instance is preempted, or want to configure your instance to automatically restart after a maintenance event, use a standard instance with a GPU. 
+For standard instances with GPUs, Google provides one hour advance notice before preemption.
+VMs with attached GPUs cannot live migrate and must stop for host maintenance events. 
+These maintenance events typically occur once every two weeks. Maintenance events can also occur more frequently when necessary.
+
+Handle GPU host maintenance events
+- GPU instances cannot be live migrated.
+- You must set your GPU instances to stop for host maintenance events. 
+- If needed, you can set your stopped instances to automatically restart after the maintenance event completes. 
+- Host maintenance events, on Compute Engine, have a frequency of once every two weeks but might occasionally run more frequently.
+- To minimize disruptions to your workloads during a maintenance event, you can monitor the maintenance schedule for your instance, and prepare your workloads to transition through the system restart.
+- To receive advanced notice of host maintenance events, monitor the /computeMetadata/v1/instance/maintenance-event metadata value. 
+- If the request to the metadata server returns NONE, the instance isn't scheduled to stop.
+- For example, run the following command from within an instance: curl http://metadata.google.internal/computeMetadata/v1/instance/maintenance-event -H "Metadata-Flavor: Google"
+- If the metadata server returns TERMINATE_ON_HOST_MAINTENANCE, then your instance is scheduled for stopping. 
+- Compute Engine gives GPU instances a 1-hour stopping notice, while normal instances receive only a 60-second notice. 
+- Configure your application to transition through the maintenance event.
+
+You can add local SSDs to GPUs. 
+
+GPUs are subject to the same billing policy as vCPUs and memory.
+- All vCPUs, GPUs, and GB of memory are charged a minimum of 1 minute. For example, if you run your virtual machine for 30 seconds, you will be billed for 1 minute of usage.
+- After 1 minute, instances are charged in 1 second increments.
+- Instance uptime is measured as the number of seconds between when you start an instance and when you stop an instance, the latter being when the instance state is TERMINATED.
+- If an instance is idle, but still has a state of RUNNING, it will be charged for instance uptime. 
+- he easiest way to determine the status of an instance is to use gcloud compute with the gcloud compute instances list command or to visit the Google Cloud Console.
+
+GPU devices attached to standard instances receive sustained use discounts similar to vCPUs. 
+- Sustained use discounts are automatic discounts for running specific Compute Engine resources a significant portion of the billing month.
+- 
+GPUs attached to Spot VMs (or preemptible VMs), are charged at the Spot prices for GPUs but don't receive sustained use discounts. 
+
+To receive committed use discounts on GPUs, you must define a reservation when creating the commitment; the reservation cannot be deleted for the duration of the commitment.
+
+To run NVIDIA A100 GPUs, you must use the accelerator-optimized (A2) machine type.
+a2-highgpu-1g	1 GPU	40 GB HBM2	12 vCPUs	85 GB
+a2-highgpu-2g	2 GPUs	80 GB HBM2	24 vCPUs	170 GB
+a2-highgpu-4g	4 GPUs	160 GB HBM2	48 vCPUs	340 GB
+a2-highgpu-8g	8 GPUs	320 GB HBM2	96 vCPUs	680 GB
+a2-megagpu-16g	16 GPUs	640 GB HBM2	96 vCPUs	1360 GB
+
+NVIDIA T4 GPUs
+1 GPU	16 GB GDDR6	1 - 48 vCPUs	1 - 312 GB
+2 GPUs	32 GB GDDR6	1 - 48 vCPUs	1 - 312 GB
+4 GPUs	64 GB GDDR6	1 - 96 vCPUs	1 - 624 GB
+
+NVIDIA V100 GPUs
+1 GPU	16 GB HBM2	1 - 12 vCPUs	1 - 78 GB
+2 GPUs	32 GB HBM2	1 - 24 vCPUs	1 - 156 GB
+4 GPUs	64 GB HBM2	1 - 48 vCPUs	1 - 312 GB
+8 GPUs	128 GB HBM2	1 - 96 vCPUs	1 - 624 GB
+
+Metric		A100		T4			V100
+Compute performance
+FP32		19.5 TFLOPS	8.1 TFLOPS	15.7 TFLOP
+Tensor core performance
+FP16/FP32	312 TFLOPS3	65 TFLOPS	125 TFLOPS	
+
+https://cloud.google.com/compute/docs/gpus/gpu-regions-zones
+europe-west4-a	Eemshaven, Netherlands, Europe	A100, V100
+europe-west4-b	Eemshaven, Netherlands, Europe	A100, T4, V100
+europe-west4-c	Eemshaven, Netherlands, Europe	T4, V100
+
+Local SSD is available as follows for each GPU type:
+- NVIDIA A100: local SSD is supported in all the available A100 regions and zones.
+- NVIDIA T4: local SSD is supported in all the available T4 regions and zones.
+- NVIDIA V100: local SSD is supported in most of the available V100 regions and zones with the exception of the following: us-east1-c
+
+Persistent disks are durable network storage devices that your instances can access like physical disks in a desktop or a server. 
+The data on each persistent disk is distributed across several physical disks. 
+Compute Engine manages the physical disks and the data distribution for you to ensure redundancy and optimal performance.
+
+Persistent disks are located independently from your virtual machine (VM) instances, so you can detach or move persistent disks to keep your data even after you delete your instances.
+Persistent disk performance scales automatically with size, so you can resize your existing persistent disks or add more persistent disks to an instance to meet your performance and storage space requirements.
+
+When you configure a persistent disk, you can select one of the following disk types.
+- Standard persistent disks (pd-standard) are backed by standard hard disk drives (HDD).
+- Balanced persistent disks (pd-balanced) are backed by solid-state drives (SSD). They are an alternative to SSD persistent disks that balance performance and cost.
+- SSD persistent disks (pd-ssd) are backed by solid-state drives (SSD).
+
+You can save time and get the best performance if you format your persistent disks with a single file system and no partition tables.
+If you need to separate your data into multiple unique volumes, create additional disks rather than dividing your existing disks into multiple partitions.
+When you require additional space on your persistent disks, resize your disks rather than repartitioning and formatting.
+
+Persistent disk performance is predictable and scales linearly with provisioned capacity until the limits for an instance's provisioned vCPUs are reached. 
+
+The following table shows disk type and machine type support for zonal persistent disks.
+
+Disk type	Supported machine types
+- pd-standard	All machine types
+- pd-balanced	All machine types
+- pd-ssd		All machine types
+
+Minimum capacity per disk	10 GB
+Maximum capacity per disk	64 TB
+Capacity increment			1 GB
+
+						standard PD		balanced PD		SSD PD
+Read IOPS per GB		0.75			6				30
+Write IOPS per GB		1.5				6				30
+Read throughput per GB	0.12			0.28			0.48
+Write throughput per GB	0.12			0.28			0.48
+Durability				99.99%			99.999%			99.999%
+
+Standard persistent disks are efficient and economical for handling sequential read/write operations, but they aren't optimized to handle high rates of random input/output operations per second (IOPS). 
+If your apps require high rates of random IOPS, use SSD. SSD persistent disks are designed for single-digit millisecond latencies. Observed latency is application specific.
+
+For boot devices, you can reduce costs by using a standard persistent disk. Small, 10 GB persistent disks can work for basic boot and package management use cases. 
+However, to ensure consistent performance for more general use of the boot device, use a balanced persistent disk as your boot disk.
+
+Each persistent disk write operation contributes to the cumulative network egress traffic for your instance. 
+This means that persistent disk write operations are capped by the network egress cap for your instance.
+
+Persistent disks have built-in redundancy to protect your data against equipment failure and to ensure data availability through datacenter maintenance events. 
+Checksums are calculated for all persistent disk operations, so we can ensure that what you read is what you wrote.
+
+Additionally, you can create snapshots of persistent disks to protect against data loss due to user error. 
+Snapshots are incremental, and take only minutes to create even if you snapshot disks that are attached to running instances.
+
+Compute Engine automatically encrypts your data before it travels outside of your instance to persistent disk storage space. 
+Each persistent disk remains encrypted either with system-defined keys or with customer-supplied keys. 
+Google distributes persistent disk data across multiple physical disks in a manner that users do not control.
+When you delete a persistent disk, Google discards the cipher keys, rendering the data irretrievable. This process is irreversible.
+
+Restrictions
+- You cannot attach a persistent disk to an instance in another project.
+- You can attach a balanced persistent disk to at most 10 VM instances in read-only mode.
+- For custom machine types or predefined machine types with a minimum of 1 vCPU, you can attach up to 128 persistent disks.
+- Each persistent disk can be up to 64 TB in size, so there is no need to manage arrays of disks to create large logical volumes. 
+- Each instance can attach only a limited amount of total persistent disk space and a limited number of individual persistent disks. 
+- Predefined machine types and custom machine types have the same persistent disk limits.
+- Most instances can have up to 128 persistent disks and up to 257 TB of total persistent disk space attached. 
+- Total persistent disk space for an instance includes the size of the boot persistent disk.
+- Shared-core machine types are limited to 16 persistent disks and 3 TB of total persistent disk space.
+- Creating logical volumes larger than 64 TB might require special consideration. For more information about larger logical volume performance see logical volume size.
+
+The following table shows the calculated cost for standard predefined machine types in the N1 machine family. 
+
+Machine type	Virtual CPUs	Memory	Price (USD)	Spot price* (USD)
+n1-standard-1	1				3.75GB	$0.0523		$0.01100
+n1-standard-2	2				7.5GB	$0.1046		$0.02210
+n1-standard-4	4				15GB	$0.2092		$0.04410
+n1-standard-8	8				30GB	$0.4184		$0.08820
+n1-standard-16	16				60GB	$0.8368		$0.17640
+n1-standard-32	32				120GB	$1.6736		$0.35280
+n1-standard-64	64				240GB	$3.3472		$0.70570
+
+Model		GPUs	GPU memory		GPU price (USD)	Spot price* (USD)
+NVIDIA T4	1 GPU	16 GB GDDR6		$0.35 per GPU	$0.11 per GPU
+NVIDIA V100	1 GPU	16 GB HBM2		$2.55 per GPU	$0.74 per GPU
+
+Accelerator-optimized (A2) VMs are optimized for massively parallelized CUDA compute workloads, such as machine learning (ML) and high performance computing (HPC).
+A2 VMs are preconfigured with a set number of NVIDIA A100 GPUs.
+The A2 machine types are billed for their attached A100 GPUs, predefined vCPU, and memory.
+
+Machine type	vCPUs	Memory	On-demand price (USD)	Spot price* (USD)	
+a2-highgpu-1g	12		85 GB	$3.753064				$1.101843	
+a2-highgpu-2g	24		170 GB	$7.506128				$2.203686
+a2-highgpu-4g	48		340 GB	$15.012256				$4.407372	
+a2-highgpu-8g	96		680 GB	$30.024512				$8.814745	
+a2-megagpu-16g	96		1360 GB	$56.708032				$16.719093	
+
+Standard, SSD, and balanced persistent disks are priced by the amount of provisioned space per disk. For these disk types, I/O operations are included in the price for provisioned space. 
+Since disk performance grows linearly with the size of your disk, consider your I/O needs when choosing the size of your disk.
+After you successfully delete a persistent disk, you are no longer charged for that disk.
+
+All snapshots that exist in your project incur monthly storage fees. 
+Whenever you create or restore a snapshot, you might also incur network fees based on the storage location of the snapshot.
+
+A snapshot incurs monthly storage charges as long as it exists in your project. 
+Persistent disk snapshots only incur charges for the total size of the snapshot. 
+For example, if you only used 2 TB of disk space on a 5 TB persistent disk, your snapshot size is charged for 2 TB, rather than the full 5 TB of provisioned disk space. 
+Compute Engine also provides incremental snapshots, which contain only the data that has changed since the previous snapshot, providing for a generally lower cost for snapshot storage. 
+When you delete a complete or incremental snapshot, some of its data may move to the next incremental snapshot in the snapshot chain. 
+This additional data increases the storage cost because you are using more space in the storage system.
+
+Note that snapshot storage charges, like disk-related charges, are prorated based on a granularity of seconds.
+
+Type						Price (monthly in USD)
+Standard provisioned space	$0.044 per GB
+SSD provisioned space		$0.187 per GB
+Balanced provisioned space	$0.110 per GB
+Snapshot storage			$0.029 per GB
+
+A persistent disk can be stored in a Compute Engine zone or region, but a snapshot is stored in either a Cloud Storage region or multi-region. 
+Note that Compute Engine regions and Cloud Storage regions have similar names. 
+Each multi-region contains multiple regions, and each region contains multiple zones. 
+If you create or restore a snapshot that is stored in a location that is different from the location of your disk, the data travels over the network between those locations and may incur network fees. Snapshots incur the same fees as Cloud Storage egress.
+
+Local SSD devices are charged for the amount of provisioned space per device for the lifetime of the instance it is attached to.
+
+Because local SSDs can only be purchased in 375 GB increments, the cost-per-month for a single device is the monthly rate multiplied by 375 GB. 
+For example, at a monthly rate of $0.080, the cost would be $30.00 per device per month.
+
+Actual data storage and usage are included in that price and there is no additional charge for local traffic between the virtual machine and the local SSD device.
+
+Type		Price (per GB per month in USD)	Spot price* (per GB per month in USD)
+Local SSD	$0.088							$0.053
+
+General network pricing information
+
+Ingress traffic
+Traffic coming in to a Google Cloud resource, such as a VM. 
+If you send traffic between two VMs, then the traffic is counted as egress traffic as it leaves one VM and counted as ingress traffic as it arrives at the other VM.
+
+Egress traffic
+Traffic leaving a Google Cloud resource, such as a VM, hosted in a Google region. 
+For egress purposes, a region is a set of buildings operated by Google in a geographic location, such as a data center campus. 
+Traffic can travel as follows:
+- Within the set of buildings at the location, which always used Google's network (intra-zone and intra-region pricing)
+- To another building operated by Google in another location, which always used Google's network (inter-region pricing)
+- To a location not operated by Google over a Cloud Interconnect connection (Cloud Interconnect pricing)
+- To a location not operated by Google not over a Cloud Interconnect connection (internet egress pricing)
+
+Traffic leaving Google's network is always internet egress or Cloud Interconnect, regardless of the geographic location of the non-Google destination.
+Egress traffic is charged based on whether the traffic uses an internal or external IP address, whether the traffic crosses zone or region boundaries within Google Cloud, whether the traffic leaves or stays inside Google Cloud, and the network tier of traffic that leaves Google's network. 
+
+When two resources communicate with each other, there are two traffic paths—one in each direction. 
+Traffic in each direction is designated as egress at the source and ingress at the destination, and each direction is priced accordingly.
+
+The Network Service Tiers Premium Tier leverages Google's premium backbone to carry traffic to and from your external users. 
+The public internet is usually only used between the user and the closest Google network ingress point.
+
+The Network Service Tiers Standard Tier leverages the public internet to carry traffic between your services and your users. 
+While using the public internet provides a lower quality of service, it is more economical than Premium Tier.
+
+Ingress pricing
+Traffic type	Price
+Ingress			No charge for ingress traffic. 
+
+However there may be a charge for resource that processes ingress traffic. Services that process ingress traffic are as follows:
+- Load balancers
+- Cloud NAT
+- Protocol forwarding
+
+VM-VM egress pricing within Google Cloud
+Traffic type > Price
+Egress to the same Google Cloud zone when using the internal IP addresses of the resources1	
+> No charge
+Egress to a different Google Cloud zone in the same Google Cloud region when using the internal IP addresses1 (per GB)	
+> $0.01
+VM-to-VM egress when both VMs are in the same Google Cloud region, regardless of zone, when using the external IP addresses (per GB)	
+> $0.01
+Egress from a Google Cloud region in the US or Canada to another Google Cloud region in the US or Canada (per GB)	
+> $0.01
+Egress between Google Cloud regions within Europe (per GB)	
+> $0.02
+
+VM-to-Google service
+Traffic type > Price
+Egress to a different Google Cloud service within the same region using an external IP address or an internal IP address, except for Memorystore for Redis, Filestore, GKE, and Cloud SQL	
+> No charge
+Egress to Memorystore for Redis, Filestore, Cloud SQL, and Google Kubernetes Engine within the same region is priced the same as VM-to-VM traffic.	
+> VM-VM egress pricing within Google Cloud
+Egress to a Google Cloud service in a different region.	
+> VM-VM egress pricing within Google Cloud
+For Cloud Storage network pricing, see Cloud Storage pricing.	
+
+Internet egress rates
+Monthly Usage	Network (Egress) (per GB in USD)
+0-1 TB			$0.12	
+1-10 TB			$0.11	
+10+ TB			$0.08
+
+External IP address pricing
+You are charged for static and ephemeral external IP addresses according to the following table.
+
+If you reserve a static external IP address and do not assign it to a resource such as a VM instance or a forwarding rule, you are charged at a higher rate than for static and ephemeral external IP addresses that are in use.
+Google Cloud considers a static external IP address as in use if it is associated with a VM instance whether the instance is running or stopped. 
+If the instance is deleted or if the IP address is dissociated from the instance, Google Cloud considers the static IP address as not in use.
+For an ephemeral IP address, Google Cloud considers the address as in use only when the associated VM instance is running. 
+When the instance is stopped or deleted, Google Cloud releases the ephemeral IP address and no longer considers it as in use.
+
+Type																Price/Hour (USD)
+Static IP address (assigned but unused)									$0.011
+Static and ephemeral IP addresses in use on standard VM instances		$0.004
+Static and ephemeral IP addresses in use on preemptible VM instances	$0.002
+Static and ephemeral IP addresses attached to forwarding rules, used by Cloud NAT, or used as a public IP for a Cloud VPN tunnel.	No charge
+
+Estimate
+Compute Engine
+1 x
+Region: Netherlands
+121.667 total hours per month
+VM class: regular
+Instance type: n1-standard-8
+USD 50.90
+Operating System / Software: Free
+GPU dies: 1 NVIDIA TESLA T4
+USD 42.58
+Estimated Component Cost: USD 93.48 per 1 month
+Persistent Disk
+Netherlands
+Zonal SSD PD: 50 GiB
+USD 9.35
+Zonal balanced PD: 30 GiB
+USD 3.30
+Snapshot storage: 100 GiB
+USD 2.90
+USD 15.55
+Internet Egress
+Source Region: Netherlands
+Premium Tier to Western Europe: 100 GiB
+USD 12.00
+Persistent Disk (Accompanying)
+1 x boot disk
+Product accompanying: Compute Engine
+Zonal balanced PD: 10 GiB
+USD 1.10
+USD 1.10
+Total Estimated Cost: USD 122.13 per 1 month
+
+Estimate
+Compute Engine
+1 x
+Region: Netherlands
+121.667 total hours per month
+VM class: preemptible
+Instance type: n1-standard-8
+USD 10.73
+Operating System / Software: Free
+GPU dies: 1 NVIDIA TESLA T4
+USD 13.38
+Estimated Component Cost: USD 24.12 per 1 month
+Persistent Disk
+Netherlands
+Zonal SSD PD: 50 GiB
+USD 9.35
+Zonal balanced PD: 30 GiB
+USD 3.30
+Snapshot storage: 100 GiB
+USD 2.90
+USD 15.55
+Internet Egress
+Source Region: Netherlands
+Premium Tier to Western Europe: 100 GiB
+USD 12.00
+Persistent Disk (Accompanying)
+1 x boot disk
+Product accompanying: Compute Engine
+Zonal balanced PD: 10 GiB
+USD 1.10
+USD 1.10
+Total Estimated Cost: USD 52.77 per 1 month
+
+Estimate
+Compute Engine
+1 x
+Region: Netherlands
+121.667 total hours per month
+VM class: regular
+Instance type: n1-standard-8
+USD 50.90
+Operating System / Software: Free
+GPU dies: 1 NVIDIA TESLA V100
+USD 310.25
+Estimated Component Cost: USD 361.15 per 1 month
+Persistent Disk
+Netherlands
+Zonal SSD PD: 50 GiB
+USD 9.35
+Zonal balanced PD: 30 GiB
+USD 3.30
+Snapshot storage: 100 GiB
+USD 2.90
+USD 15.55
+Internet Egress
+Source Region: Netherlands
+Premium Tier to Western Europe: 100 GiB
+USD 12.00
+Persistent Disk (Accompanying)
+1 x boot disk
+Product accompanying: Compute Engine
+Zonal balanced PD: 10 GiB
+USD 1.10
+USD 1.10
+Total Estimated Cost: USD 389.80 per 1 month
+
+Estimate
+Compute Engine
+1 x
+Region: Netherlands
+121.667 total hours per month
+VM class: preemptible
+Instance type: n1-standard-8
+USD 10.73
+Operating System / Software: Free
+GPU dies: 1 NVIDIA TESLA V100
+USD 90.03
+Estimated Component Cost: USD 100.77 per 1 month
+Persistent Disk
+Netherlands
+Zonal SSD PD: 50 GiB
+USD 9.35
+Zonal balanced PD: 30 GiB
+USD 3.30
+Snapshot storage: 100 GiB
+USD 2.90
+USD 15.55
+Internet Egress
+Source Region: Netherlands
+Premium Tier to Western Europe: 100 GiB
+USD 12.00
+Persistent Disk (Accompanying)
+1 x boot disk
+Product accompanying: Compute Engine
+Zonal balanced PD: 10 GiB
+USD 1.10
+USD 1.10
+Total Estimated Cost: USD 129.42 per 1 month
+
+Estimate
+Compute Engine
+1 x
+Region: Netherlands
+121.667 total hours per month
+VM class: regular
+Instance type: a2-highgpu-1g
+USD 99.04
+Operating System / Software: Free
+GPU dies: 1 NVIDIA TESLA A100
+USD 356.96
+Estimated Component Cost: USD 456.00 per 1 month
+Persistent Disk
+Netherlands
+Zonal SSD PD: 50 GiB
+USD 9.35
+Zonal balanced PD: 30 GiB
+USD 3.30
+Snapshot storage: 100 GiB
+USD 2.90
+USD 15.55
+Internet Egress
+Source Region: Netherlands
+Premium Tier to Western Europe: 100 GiB
+USD 12.00
+Persistent Disk (Accompanying)
+1 x boot disk
+Product accompanying: Compute Engine
+Zonal balanced PD: 10 GiB
+USD 1.10
+USD 1.10
+Total Estimated Cost: USD 484.65 per 1 month
+
+Estimate
+Compute Engine
+1 x
+Region: Netherlands
+121.667 total hours per month
+VM class: preemptible
+Instance type: a2-highgpu-1g
+USD 26.99
+Operating System / Software: Free
+GPU dies: 1 NVIDIA TESLA A100
+USD 107.09
+Estimated Component Cost: USD 134.08 per 1 month
+Persistent Disk
+Netherlands
+Zonal SSD PD: 50 GiB
+USD 9.35
+Zonal balanced PD: 30 GiB
+USD 3.30
+Snapshot storage: 100 GiB
+USD 2.90
+USD 15.55
+Internet Egress
+Source Region: Netherlands
+Premium Tier to Western Europe: 100 GiB
+USD 12.00
+Persistent Disk (Accompanying)
+1 x boot disk
+Product accompanying: Compute Engine
+Zonal balanced PD: 10 GiB
+USD 1.10
+USD 1.10
+Total Estimated Cost: USD 162.73 per 1 month
