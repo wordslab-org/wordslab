@@ -1,0 +1,106 @@
+pwd
+/Users/laurent
+
+mkdir vm
+cd vm
+
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/metadata.yaml
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/user-data.yaml
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-k3s-install.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-k3s-start.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-ubuntu-prepare.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-create.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-delete.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-k3s-install.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-k3s-start.sh
+curl -O https://raw.githubusercontent.com/wordslab-org/wordslab/infrastructure-design/wordslab.installer/infrastructure/scripts/linux/wordslab-vm-start.sh
+
+curl -O https://cloud-images.ubuntu.com/minimal/releases/focal/release-20220201/ubuntu-20.04-minimal-cloudimg-amd64.img
+curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s
+curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s-airgap-images-amd64.tar
+curl -O https://get.helm.sh/helm-v3.7.2-linux-amd64.tar.gz
+
+qemu-system-x86_64 --version
+QEMU emulator version 6.2.0
+Copyright (c) 2003-2021 Fabrice Bellard and the QEMU Project developers
+
+ls -al ~/.ssh
+ls: /Users/laurent/.ssh: No such file or directory
+
+ssh-keygen (3x Enter)
+cat ~/.ssh/id_rsa.pub
+vi user-data.yaml <- update ssh key
+
+>> START trace of cloud-localds script execution on ubuntu
+mktemp -d /tmp/cloud-localds.XXXXXX
+TEMP_D=/tmp/cloud-localds.23Y0E5
+cp metadata.yaml /tmp/cloud-localds.23Y0E5/meta-data
+cp user-data.yaml /tmp/cloud-localds.23Y0E5/user-data
+img=/tmp/cloud-localds.23Y0E5/seed-data
+genisoimage -output /tmp/cloud-localds.23Y0E5/seed-data -volid cidata -joliet -rock /tmp/cloud-localds.23Y0E5/user-data /tmp/cloud-localds.23Y0E5/meta-data
+cp /tmp/cloud-localds.23Y0E5/seed-data seed.img
+debug 1 'wrote seed.img with filesystem=iso9660 and diskformat=raw'
+rm -Rf /tmp/cloud-localds.23Y0E5
+=> -rw-rw-r--  1 laurent laurent     374784 févr. 20 17:51 seed.img
+>> END
+
+>> START trace of cloud-init on Ubuntu
+Reading from /var/lib/cloud/seed/nocloud/user-data
+..
+Reading from /var/lib/cloud/seed/nocloud-net/user-data
+..
+blkid -tTYPE=vfat -odevice => /dev/vda15
+blkid -tTYPE=iso9660 -odevice => /dev/vdb 
+blkid -tLABEL=CIDATA -odevice => ()
+blkid -tLABEL=cidata -odevice => /dev/vdb
+blkid tLABEL_FATBOOT=cidata -odevice => ()
+Attempting to use data from /dev/vdb
+Reading from /proc/mounts
+mount -o ro -t auto /dev/vdb /run/cloud-init/tmp/tmpj658f3gz
+Reading from /run/cloud-init/tmp/tmpj658f3gz//user-data
+Reading from /run/cloud-init/tmp/tmpj658f3gz//meta-data
+Reading from /run/cloud-init/tmp/tmpj658f3gz//vendor-data 
+Reading from /run/cloud-init/tmp/tmpj658f3gz//network-config
+umount /run/cloud-init/tmp/tmpj658f3gz
+>> END
+
+brew install cdrtools
+
+mv metadata.yaml meta-data
+mv user-data.yaml user-data
+mkisofs -output seed.img -volid cidata -joliet -rock user-data meta-data    (genisoimage on Ubuntu)
+# qemu-img convert -f raw -O raw cidata.iso seed.img
+
+vi wordslab-vm-create.sh <- remove cloud-localds line <- specifify explcit backing file format : qemu-img create -F qcow2 -b ubuntu-20.04-minimal-cloudimg-amd64.img -f qcow2 wordslab-os.img
+
+chmod u+x *.sh
+./wordslab-vm-delete.sh 
+./wordslab-vm-delete.sh: line 1: ﻿#!/bin/bash: No such file or directory
+
+vi wordslab-vm-start.sh <- accel=hvf <- $(nproc) ... $(sysctl -n hw.physicalcpu)
+./wordslab-vm-start.sh
+qemu-system-x86_64: Error: HV_ERROR
+
+vi app.entitlements
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"> <dict> <key>com.apple.security.hypervisor</key> <true/> </dict> </plist>
+
+codesign -s - --entitlements app.entitlements --force /usr/local/bin/qemu-system-x86_64
+/usr/local/bin/qemu-system-x86_64: replacing existing signature
+
+./wordslab-vm-start.sh
+qemu-system-x86_64: Error: HV_ERROR
+
+sysctl -a | grep machdep.cpu.features
+-> no VMX feature in Virtualbox
+
+vi wordslab-vm-start.sh <- remove accel=hvf to test ...
+
+./wordslab-vm-start.sh
+qemu-system-x86_64: CPU model 'host' requires KVM or HVF
+
+vi wordslab-vm-start.sh <- remove cpu line, using default qemu model
+
+./wordslab-vm-start.sh
+=> working !!
