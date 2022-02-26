@@ -20,6 +20,11 @@ curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s
 curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s-airgap-images-amd64.tar
 curl -O https://get.helm.sh/helm-v3.7.2-linux-amd64.tar.gz
 
+# ERROR : remove BOM from all downloaded files
+# vi *.yaml *.sh
+# :set nobomb
+# :wq
+
 qemu-system-x86_64 --version
 QEMU emulator version 6.2.0
 Copyright (c) 2003-2021 Fabrice Bellard and the QEMU Project developers
@@ -66,10 +71,12 @@ umount /run/cloud-init/tmp/tmpj658f3gz
 
 brew install cdrtools
 
-mv metadata.yaml meta-data
-mv user-data.yaml user-data
-mkisofs -output seed.img -volid cidata -joliet -rock user-data meta-data    (genisoimage on Ubuntu)
-# qemu-img convert -f raw -O raw cidata.iso seed.img
+mkdir tmp
+cp meta-data tmp/meta-data
+cp user-data tmp/user-data
+mkisofs -output tmp/seed-data -volid cidata -joliet -rock tmp/meta-data tmp/user-data
+cp tmp/seed-data seed.img
+rm -Rf tmp
 
 vi wordslab-vm-create.sh <- remove cloud-localds line <- specifify explcit backing file format : qemu-img create -F qcow2 -b ubuntu-20.04-minimal-cloudimg-amd64.img -f qcow2 wordslab-os.img
 
