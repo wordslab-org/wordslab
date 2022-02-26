@@ -135,3 +135,8 @@ ECDSA key fingerprint is SHA256:pPV8k35WBiIYxO+D/TFeYK5/ekKBtdNfY6TFbsDcOQs.
 Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 ...
 
+./wordslab-vm-k3s-start.sh
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+ssh -p 3022 ubuntu@0.0.0.0
+k3s kubectl get ns
