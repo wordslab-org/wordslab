@@ -181,6 +181,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "googlecloud", "googlecloud"
 	ProjectSection(SolutionItems) = preProject
 		2022_02_GPU VM config and price.txt = 2022_02_GPU VM config and price.txt
 		alternative_datacrunch.io.txt = alternative_datacrunch.io.txt
+		doc\dev\googlecloud\gcloud create account.docx = doc\dev\googlecloud\gcloud create account.docx
 		doc\dev\googlecloud\gcloud prices.txt = doc\dev\googlecloud\gcloud prices.txt
 		doc\dev\googlecloud\Google Colab architecture.pptx = doc\dev\googlecloud\Google Colab architecture.pptx
 		doc\dev\googlecloud\Google Colab setup screenshots.docx = doc\dev\googlecloud\Google Colab setup screenshots.docx
