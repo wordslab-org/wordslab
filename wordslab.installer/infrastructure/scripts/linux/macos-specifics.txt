@@ -126,4 +126,12 @@ qemu-system-x86_64 \
   -drive if=virtio,format=qcow2,file=wordslab-data.img
 
 ./wordslab-vm-start.sh
-=> working !!
+=> wait until vim-tiny install is finished
+=> cloud-init[692]: Cloud-init v. 21.4-0ubuntu1~20.04.1 finished at Sat, 26 Feb
+
+./wordslab-vm-k3s-install.sh
+The authenticity of host '[0.0.0.0]:3022 ([0.0.0.0]:3022)' can't be established.
+ECDSA key fingerprint is SHA256:pPV8k35WBiIYxO+D/TFeYK5/ekKBtdNfY6TFbsDcOQs.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+...
+
