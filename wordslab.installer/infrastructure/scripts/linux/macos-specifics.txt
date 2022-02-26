@@ -20,6 +20,11 @@ curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s
 curl -O https://github.com/k3s-io/k3s/releases/download/v1.22.5%2Bk3s2/k3s-airgap-images-amd64.tar
 curl -O https://get.helm.sh/helm-v3.7.2-linux-amd64.tar.gz
 
+# ERROR : remove BOM from all downloaded files
+# vi *.yaml *.sh
+# :set nobomb
+# :wq
+
 qemu-system-x86_64 --version
 QEMU emulator version 6.2.0
 Copyright (c) 2003-2021 Fabrice Bellard and the QEMU Project developers
@@ -66,12 +71,19 @@ umount /run/cloud-init/tmp/tmpj658f3gz
 
 brew install cdrtools
 
-mv metadata.yaml meta-data
-mv user-data.yaml user-data
-mkisofs -output seed.img -volid cidata -joliet -rock user-data meta-data    (genisoimage on Ubuntu)
-# qemu-img convert -f raw -O raw cidata.iso seed.img
+mkdir tmp
+cp meta-data tmp/meta-data
+cp user-data tmp/user-data
+mkisofs -output tmp/seed-data -volid cidata -joliet -rock tmp/meta-data tmp/user-data
+cp tmp/seed-data seed.img
+rm -Rf tmp
 
-vi wordslab-vm-create.sh <- remove cloud-localds line <- specifify explcit backing file format : qemu-img create -F qcow2 -b ubuntu-20.04-minimal-cloudimg-amd64.img -f qcow2 wordslab-os.img
+vi wordslab-vm-create.sh <- remove cloud-localds line <- specifify explcit backing file format
+#!/bin/bash
+mkisofs -output seed.img -volid cidata -joliet -rock meta-data user-data
+qemu-img create -F qcow2 -b ubuntu-20.04-minimal-cloudimg-amd64.img -f qcow2 wordslab-os.img
+qemu-img create -f qcow2 wordslab-cluster.img 10G
+qemu-img create -f qcow2 wordslab-data.img 10G
 
 chmod u+x *.sh
 ./wordslab-vm-delete.sh 
@@ -101,6 +113,30 @@ vi wordslab-vm-start.sh <- remove accel=hvf to test ...
 qemu-system-x86_64: CPU model 'host' requires KVM or HVF
 
 vi wordslab-vm-start.sh <- remove cpu line, using default qemu model
+qemu-system-x86_64 \
+  -machine type=q35 \
+  -smp $(sysctl -n hw.physicalcpu) \
+  -m 2G \
+  -nographic \
+  -device virtio-net-pci,netdev=net0 \
+  -netdev user,id=net0,hostfwd=tcp::3022-:22,hostfwd=tcp::3080-:80,hostfwd=tcp::3443-:6443 \
+  -drive if=virtio,format=qcow2,file=wordslab-os.img \
+  -drive if=virtio,format=raw,file=seed.img \
+  -drive if=virtio,format=qcow2,file=wordslab-cluster.img \
+  -drive if=virtio,format=qcow2,file=wordslab-data.img
 
 ./wordslab-vm-start.sh
-=> working !!
+=> wait until vim-tiny install is finished
+=> cloud-init[692]: Cloud-init v. 21.4-0ubuntu1~20.04.1 finished at Sat, 26 Feb
+
+./wordslab-vm-k3s-install.sh
+The authenticity of host '[0.0.0.0]:3022 ([0.0.0.0]:3022)' can't be established.
+ECDSA key fingerprint is SHA256:pPV8k35WBiIYxO+D/TFeYK5/ekKBtdNfY6TFbsDcOQs.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+...
+
+./wordslab-vm-k3s-start.sh
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+ssh -p 3022 ubuntu@0.0.0.0
+k3s kubectl get ns
