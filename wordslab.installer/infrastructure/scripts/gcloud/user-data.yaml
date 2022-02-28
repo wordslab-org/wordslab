@@ -1,0 +1,37 @@
+﻿#cloud-config
+ssh_authorized_keys:
+  - $(cat ~/.ssh/id_rsa.pub)
+device_aliases:
+  wordslab-cluster: /dev/sdb
+  wordslab-data: /dev/sdc
+disk_setup:
+  wordslab-cluster:
+    table_type: gpt
+    layout: true
+  wordslab-data:
+    table_type: gpt
+    layout: true
+fs_setup:
+- label: wordslab-cluster
+  device: wordslab-cluster.1
+  filesystem: ext4
+- label: wordslab-data
+  device: wordslab-data.1
+  filesystem: ext4
+bootcmd:
+- mkdir -p /mnt/wordslab-cluster
+- mkdir -p /mnt/wordslab-data
+- mkdir -p /etc/rancher
+- mkdir -p /var/lib
+- mkdir -p /var/log/rancher
+- mkdir -p /var/volume/rancher
+mounts:
+- ["wordslab-cluster.1", "/mnt/wordslab-cluster", "ext4", "defaults", "0", "2"]
+- ["wordslab-data.1", "/mnt/wordslab-data", "ext4", "defaults", "0", "2"]
+packages:
+- vim-tiny
+runcmd:
+- mkdir -p /mnt/wordslab-cluster/etc/rancher/k3s
+- mkdir -p /mnt/wordslab-cluster/var/lib/rancher/k3s
+- mkdir -p /mnt/wordslab-cluster/var/log/rancher/k3s
+- mkdir -p /mnt/wordslab-data/var/volume/rancher/k3s
