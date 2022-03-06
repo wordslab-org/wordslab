@@ -31,14 +31,14 @@ jobs:
     - name: Build wordslab.manager
       run: |
         cd wordslab.manager
-        dotnet build --configuration Release --no-restore
+        dotnet build --no-restore -c Release
               
     - name: Publish wordslab manager executable for all operating systems
       run: |
         cd wordslab.manager
-        dotnet publish --no-restore -c Release -p:PublishProfile=windows
-        dotnet publish --no-restore -c Release -p:PublishProfile=linux
-        dotnet publish --no-restore -c Release -p:PublishProfile=macos
+        dotnet publish -c Release -p:PublishProfile=windows
+        dotnet publish -c Release -p:PublishProfile=linux
+        dotnet publish -c Release -p:PublishProfile=macos
 
     - name: Create a zip archive for Windows
       uses: thedoctor0/zip-release@master
