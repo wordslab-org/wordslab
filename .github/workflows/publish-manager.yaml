@@ -2,7 +2,6 @@ name: Create wordslab manager release
 
 on:
   push:
-    branches: [infrastructure-design]
     tags:
       - "v*"
 
