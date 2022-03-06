@@ -226,6 +226,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "quemu", "quemu", "{AF818253
 		doc\dev\qemu\qemu-ubuntu cloud images.txt = doc\dev\qemu\qemu-ubuntu cloud images.txt
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wordslab.manager", "wordslab.manager\wordslab.manager.csproj", "{E1040DF1-B559-497C-A8C3-1C428007DC5E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -240,6 +242,10 @@ Global
 		{910C8BE9-8FC7-400D-B373-6898CB369636}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{910C8BE9-8FC7-400D-B373-6898CB369636}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{910C8BE9-8FC7-400D-B373-6898CB369636}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,1 @@
+﻿return wordslab.manager.ManagerConsoleApp.Run(args);
