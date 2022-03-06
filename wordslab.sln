@@ -226,7 +226,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "quemu", "quemu", "{AF818253
 		doc\dev\qemu\qemu-ubuntu cloud images.txt = doc\dev\qemu\qemu-ubuntu cloud images.txt
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wordslab.manager", "wordslab.manager\wordslab.manager.csproj", "{E1040DF1-B559-497C-A8C3-1C428007DC5E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "wordslab.manager", "wordslab.manager\wordslab.manager.csproj", "{E1040DF1-B559-497C-A8C3-1C428007DC5E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{B14B74C3-9090-4594-8E47-5AAA8B7C0037}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{6C35BFB9-FE52-4BE3-9050-45A7827AF543}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\publish-manager.yaml = .github\workflows\publish-manager.yaml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -283,6 +290,8 @@ Global
 		{44EADA35-9F98-4167-A21D-DAF189C52A2F} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
 		{32CE5929-ED20-429A-A96C-F2EEFD512116} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
 		{AF818253-E38A-420C-8310-973F61C2A934} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{B14B74C3-9090-4594-8E47-5AAA8B7C0037} = {5FBE12BD-843F-4355-ABFB-554A34CA7230}
+		{6C35BFB9-FE52-4BE3-9050-45A7827AF543} = {B14B74C3-9090-4594-8E47-5AAA8B7C0037}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1E574D49-0F7D-4070-9AE4-088FCA10348B}

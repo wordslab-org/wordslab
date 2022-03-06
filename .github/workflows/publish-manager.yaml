@@ -1,0 +1,71 @@
+name: Create wordslab manager release
+
+on:
+  push:
+    branches: [infrastructure-design]
+    tags:
+      - "v*"
+
+env:
+  DOTNET_VERSION: '6.0.200' # The .NET SDK version to use
+
+jobs:
+  publish:
+    name: Build and publish new wordslab manager release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out wordslab repository
+      uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install wordslab.manager dependencies
+      run: |
+        cd wordslab.manager
+        dotnet restore
+      
+    - name: Build wordslab.manager
+      run: |
+        cd wordslab.manager
+        dotnet build --configuration Release --no-restore
+              
+    - name: Publish wordslab manager executable for all operating systems
+      run: |
+        cd wordslab.manager
+        dotnet publish -p:PublishProfile=windows
+        dotnet publish -p:PublishProfile=linux
+        dotnet publish -p:PublishProfile=macos
+
+    - name: Create a zip archive for Windows
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        directory: wordslab.manager/bin/Release/net6.0/publish/windows/
+        filename: 'wordslab-win-x64.zip'
+
+    - name: Create a zip archive for Linux
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        directory: wordslab.manager/bin/Release/net6.0/publish/linux/
+        filename: 'wordslab-linux-x64.zip'
+
+    - name: Create a zip archive for macOS
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        directory: wordslab.manager/bin/Release/net6.0/publish/macos/
+        filename: 'wordslab-osx-x64.zip'
+
+    - name: Create new release
+      uses: marvinpinto/action-automatic-releases@v1.2.1      
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        files: |
+          wordslab-win-x64.zip
+          wordslab-linux-x64.zip
+          wordslab-osx-x64.zip
