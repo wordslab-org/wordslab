@@ -46,19 +46,13 @@ jobs:
         directory: wordslab.manager/bin/Release/net6.0/win-x64/publish/
         filename: 'wordslab-win-x64.zip'
 
-    - name: Create a zip archive for Linux
-      uses: thedoctor0/zip-release@master
-      with:
-        type: 'zip'
-        directory: wordslab.manager/bin/Release/net6.0/linux-x64/publish/
-        filename: 'wordslab-linux-x64.zip'
+    - name: Create a tar.gz archive for Linux
+      run: |
+        tar -C wordslab.manager/bin/Release/net6.0/linux-x64/publish/ -zcvf wordslab-linux-x64.tar.gz .
 
-    - name: Create a zip archive for macOS
-      uses: thedoctor0/zip-release@master
-      with:
-        type: 'zip'
-        directory: wordslab.manager/bin/Release/net6.0/osx-x64/publish/
-        filename: 'wordslab-osx-x64.zip'
+    - name: Create a tar.gz archive for macOS
+      run: |
+        tar -C wordslab.manager/bin/Release/net6.0/osx-x64/publish/ -zcvf wordslab-osx-x64.tar.gz .
 
     - name: Create new release
       uses: marvinpinto/action-automatic-releases@v1.2.1      
@@ -66,5 +60,5 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         files: |
           wordslab.manager/bin/Release/net6.0/win-x64/publish/wordslab-win-x64.zip
-          wordslab.manager/bin/Release/net6.0/linux-x64/publish/wordslab-linux-x64.zip
-          wordslab.manager/bin/Release/net6.0/osx-x64/publish/wordslab-osx-x64.zip
+          wordslab.manager/bin/Release/net6.0/linux-x64/publish/wordslab-linux-x64.tar.gz
+          wordslab.manager/bin/Release/net6.0/osx-x64/publish/wordslab-osx-x64.tar.gz
