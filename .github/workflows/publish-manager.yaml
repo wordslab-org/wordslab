@@ -48,11 +48,13 @@ jobs:
 
     - name: Create a tar.gz archive for Linux
       run: |
-        tar -C wordslab.manager/bin/Release/net6.0/linux-x64/publish/ -zcvf wordslab-linux-x64.tar.gz .
+        cd wordslab.manager/bin/Release/net6.0/linux-x64/publish/
+        tar -zcvf wordslab-linux-x64.tar.gz *
 
     - name: Create a tar.gz archive for macOS
       run: |
-        tar -C wordslab.manager/bin/Release/net6.0/osx-x64/publish/ -zcvf wordslab-osx-x64.tar.gz .
+        cd wordslab.manager/bin/Release/net6.0/osx-x64/publish/
+        tar -zcvf wordslab-osx-x64.tar.gz *
 
     - name: Create new release
       uses: marvinpinto/action-automatic-releases@v1.2.1      
