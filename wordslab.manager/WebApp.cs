@@ -1,31 +1,39 @@
+namespace wordslab.manager; 
+
 using Microsoft.AspNetCore.Components.Web;
-using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.os;
 
-namespace wordslab.manager;
-
-public static class ManagerWebApp
+public static class WebApp
 {
     public const int DEFAULT_PORT = 3088;
 
     // This attribute is a workaround to fix a bug in Blazor server when publishing with assembly trimming
     // https://github.com/dotnet/aspnetcore/issues/37143#issuecomment-931726256
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeadOutlet))]
-    public static void Run(int? port, string[] args)
+    public static void Run(WebApplicationBuilder builder, int? port, string[] args)
     {
-        Console.WriteLine($"wordslab manager v{ManagerConsoleApp.Version}");
+        Console.WriteLine($"wordslab manager v{ConsoleApp.Version}");
         Console.WriteLine();
 
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Add services to the container.
+        // Register ASP.NET services for the web application
+        
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
 
+        // Initialize the web application host
+
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
+        // app properties:
+        // - IConfiguration             Configuration   Access the application configuration keys
+        // - IHostEnvironment           Environment     Get ApplicationName and EnvironmentName
+        // - IHostApplicationLifetime   Lifetime	    Run custom code on application events via: ApplicationStarted / ApplicationStopping / ApplicationStopped	
+        // - ILogger                    Logger	        Default logger for the application via: LogInformation(EventId, String, Object[])
+        // - IServiceProvider           Services	    Get registered dependency via: GetService(Type)
+
+        // Configure the ASP.NET request middleware
+
         if (!app.Environment.IsDevelopment())
         {
             app.UseExceptionHandler("/Error");
@@ -44,7 +52,7 @@ public static class ManagerWebApp
         Console.WriteLine();
 
         // Open browser
-        if (!builder.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment())
         {
             try
             {
