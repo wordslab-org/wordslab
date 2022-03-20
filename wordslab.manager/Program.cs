@@ -20,7 +20,7 @@ builder.Services.AddSingleton<StorageManager>(storageManager);
 // Configure logging to a local file with a daily rotation
 // See: https://github.com/serilog/serilog-aspnetcore and https://github.com/serilog/serilog-sinks-file
 
-var logPath = Path.Combine(storageManager.LogsDirectory.FullName, "wordslab.log");
+var logPath = Path.Combine(storageManager.LogsDirectory.FullName, "wordslab-.log");
 Log.Logger = new LoggerConfiguration().Enrich.FromLogContext().WriteTo.File(logPath, rollingInterval: RollingInterval.Day).CreateLogger();
 builder.WebHost.UseSerilog();
 
@@ -33,8 +33,10 @@ try
 
     // Create the database if it doesn't exist
 
-    using var hostServiceProvider = builder.Services.BuildServiceProvider();
-    ConfigStore.CreateDbIfNotExists(hostServiceProvider);
+    using (var hostServiceProvider = builder.Services.BuildServiceProvider())
+    {
+        ConfigStore.CreateDbIfNotExists(hostServiceProvider);
+    }
 
     // Start a console application (which may then start a web application in ManagerCommand)
     return wordslab.manager.ConsoleApp.Run(builder, args);

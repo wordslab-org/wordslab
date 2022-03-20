@@ -1,1 +1,2 @@
-https://github.com/myspaghetti/macos-virtualbox/blob/master/macos-guest-virtualbox.sh
+Linux: https://github.com/foxlet/macOS-Simple-KVM
+Windows: https://github.com/myspaghetti/macos-virtualbox/blob/master/macos-guest-virtualbox.sh

@@ -235,6 +235,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\publish-manager.yaml = .github\workflows\publish-manager.yaml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wordslab.manager.test", "wordslab.manager.test\wordslab.manager.test.csproj", "{3C0CBDFC-4B93-4D35-8D7C-FF848CA29A24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -253,6 +255,10 @@ Global
 		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1040DF1-B559-497C-A8C3-1C428007DC5E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C0CBDFC-4B93-4D35-8D7C-FF848CA29A24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C0CBDFC-4B93-4D35-8D7C-FF848CA29A24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C0CBDFC-4B93-4D35-8D7C-FF848CA29A24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C0CBDFC-4B93-4D35-8D7C-FF848CA29A24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

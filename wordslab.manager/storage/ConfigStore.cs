@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 
 namespace wordslab.manager.storage
 {
@@ -28,6 +29,8 @@ namespace wordslab.manager.storage
             SaveChanges();
         }
 
+        // EF Core is not compatible with assembly trimming by default
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All,  typeof(DateOnly))]
         public static void CreateDbIfNotExists(IServiceProvider hostServiceProvider)
         {
             using (var scope = hostServiceProvider.CreateScope())
