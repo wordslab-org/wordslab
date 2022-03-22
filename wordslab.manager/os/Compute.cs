@@ -38,11 +38,6 @@ namespace wordslab.manager.os
             public UInt32 MaxClockSpeedMhz { get; set; }
 
             /// <summary>
-            /// Size of the Level 2 processor cache. A Level 2 cache is an external memory area that has a faster access time than the main RAM memory.
-            /// </summary>
-            public UInt32 L2CacheSizeKB { get; set; }
-
-            /// <summary>
             /// Size of the Level 3 processor cache. A Level 3 cache is an external memory area that has a faster access time than the main RAM memory.
             /// </summary>
             public UInt32 L3CacheSizeKB { get; set; }
@@ -134,7 +129,7 @@ namespace wordslab.manager.os
             {
                 // https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/win32-processor
 
-                string query = "SELECT Manufacturer, Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed, L2CacheSize, L3CacheSize FROM Win32_Processor";
+                string query = "SELECT Manufacturer, Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed, L3CacheSize FROM Win32_Processor";
                 using ManagementObjectSearcher mos = new ManagementObjectSearcher(_managementScope, query, _enumerationOptions);
                 using var mociter = mos.Get().GetEnumerator();
                 mociter.MoveNext();
@@ -146,7 +141,6 @@ namespace wordslab.manager.os
                     NumberOfCores = GetPropertyValue<uint>(mo["NumberOfCores"]),
                     NumberOfLogicalProcessors = GetPropertyValue<uint>(mo["NumberOfLogicalProcessors"]),
                     MaxClockSpeedMhz = GetPropertyValue<uint>(mo["MaxClockSpeed"]),
-                    L2CacheSizeKB = GetPropertyValue<uint>(mo["L2CacheSize"]),
                     L3CacheSizeKB = GetPropertyValue<uint>(mo["L3CacheSize"]),                                        
                     FeatureFlags = GetFeatureFlagsFromCpuId()
                 };
@@ -162,6 +156,7 @@ namespace wordslab.manager.os
                 Regex cacheSizeRegex = new Regex(@"^cache size\s+:\s+(.+)\s+KB");
                 Regex physicalCoresRegex = new Regex(@"^cpu cores\s+:\s+(.+)");
                 Regex logicalCoresRegex = new Regex(@"^siblings\s+:\s+(.+)");
+                Regex flagsRegex = new Regex(@"^flags\s+:\s+(.+)");
 
                 CPUInfo cpu = new CPUInfo();
                 foreach (string line in lines)
@@ -204,8 +199,6 @@ namespace wordslab.manager.os
                         continue;
                     }
 
-                    // TO DO : missing L2 cache size 
-
                     match = cacheSizeRegex.Match(line);
                     if (match.Success && match.Groups.Count > 1)
                     {
@@ -214,66 +207,60 @@ namespace wordslab.manager.os
                         continue;
                     }
 
-                    // TO DO : missing ProcessorId 
+                    match = flagsRegex.Match(line);
+                    if (match.Success && match.Groups.Count > 1)
+                    {
+                        cpu.FeatureFlags = match.Groups[1].Value;
+                        continue;
+                    }                    
                 }
+                try
+                {
+                    string maxfreq = null;
+                    var outputParser = Command.Output.GetValue(@"CPU max MHz:\s+(?<maxfreq>\d+)", s => maxfreq = s);
+                    Command.Run("lscpu", outputHandler: outputParser.Run);
+                    if (!String.IsNullOrEmpty(maxfreq))
+                    {
+                        cpu.MaxClockSpeedMhz = UInt32.Parse(maxfreq);
+                    }
+
+                }
+                catch (Exception) { }
                 return cpu;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 CPUInfo cpu = new CPUInfo();
 
-                string processOutput = null;
-                Command.Run("sysctl", "-n machdep.cpu.brand_string", outputHandler: output => processOutput=output);
-                
-                // TO DO : missing Manufacturer
-                
-                cpu.ModelName = processOutput;
+                var newLineChars = Environment.NewLine.ToCharArray();
 
-                Command.Run("sysctl", "-n hw.physicalcpu", outputHandler: output => processOutput = output);
-                if (uint.TryParse(processOutput, out uint numberOfCores))
+                string value = null;
+                Command.Run("sysctl", "-n machdep.cpu.vendor", outputHandler: output => value=output);
+                cpu.Manufacturer = value.TrimEnd(newLineChars);
+
+                Command.Run("sysctl", "-n machdep.cpu.brand_string", outputHandler: output => value=output);               
+                cpu.ModelName = value.TrimEnd(newLineChars);
+
+                Command.Run("sysctl", "-n hw.physicalcpu", outputHandler: output => value = output);
+                if (uint.TryParse(value, out uint numberOfCores))
                     cpu.NumberOfCores = numberOfCores;
 
-                Command.Run("sysctl", "-n hw.logicalcpu", outputHandler: output => processOutput = output);
-                if (uint.TryParse(processOutput, out uint numberOfLogicalProcessors))
+                Command.Run("sysctl", "-n hw.logicalcpu", outputHandler: output => value = output);
+                if (uint.TryParse(value, out uint numberOfLogicalProcessors))
                     cpu.NumberOfLogicalProcessors = numberOfLogicalProcessors;
 
-                string[] info = processOutput.Split('@');
-                if (info.Length > 1)
-                {
-                    string speedString = info[1].Trim();
-                    uint speed = 0;
+                Command.Run("sysctl", "-n hw.cpufrequency", outputHandler: output => value = output);
+                if (ulong.TryParse(value, out ulong maxClockSpeedHz))
+                    cpu.MaxClockSpeedMhz = (uint)(maxClockSpeedHz / 1000000);
 
-                    if (speedString.EndsWith("GHz"))
-                    {
-                        string number = speedString.Replace("GHz", string.Empty).Trim();
-                        if (uint.TryParse(number, out speed))
-                            speed *= 1000;
-                    }
-                    else if (speedString.EndsWith("KHz"))
-                    {
-                        string number = speedString.Replace("KHz", string.Empty).Trim();
-                        if (uint.TryParse(number, out speed))
-                            speed /= 1000;
-                    }
-                    else if (speedString.EndsWith("MHz"))
-                    {
-                        string number = speedString.Replace("MHz", string.Empty).Trim();
-                        uint.TryParse(number, out speed);
-                    }
+                Command.Run("sysctl", "-n hw.l3cachesize", outputHandler: output => value = output);
+                if (uint.TryParse(value, out uint L3CacheSize))
+                    cpu.L3CacheSizeKB = L3CacheSize / 1024;
 
-                    cpu.ModelName = info[0];
-                    cpu.MaxClockSpeedMhz = speed;
-                }
-
-                Command.Run("sysctl", "-n hw.l2cachesize", outputHandler: output => processOutput = output);
-                if (uint.TryParse(processOutput, out uint L2CacheSize))
-                    cpu.L2CacheSizeKB = L2CacheSize;
-
-                Command.Run("sysctl", "-n hw.l3cachesize", outputHandler: output => processOutput = output);
-                if (uint.TryParse(processOutput, out uint L3CacheSize))
-                    cpu.L3CacheSizeKB = L3CacheSize;
-
-                // TO DO : missing ProcessorId
+                Command.Run("sysctl", "-n machdep.cpu.features", outputHandler: output => value = output);
+                cpu.FeatureFlags = value.ToLower().TrimEnd(newLineChars);
+                Command.Run("sysctl", "-n machdep.cpu.extfeatures", outputHandler: output => value = output);
+                cpu.FeatureFlags += " " + value.ToLower().TrimEnd(newLineChars);
 
                 return cpu;
             }

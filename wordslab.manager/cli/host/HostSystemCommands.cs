@@ -18,9 +18,9 @@ namespace wordslab.manager.cli.host
             AnsiConsole.WriteLine($"- model name         : {cpu.ModelName}");
             AnsiConsole.WriteLine($"- number of cores    : {cpu.NumberOfCores}");
             AnsiConsole.WriteLine($"- logical processors : {cpu.NumberOfLogicalProcessors}");
-            AnsiConsole.WriteLine($"- clock speed        : {cpu.MaxClockSpeedMhz} Mhz");
-            AnsiConsole.WriteLine($"- L2 cache size      : {cpu.L2CacheSizeKB} KB");
+            AnsiConsole.WriteLine($"- max clock speed    : {cpu.MaxClockSpeedMhz} Mhz");
             AnsiConsole.WriteLine($"- L3 cache size      : {cpu.L3CacheSizeKB} KB");
+            AnsiConsole.WriteLine($"- feature flags      : {cpu.FeatureFlags}");
             AnsiConsole.WriteLine();
 
             return 0;
