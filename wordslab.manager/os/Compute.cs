@@ -1,5 +1,4 @@
-﻿using System.Management;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,98 +51,27 @@ namespace wordslab.manager.os
             /// </summary>
             public string FeatureFlags { get; set; } = string.Empty;
         }
-
-        // Utility methods for Windows Management Infrastructure
-
-        private static string _managementScope = "root\\cimv2";
-        private static System.Management.EnumerationOptions _enumerationOptions = new System.Management.EnumerationOptions() { ReturnImmediately = true, Rewindable = false, Timeout = System.Management.EnumerationOptions.InfiniteTimeout };
-
-        private static T GetPropertyValue<T>(object obj) where T : struct
-        {
-            return (obj == null) ? default(T) : (T)obj;
-        }
-        private static string GetPropertyString(object obj)
-        {
-            return (obj is string str) ? str : string.Empty;
-        }
-
-        // https://en.wikipedia.org/wiki/CPUID
-        private static string GetFeatureFlagsFromCpuId()
-        {
-            StringBuilder sb = new StringBuilder();
-
-            if (RuntimeInformation.OSArchitecture == Architecture.X64)
-            {
-                (int eax1, int ebx1, int ecx1, int edx1) = X86Base.CpuId(0x00000001, 0x00000000);
-                (int eax7, int ebx7, int ecx7, int edx7) = X86Base.CpuId(0x00000007, 0x00000000);
-                (int eax8, int ebx8, int ecx8, int edx8) = X86Base.CpuId(unchecked((int)0x80000001), 0x00000000);
                 
-                for (byte pos = 0; pos < 32; pos++)
-                {
-                    if ((edx1 & (1 << pos)) != 0)
-                    {
-                        sb.Append(CpuIdFlags.edx1Feature[pos]);
-                        sb.Append(' ');
-                    }
-                }
-                for (byte pos = 11; pos < 32; pos++)
-                {
-                    if ((edx8 & (1 << pos)) != 0)
-                    {
-                        sb.Append(CpuIdFlags.edx8Feature[pos]);
-                        sb.Append(' ');
-                    }
-                }
-                for (byte pos = 0; pos < 32; pos++)
-                {
-                    if ((ecx1 & (1 << pos)) != 0)
-                    {
-                        sb.Append(CpuIdFlags.ecx1Feature[pos]);
-                        sb.Append(' ');
-                    }
-                }
-                for (byte pos = 0; pos < 32; pos++)
-                {
-                    if ((ecx8 & (1 << pos)) != 0)
-                    {
-                        sb.Append(CpuIdFlags.ecx8Feature[pos]);
-                        sb.Append(' ');
-                    }
-                }
-                for (byte pos = 0; pos < 32; pos++)
-                {
-                    if ((ebx7 & (1 << pos)) != 0)
-                    {
-                        sb.Append(CpuIdFlags.ebx7Feature[pos]);
-                        sb.Append(' ');
-                    }
-                }
-            }
-
-            return sb.ToString();
-        }
-
         public static CPUInfo GetCPUInfo()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                // https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/win32-processor
+                CPUInfo cpu = new CPUInfo();
 
-                string query = "SELECT Manufacturer, Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed, L3CacheSize FROM Win32_Processor";
-                using ManagementObjectSearcher mos = new ManagementObjectSearcher(_managementScope, query, _enumerationOptions);
-                using var mociter = mos.Get().GetEnumerator();
-                mociter.MoveNext();
-                ManagementObject mo = (ManagementObject)mociter.Current;
-                CPUInfo cpu = new CPUInfo
-                {
-                    Manufacturer = GetPropertyString(mo["Manufacturer"]),
-                    ModelName = GetPropertyString(mo["Name"]),
-                    NumberOfCores = GetPropertyValue<uint>(mo["NumberOfCores"]),
-                    NumberOfLogicalProcessors = GetPropertyValue<uint>(mo["NumberOfLogicalProcessors"]),
-                    MaxClockSpeedMhz = GetPropertyValue<uint>(mo["MaxClockSpeed"]),
-                    L3CacheSizeKB = GetPropertyValue<uint>(mo["L3CacheSize"]),                                        
-                    FeatureFlags = GetFeatureFlagsFromCpuId()
-                };
+                // https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/win32-processor
+                string powerShellQuery = "Get-WmiObject -Class Win32_Processor | Select-Object -Property Manufacturer,Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed,L3CacheSize";
+
+                var outputParser = Command.Output.GetValue(@"Manufacturer\s*:\s+(.*)\s*$", value => cpu.Manufacturer = value)
+                                                 .GetValue(@"Name\s*:\s+(.*)\s*$", value => cpu.ModelName = value)
+                                                 .GetValue(@"NumberOfCores\s*:\s+(.*)\s*$", value => cpu.NumberOfCores = uint.Parse(value))
+                                                 .GetValue(@"NumberOfLogicalProcessors\s*:\s+(.*)\s*$", value => cpu.NumberOfLogicalProcessors = uint.Parse(value))
+                                                 .GetValue(@"MaxClockSpeed\s*:\s+(.*)\s*$", value => cpu.MaxClockSpeedMhz = uint.Parse(value))
+                                                 .GetValue(@"L3CacheSize\s*:\s+(.*)\s*$", value => cpu.L3CacheSizeKB = uint.Parse(value));
+
+                Command.Run("powershell.exe", powerShellQuery, outputHandler:outputParser.Run);
+
+                cpu.FeatureFlags = GetFeatureFlagsFromCpuId();
+
                 return cpu;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -270,6 +198,62 @@ namespace wordslab.manager.os
             }
         }
 
+        // https://en.wikipedia.org/wiki/CPUID
+        private static string GetFeatureFlagsFromCpuId()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            if (RuntimeInformation.OSArchitecture == Architecture.X64)
+            {
+                (int eax1, int ebx1, int ecx1, int edx1) = X86Base.CpuId(0x00000001, 0x00000000);
+                (int eax7, int ebx7, int ecx7, int edx7) = X86Base.CpuId(0x00000007, 0x00000000);
+                (int eax8, int ebx8, int ecx8, int edx8) = X86Base.CpuId(unchecked((int)0x80000001), 0x00000000);
+
+                for (byte pos = 0; pos < 32; pos++)
+                {
+                    if ((edx1 & (1 << pos)) != 0)
+                    {
+                        sb.Append(CpuIdFlags.edx1Feature[pos]);
+                        sb.Append(' ');
+                    }
+                }
+                for (byte pos = 11; pos < 32; pos++)
+                {
+                    if ((edx8 & (1 << pos)) != 0)
+                    {
+                        sb.Append(CpuIdFlags.edx8Feature[pos]);
+                        sb.Append(' ');
+                    }
+                }
+                for (byte pos = 0; pos < 32; pos++)
+                {
+                    if ((ecx1 & (1 << pos)) != 0)
+                    {
+                        sb.Append(CpuIdFlags.ecx1Feature[pos]);
+                        sb.Append(' ');
+                    }
+                }
+                for (byte pos = 0; pos < 32; pos++)
+                {
+                    if ((ecx8 & (1 << pos)) != 0)
+                    {
+                        sb.Append(CpuIdFlags.ecx8Feature[pos]);
+                        sb.Append(' ');
+                    }
+                }
+                for (byte pos = 0; pos < 32; pos++)
+                {
+                    if ((ebx7 & (1 << pos)) != 0)
+                    {
+                        sb.Append(CpuIdFlags.ebx7Feature[pos]);
+                        sb.Append(' ');
+                    }
+                }
+            }
+
+            return sb.ToString();
+        }
+
         /// <summary>
         /// % Processor Time is the percentage of elapsed time that the processor spends to execute a non-Idle thread. 
         /// It is calculated by measuring the percentage of time that the processor spends executing the idle thread and then subtracting that value from 100%. 
@@ -279,18 +263,16 @@ namespace wordslab.manager.os
         /// On todays fast processors, % Processor Time can therefore underestimate the processor utilization as the processor may be spending a lot of time servicing threads between the system clock sampling interval. 
         /// Workload based timer applications are one example of applications which are more likely to be measured inaccurately as timers are signaled just after the sample is taken.
         /// </summary>
-        public static int GetPercentCPUTime() 
+        public static byte GetPercentCPUTime() 
         {
-            int percentProcessorTime = 0;
+            byte percentProcessorTime = 0;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                string QueryString = "SELECT PercentProcessorTime FROM Win32_PerfFormattedData_PerfOS_Processor WHERE Name = '_Total'";
-                using ManagementObjectSearcher mos = new ManagementObjectSearcher(_managementScope, QueryString, _enumerationOptions);
-                using var mociter = mos.Get().GetEnumerator();
-                mociter.MoveNext();
-                ManagementObject mo = (ManagementObject)mociter.Current;
-                percentProcessorTime = (int)GetPropertyValue<ulong>(mo["PercentProcessorTime"]);
+                string powerShellQuery = "Get-WmiObject -Class Win32_PerfFormattedData_PerfOS_Processor | Where-Object -Property Name -EQ _Total | Select-Object -Property PercentProcessorTime";
                 
+                var outputParser = Command.Output.GetValue(@"(\d+)", value => percentProcessorTime = byte.Parse(value));
+                
+                Command.Run("powershell.exe", powerShellQuery, outputHandler: outputParser.Run);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -325,12 +307,21 @@ namespace wordslab.manager.os
                     // Calc percentage 
                     ulong cpuUsed = cpuDelta - cpuIdle;
 
-                    percentProcessorTime = (int)(100 * cpuUsed / cpuDelta);
+                    percentProcessorTime = (byte)(100 * cpuUsed / cpuDelta);
                 }
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                throw new InvalidOperationException($"Operating system {RuntimeInformation.OSDescription} not supported");
+                var results = new List<object>();
+                var outputParser = Command.Output.GetList(null, @"CPU\s+usage:\s+(?<user>[\d\.]+)%\s+user,\s+(?<sys>[\d\.]+)%\s+sys", 
+                                                                dict => float.Parse(dict["user"]) + float.Parse(dict["sys"]), results);
+
+                Command.Run("top","-l 2", outputHandler:outputParser.Run);
+
+                if (results.Count > 1)
+                {
+                    percentProcessorTime = Convert.ToByte(results[1]);
+                }
             }
             else
             {
