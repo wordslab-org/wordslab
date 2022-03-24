@@ -27,12 +27,12 @@ namespace wordslab.manager.os
 
         public static bool IsVirtualizationEnabled()
         {
-            throw new NotImplementedException();
+            return false;
         }
 
         public static bool IsKernelBasedHypervisorAvailable()
         {
-            throw new NotImplementedException();
+            return false;
         }
     }
 }

@@ -8,7 +8,7 @@ namespace wordslab.manager.cli
     {
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
-            AnsiConsole.WriteLine($"wordslab manager version: [bold yellow]{ConsoleApp.Version}[/]");
+            AnsiConsole.MarkupLine($"wordslab manager version: [bold yellow]{ConsoleApp.Version}[/]");
             AnsiConsole.WriteLine();
             AnsiConsole.WriteLine("Documentation: https://www.wordslab.org/");
             AnsiConsole.WriteLine($"Release notes: https://github.com/wordslab-org/wordslab/releases/tag/v{ConsoleApp.Version}");

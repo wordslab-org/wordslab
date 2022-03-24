@@ -402,6 +402,48 @@ namespace wordslab.manager.os
 
             return gpus.Cast<GPUInfo>().ToList();
         }
+
+        public class GPUUsage
+        {
+            public GPUUsage(int index, byte percentGPUTime, byte percentMemoryTime, uint memoryUsedMB, uint memoryFreeMB)
+            {
+                Index = index;
+                PercentGPUTime = percentGPUTime;
+                PercentMemoryTime = percentMemoryTime;
+                MemoryUsedMB = memoryUsedMB;
+                MemoryFreeMB = memoryFreeMB;
+            }
+
+            public int Index { get; set; }
+
+            public byte PercentGPUTime { get; set; }
+            public byte PercentMemoryTime { get; set; }
+
+            public uint MemoryUsedMB { get; set; }
+            public uint MemoryFreeMB { get; set; }
+        }
+    
+        public static List<GPUUsage> GetNvidiaGPUsUsage()
+        {
+            // nvidia-smi 
+            // index, utilization.gpu [%], utilization.memory [%], memory.used [MiB], memory.free [MiB]
+            // 0, 2 %, 0 %, 0 MiB, 4021 MiB
+
+            var gpuStats = new List<object>();
+            var outputParser = Command.Output.GetList(null,
+                @"(?<index>\d+),\s*(?<utilgpu>\d+)\s*%,\s*(?<utilmem>\d+)\s*%,\s*(?<memused>\d+)\s*MiB,\s*(?<memfree>\d+)\s*MiB",
+                dict => new GPUUsage(Int32.Parse(dict["index"]), byte.Parse(dict["utilgpu"]), byte.Parse(dict["utilmem"]), uint.Parse(dict["memused"]), uint.Parse(dict["memfree"])),
+                gpuStats);
+
+            try
+            {
+                Command.Run("nvidia-smi", "--query-gpu=index,utilization.gpu,utilization.memory,memory.used,memory.free --format=csv,noheader", outputHandler: outputParser.Run);
+            }
+            catch (Exception)
+            { /* no Nvidia GPU available */ }
+
+            return gpuStats.Cast<GPUUsage>().ToList();
+        }
     }
 
     static class CpuIdFlags

@@ -9,16 +9,21 @@ namespace wordslab.manager.os
         public class MemoryInfo
         {
             /// <summary>
-            /// The amount of actual physical memory, in bytes.
+            /// The amount of actual physical memory.
             /// </summary>
-            public ulong TotalPhysical { get; set; }
+            public ulong TotalPhysicalMB { get; set; }
 
             /// <summary>
-            /// The amount of physical memory currently available, in bytes. 
+            /// The amount of physical memory currently available. 
             /// This is the amount of physical memory that can be immediately reused without having to write its contents to disk first. 
             /// It is the sum of the size of the standby, free, and zero lists.
             /// </summary>
-            public ulong AvailablePhysical { get; set; }
+            public ulong FreePhysicalMB { get; set; }
+
+            /// <summary>
+            /// The amount of physical memory currently used by running processes. 
+            /// </summary>
+            public ulong UsedPhysicalMB { get { return TotalPhysicalMB - FreePhysicalMB; } }
         }
 
         // Native call for Windows 
@@ -65,10 +70,7 @@ namespace wordslab.manager.os
             return 0;
         }
 
-        // Native call for macOS
-
-        [DllImport("libc")]
-        static extern int sysctlbyname(string name, out IntPtr oldp, ref IntPtr oldlenp, IntPtr newp, IntPtr newlen);
+        private const uint MEGA = 1024 * 1024;
 
         public static MemoryInfo GetMemoryInfo()
         {
@@ -79,8 +81,8 @@ namespace wordslab.manager.os
                 MEMORYSTATUSEX memoryStatusEx = new MEMORYSTATUSEX();
                 if (GlobalMemoryStatusEx(memoryStatusEx))
                 {
-                    mem.TotalPhysical = memoryStatusEx.ullTotalPhys;
-                    mem.AvailablePhysical = memoryStatusEx.ullAvailPhys;
+                    mem.TotalPhysicalMB = memoryStatusEx.ullTotalPhys / MEGA;
+                    mem.FreePhysicalMB = memoryStatusEx.ullAvailPhys / MEGA;
                 }
 
                 return mem;
@@ -90,23 +92,24 @@ namespace wordslab.manager.os
                 MemoryInfo mem = new MemoryInfo();
 
                 string[] meminfo = Command.TryReadFileLines("/proc/meminfo");
-                mem.TotalPhysical = GetBytesFromLine(meminfo, "MemTotal:");
-                mem.AvailablePhysical = GetBytesFromLine(meminfo, "MemAvailable:");
+                mem.TotalPhysicalMB = GetBytesFromLine(meminfo, "MemTotal:") / MEGA;
+                mem.FreePhysicalMB = GetBytesFromLine(meminfo, "MemAvailable:") / MEGA;
 
                 return mem;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
+                uint usedMem = 0;
+                uint freeMem = 0;
+
+                var outputParser = Command.Output.GetValue(@"PhysMem: (\d+)M used", value => usedMem = uint.Parse(value))
+                                                 .GetValue(@"PhysMem: .* (\d+)M unused", value => freeMem = uint.Parse(value));
+
+                Command.Run("top", "-l 1", outputHandler: outputParser.Run);
+                
                 MemoryInfo mem = new MemoryInfo();
-
-                // TO DO : top -l 1 | grep PhysMem: | awk '{print $10}'
-
-                IntPtr SizeOfLineSize = (IntPtr)IntPtr.Size;
-                if (sysctlbyname("hw.memsize", out IntPtr lineSize, ref SizeOfLineSize, IntPtr.Zero, IntPtr.Zero) == 0)
-                {
-                    mem.TotalPhysical = (ulong)lineSize.ToInt64();
-                }
-
+                mem.TotalPhysicalMB = usedMem + freeMem;
+                mem.FreePhysicalMB = freeMem;
                 return mem;
             }
             else
