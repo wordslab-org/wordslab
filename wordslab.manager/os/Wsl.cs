@@ -59,7 +59,7 @@ namespace wordslab.manager.os
 
         public static bool IsWindowsVersionOKForWSL2()
         {
-            return Windows.IsOSArchitectureX64() && Windows.IsWindows10Version1903OrHigher();
+            return OS.IsOSArchitectureX64() && Windows.IsWindows10Version1903OrHigher();
         }
 
         // Additional requirements to enable NVIDIA CUDA on WSL 2
@@ -83,7 +83,7 @@ namespace wordslab.manager.os
 
         public static bool IsWindowsVersionOKForWSL2WithGPU()
         {
-            return Windows.IsOSArchitectureX64() && Windows.IsWindows10Version21H2OrHigher();
+            return OS.IsOSArchitectureX64() && Windows.IsWindows10Version21H2OrHigher();
         }
 
         public static bool IsNvidiaDriverVersionOKForWSL2WithGPU()

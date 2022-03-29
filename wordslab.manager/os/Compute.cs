@@ -38,6 +38,7 @@ namespace wordslab.manager.os
 
             /// <summary>
             /// Size of the Level 3 processor cache. A Level 3 cache is an external memory area that has a faster access time than the main RAM memory.
+            /// Please note that this value may not be accurate inside a virtual machine or container.
             /// </summary>
             public UInt32 L3CacheSizeKB { get; set; }
 
@@ -196,6 +197,16 @@ namespace wordslab.manager.os
             {
                 throw new InvalidOperationException($"Operating system {RuntimeInformation.OSDescription} not supported");
             }
+        }
+
+        public static bool IsCPUVirtualizationAvailable(CPUInfo cpuInfo)
+        {
+                   // Intel CPU
+            return cpuInfo.FeatureFlags.Contains("vmx") || 
+                   // AMD CPU
+                   cpuInfo.FeatureFlags.Contains("svm") ||
+                   // If you have enabled Hyper-V in Windows, then even if you aren't using any VMs Windows runs as a special VM
+                   cpuInfo.FeatureFlags.Contains("hypervisor");
         }
 
         // https://en.wikipedia.org/wiki/CPUID
