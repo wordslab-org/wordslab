@@ -10,11 +10,7 @@ namespace wordslab.manager.cli.host
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
             /* TO DO
-                 - simplify list of disks in info command : one line per disk
-                 - filter disks with total size = 0
                  - MacOS : several disks have the same properties
-                 - disks name, label and root directory are often the same
-                 - Linux : os version is really kernel version, not distrib version
                  - Linux : wireless network interface not detected
                  - WSL no disks !!!
 
@@ -61,7 +57,7 @@ namespace wordslab.manager.cli.host
                         
             AnsiConsole.WriteLine("Memory info:");
             var mem = Memory.GetMemoryInfo();
-            AnsiConsole.WriteLine($"- total physical size : {mem.TotalPhysicalMB / 1024} GB");
+            AnsiConsole.WriteLine($"- total physical size : {Math.Round(mem.TotalPhysicalMB / 1024f)} GB");
             AnsiConsole.WriteLine();
 
             var gpus = Compute.GetNvidiaGPUsInfo();
@@ -71,7 +67,7 @@ namespace wordslab.manager.cli.host
                 {
                     AnsiConsole.WriteLine($"GPU {gpu.Index} info:");
                     AnsiConsole.WriteLine($"- model name   : {gpu.Name}");
-                    AnsiConsole.WriteLine($"- memory       : {gpu.MemoryMB / 1024} GB");
+                    AnsiConsole.WriteLine($"- memory       : {Math.Round(gpu.MemoryMB / 1024f)} GB");
                     AnsiConsole.WriteLine($"- architecture : {gpu.Architecture}");
                     AnsiConsole.WriteLine();
                 }
@@ -87,11 +83,11 @@ namespace wordslab.manager.cli.host
             {
                 AnsiConsole.WriteLine($"Drive info: {drive.DrivePath} [{drive.VolumeName}]");
                 AnsiConsole.WriteLine($"- partition id : {drive.PartitionId}");
-                AnsiConsole.WriteLine($"- drive size   : {drive.TotalSizeMB / 1024f:F1} GB");
-                AnsiConsole.WriteLine($"- free space   : {drive.FreeSpaceMB / 1024f:F1} GB");
+                AnsiConsole.WriteLine($"- drive size   : {drive.TotalSizeMB / 1000f:F1} GB");
+                AnsiConsole.WriteLine($"- free space   : {drive.FreeSpaceMB / 1000f:F1} GB");
                 AnsiConsole.WriteLine($"- disk id      : {drive.DiskId}");
                 AnsiConsole.WriteLine($"- disk model   : {drive.DiskModel}");
-                AnsiConsole.WriteLine($"- disk size    : {drive.DiskSizeMB / 1024} GB");
+                AnsiConsole.WriteLine($"- disk size    : {drive.DiskSizeMB / 1000} GB");
                 AnsiConsole.WriteLine();
             }
 
@@ -158,8 +154,8 @@ namespace wordslab.manager.cli.host
             foreach (var drive in drives.Values)
             {
                 AnsiConsole.WriteLine($"Drive info: {drive.DrivePath} [{drive.VolumeName}]");
-                AnsiConsole.WriteLine($"- used space   : {(drive.TotalSizeMB - drive.FreeSpaceMB) / 1024f:F1} GB");
-                AnsiConsole.WriteLine($"- free space   : {drive.FreeSpaceMB / 1024f:F1} GB");
+                AnsiConsole.WriteLine($"- used space   : {(drive.TotalSizeMB - drive.FreeSpaceMB) / 1000f:F1} GB");
+                AnsiConsole.WriteLine($"- free space   : {drive.FreeSpaceMB / 1000f:F1} GB");
                 AnsiConsole.WriteLine($"- percent used : {drive.PercentUsedSpace} %");
                 AnsiConsole.WriteLine();
             }
