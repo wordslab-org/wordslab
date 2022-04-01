@@ -88,6 +88,7 @@ namespace wordslab.manager.cli.host
                 AnsiConsole.WriteLine($"- disk id      : {drive.DiskId}");
                 AnsiConsole.WriteLine($"- disk model   : {drive.DiskModel}");
                 AnsiConsole.WriteLine($"- disk size    : {drive.DiskSizeMB / 1000} GB");
+                AnsiConsole.WriteLine($"- is SSD       : {drive.IsSSD}");
                 AnsiConsole.WriteLine();
             }
 

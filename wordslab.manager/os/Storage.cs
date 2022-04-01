@@ -9,26 +9,8 @@ namespace wordslab.manager.os
             var drivesInfo = new Dictionary<string,DriveInfo>();
             if (OS.IsWindows)
             {
-                // TO DO : detect SSD
-                /* 
-Get-WmiObject Win32_DiskDrive | Select DeviceID,SerialNumber
-
-DeviceID           SerialNumber
---------           ------------
-\\.\PHYSICALDRIVE0 0025_38B5_71B9_168C.
-
-Get-WmiObject -Class MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage | Select SerialNumber,MediaType
-
-SerialNumber         MediaType
-------------         ---------
-0025_38B5_71B9_168C.         4
-
-3 = HDD
-4 = SSD
-                 */
-
-                var wmiDisksRequest = "Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = \"ASSOCIATORS OF {Win32_DiskDrive.DeviceID='$($disk.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition\"; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = \"ASSOCIATORS OF  {Win32_DiskPartition.DeviceID='$($partition.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition\"; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ DiskId = $disk.DeviceID; DiskSize = $disk.Size; DiskModel = $disk.Model; PartitionId = $partition.Name; PartitionSize = $partition.Size; DrivePath = $_.DeviceID; VolumeName = $_.VolumeName; TotalSize = $_.Size; FreeSpace = $_.FreeSpace; } } } }";
-
+                var wmiDisksRequest = "Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = \"ASSOCIATORS OF {Win32_DiskDrive.DeviceID='$($disk.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition\"; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = \"ASSOCIATORS OF  {Win32_DiskPartition.DeviceID='$($partition.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition\"; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ DiskId = $disk.DeviceID; DiskSN = $disk.SerialNumber; DiskSize = $disk.Size; DiskModel = $disk.Model; PartitionId = $partition.Name; PartitionSize = $partition.Size; DrivePath = $_.DeviceID; VolumeName = $_.VolumeName; TotalSize = $_.Size; FreeSpace = $_.FreeSpace; } } } }";
+               
                 var disksProperties = new List<object>();
                 var outputParser = Command.Output.GetList(null, @"(?<name>\w+)\s+:\s+(?<value>.+)\s*$", dict => new KeyValuePair<string, string>(dict["name"], dict["value"]), disksProperties);
                 Command.Run("powershell", $"-EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(wmiDisksRequest))}", outputHandler: outputParser.Run, errorHandler: _ => { });
@@ -37,13 +19,17 @@ SerialNumber         MediaType
                 while (disksPropEnum.MoveNext())
                 {
                     var driveInfo = new DriveInfo();
-                    for (var i = 0; i < 9; i++)
+                    string serialNumber = null;
+                    for (var i = 0; i < 10; i++)
                     {
                         var keyValue = disksPropEnum.Current;
                         switch (keyValue.Key)
                         {
                             case "DiskId":
                                 driveInfo.DiskId = keyValue.Value;
+                                break;
+                            case "DiskSN":
+                                serialNumber = keyValue.Value;
                                 break;
                             case "DiskSize":
                                 driveInfo.DiskSizeMB = (uint)(ulong.Parse(keyValue.Value) / MEGA);
@@ -70,8 +56,13 @@ SerialNumber         MediaType
                                 driveInfo.FreeSpaceMB = (uint)(ulong.Parse(keyValue.Value) / MEGA);
                                 break;
                         }
-                        if (i < 8) disksPropEnum.MoveNext();
+                        if (i < 9) disksPropEnum.MoveNext();
                     }
+
+                    var wmiMediaTypeRequest = $"Get-WmiObject -Class MSFT_PhysicalDisk -Namespace root\\Microsoft\\Windows\\Storage | Where-Object {{$_.SerialNumber -eq \"{serialNumber}\"}} | Select -ExpandProperty MediaType";
+                    Command.Run("powershell",$"-EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(wmiMediaTypeRequest))}",
+                       outputHandler: o => driveInfo.IsSSD = o.Trim() == "4", errorHandler: _ => { });
+
                     drivesInfo.Add(driveInfo.DrivePath, driveInfo);
                 }
             }
@@ -122,10 +113,10 @@ SerialNumber         MediaType
                 string[] volumes = null;
                 Command.Run("ls", "-1 /Volumes", outputHandler: o => volumes = o.Split(new char[] {'\n','\r'}, StringSplitOptions.RemoveEmptyEntries));
 
-                string[] systemVolumes = null;
-                Command.Run("ls", "-1 /System/Volumes", outputHandler: o => volumes = o.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+                    string[] systemVolumes = null;
+                Command.Run("ls", "-1 /System/Volumes", outputHandler: o => systemVolumes = o.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
 
-                var volumesList = new List<string>();
+                    var volumesList = new List<string>();
                 foreach (string volume in volumes) { volumesList.Add($"/Volumes/{volume}"); }
                 foreach (string volume in systemVolumes) { volumesList.Add($"/System/Volumes/{volume}"); }
 
@@ -134,114 +125,54 @@ SerialNumber         MediaType
                     dict => dict, fileSystems);
                 Command.Run("df", "-b", outputHandler: outputParser.Run);
 
-                foreach(var volume in volumesList)
+                foreach (var volume in volumesList)
                 {
-                    var fileSystemProps = fileSystems.Cast<Dictionary<string, string>>().Where(dict => dict["mountedon"] == volume).First();
-
                     var volumeProps = new List<object>();
                     var outputParser2 = Command.Output.GetList(null, @"\s*(?<key>.+):\s+(?:(?:.*\((?<size>\d+).*\).*)|(?<value>.+))",
                         dict => dict, volumeProps);
                     Command.Run("diskutil", $"info \"{volume}\"", outputHandler: outputParser2.Run);
+                    var volumeDict = new Dictionary<string, string>();
+                    foreach (var prop in volumeProps.Cast<Dictionary<string, string>>())
+                    {
+                        volumeDict.Add(prop["key"], prop["value"] != String.Empty ? prop["value"] : prop["size"]);
+                    }
 
-                    /*
-                    var diskName = volumeProps["Part of Whole"];
+                    var fileSystemProps = fileSystems.Cast<Dictionary<string, string>>().Where(dict => dict["mountedon"] == volumeDict["Mount Point"]).First();
+
+                    var diskName = volumeDict["Part of Whole"];
 
                     var diskProps = new List<object>();
                     var outputParser3 = Command.Output.GetList(null, @"\s*(?<key>.+):\s+(?:(?:.*\((?<size>\d+).*\).*)|(?<value>.+))",
                         dict => dict, diskProps);
-                    Command.Run("diskutil", $"info \"{volume}\"", outputHandler: outputParser2.Run);
+                    Command.Run("diskutil", $"info \"{diskName}\"", outputHandler: outputParser3.Run);
+                    var diskDict = new Dictionary<string, string>();
+                    foreach (var prop in diskProps.Cast<Dictionary<string, string>>())
+                    {
+                        diskDict.Add(prop["key"], prop["value"] != String.Empty ? prop["value"] : prop["size"]);
+                    }
 
                     var driveInfo = new DriveInfo();
 
-                    driveInfo.DiskId = diskId;
-                    driveInfo.DiskModel = diskModel;
-                    driveInfo.IsSSD = isSSD;
-                    driveInfo.DiskSizeMB = diskSizeMB;
+                    driveInfo.DiskId = diskDict["Device Node"];
+                    driveInfo.DiskModel = diskDict["Device / Media Name"];
+                    driveInfo.IsSSD = diskDict["Solid State"] != "No";
+                    driveInfo.DiskSizeMB = (uint)(long.Parse(diskDict["Disk Size"]) / MEGA);
 
-                    driveInfo.PartitionId = dict["path"];
-                    driveInfo.PartitionSizeMB = (uint)(long.Parse(dict["size"]) / MEGA);
-                    driveInfo.DrivePath = dict["mountpoint"];
-                    driveInfo.VolumeName = dict["label"];
+                    driveInfo.PartitionId = volumeDict["Device Node"];
+                    driveInfo.PartitionSizeMB = (uint)(long.Parse(volumeDict["Container Total Space"]) / MEGA);
+
+                    driveInfo.DrivePath = volumeDict["Mount Point"];
+                    driveInfo.VolumeName = volumeDict["Volume Name"];
                     if (driveInfo.VolumeName == "null") driveInfo.VolumeName = String.Empty;
-                    driveInfo.TotalSizeMB = (uint)(long.Parse(dict["fssize"]) / MEGA);
-                    driveInfo.FreeSpaceMB = (uint)(long.Parse(dict["fsavail"]) / MEGA);
+
+                    var fileSystem = fileSystems.Cast<Dictionary<string, string>>().Where(fs => fs["mountedon"] == driveInfo.DrivePath).First();
+
+                    driveInfo.TotalSizeMB = (uint)(long.Parse(fileSystem["used"]) * 512 / MEGA);
+                    driveInfo.FreeSpaceMB = (uint)(long.Parse(fileSystem["available"]) * 512 / MEGA);
+                    driveInfo.TotalSizeMB += driveInfo.FreeSpaceMB;
 
                     drivesInfo.Add(driveInfo.DrivePath, driveInfo);
-                    */
                 }
-
-                /*
-                
-                diskutil info /Volumes/macOS
-
-   Device Identifier:         disk2s5
-   Device Node:               /dev/disk2s5
-   Part of Whole:             disk2
-
-   Volume Name:               macOS
-   Mounted:                   Yes
-   Mount Point:               /
-
-   File System Personality:   APFS
-   Type (Bundle):             apfs
-   Name (User Visible):       APFS
-
-   Media Type:                Generic
-
-   Disk Size:                 53.3 GB (53343117312 Bytes) (exactly 104185776 512-Byte-Units)
-
-   Container Total Space:     53.3 GB (53343117312 Bytes) (exactly 104185776 512-Byte-Units)
-   Container Free Space:      18.4 GB (18405576704 Bytes) (exactly 35948392 512-Byte-Units)
- 
-   Read-Only Media:           No
-
-   Device Location:           Internal
-   Removable Media:           Fixed
-
-   Solid State:               No
-
-   APFS Container:            disk2
-
-                    diskutil info disk2
-
-   Device Identifier:         disk2
-   Device Node:               /dev/disk2
-   Device / Media Name:       QEMU HARDDISK
-                 
-   Disk Size:                 53.3 GB (53343117312 Bytes) (exactly 104185776 512-Byte-Units)
-   Device Block Size:         4096 Bytes
-
-   Read-Only Media:           No
-
-   Device Location:           Internal
-   Removable Media:           Fixed
-
-   Solid State:               No
-
-                df -b  ( -b      Use (the default) 512-byte blocks.)
-
-Filesystem    512-blocks     Used Available Capacity  Mounted on
-/dev/disk2s5   104185776 21657432  35949288    38%    /
-devfs                374      374         0   100%    /dev
-/dev/disk2s1   104185776 45265056  35949288    56%    /System/Volumes/Data
-/dev/disk2s4   104185776     2088  35949288     1%    /private/var/vm
-map auto_home          0        0         0   100%    /System/Volumes/Data/home
-
-
-
-                DiskId = Device Node:               /dev/disk2
-                DiskModel = Device / Media Name:       QEMU HARDDISK
-                IsSSD = Solid State:               No
-                DiskSizeMB = Disk Size:                 53.3 GB (53343117312 Bytes) (exactly 104185776 512-Byte-Units)
-
-                PartitionId = Device Node:               /dev/disk2s5
-                PartitionSizeMB = Container Total Space:     53.3 GB (53343117312 Bytes) (exactly 104185776 512-Byte-Units)
-
-                DrivePath = "mountpoint":"/"
-                VolumeName = "label":"linuxdata" / "label":null
-                TotalSizeMB = df: Used 21657432 + Avaimable 35949288
-                FreeSpaceMB = 18.4 GB (18405576704 Bytes) (exactly 35948392 512-Byte-Units)           
-                 */
             }
             return drivesInfo;
         }
