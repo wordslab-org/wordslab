@@ -9,103 +9,76 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="scripts\qemu\metadata.yaml" />
-    <None Remove="scripts\qemu\user-data.yaml" />
-    <None Remove="scripts\qemu\vm\wordslab-k3s-install.sh" />
-    <None Remove="scripts\qemu\vm\wordslab-k3s-start.sh" />
-    <None Remove="scripts\qemu\wordslab-ubuntu-prepare.sh" />
-    <None Remove="scripts\qemu\wordslab-vm-create.sh" />
-    <None Remove="scripts\qemu\wordslab-vm-delete.sh" />
-    <None Remove="scripts\qemu\wordslab-vm-k3s-install.sh" />
-    <None Remove="scripts\qemu\wordslab-vm-k3s-start.sh" />
-    <None Remove="scripts\qemu\wordslab-vm-start.sh" />
-    <None Remove="scripts\wsl\check-wsl.ps1" />
-    <None Remove="scripts\wsl\config.toml.tmpl" />
-    <None Remove="scripts\wsl\device-plugin-daemonset.yaml" />
-    <None Remove="scripts\wsl\disable-wsl.ps1" />
-    <None Remove="scripts\wsl\enable-wsl.ps1" />
-    <None Remove="scripts\wsl\wordslab-cluster-init.sh" />
-    <None Remove="scripts\wsl\wordslab-cluster-start.sh" />
-    <None Remove="scripts\wsl\wordslab-data-init.sh" />
-    <None Remove="scripts\wsl\wordslab-data-start.sh" />
-    <None Remove="scripts\wsl\wordslab-gpu-init.sh" />
-    <None Remove="scripts\wsl\wordslab-os-init.sh" />
-    <None Remove="scripts\wsl\wordslab-os-start.sh" />
-    <None Remove="scripts\wsl\wordslab-start.bat" />
-    <None Remove="scripts\wsl\wordslab-stop.bat" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="scripts\qemu\metadata.yaml">
+    <Content Include="scripts\vm\qemu\metadata.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\user-data.yaml">
+    <Content Include="scripts\vm\qemu\user-data.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\vm\wordslab-k3s-install.sh">
+    <Content Include="scripts\vm\qemu\wordslab-k3s-install.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\vm\wordslab-k3s-start.sh">
+    <Content Include="scripts\vm\qemu\wordslab-k3s-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\wordslab-ubuntu-prepare.sh">
+    <Content Include="scripts\vm\qemu\wordslab-ubuntu-prepare.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\wordslab-vm-create.sh">
+    <Content Include="scripts\vm\qemu\wordslab-vm-create.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\wordslab-vm-delete.sh">
+    <Content Include="scripts\vm\qemu\wordslab-vm-delete.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\wordslab-vm-k3s-install.sh">
+    <Content Include="scripts\vm\qemu\wordslab-vm-k3s-install.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\wordslab-vm-k3s-start.sh">
+    <Content Include="scripts\vm\qemu\wordslab-vm-k3s-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\qemu\wordslab-vm-start.sh">
+    <Content Include="scripts\vm\qemu\wordslab-vm-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\check-wsl.ps1">
+    <Content Include="scripts\os\Windows\check-wsl.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\config.toml.tmpl">
+    <Content Include="scripts\vm\wsl\config.toml.tmpl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\device-plugin-daemonset.yaml">
+    <Content Include="scripts\vm\wsl\device-plugin-daemonset.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\disable-wsl.ps1">
+    <Content Include="scripts\os\Windows\disable-wsl.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\enable-wsl.ps1">
+    <Content Include="scripts\os\Windows\enable-wsl.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-cluster-init.sh">
+    <Content Include="scripts\vm\wsl\wordslab-cluster-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-cluster-start.sh">
+    <Content Include="scripts\vm\wsl\wordslab-cluster-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-data-init.sh">
+    <Content Include="scripts\vm\wsl\wordslab-data-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-data-start.sh">
+    <Content Include="scripts\vm\wsl\wordslab-data-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-gpu-init.sh">
+    <Content Include="scripts\vm\wsl\wordslab-gpu-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-os-init.sh">
+    <Content Include="scripts\vm\wsl\wordslab-os-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\vm\wordslab-os-start.sh">
+    <Content Include="scripts\vm\wsl\wordslab-os-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\wordslab-start.bat">
+    <Content Include="scripts\vm\wsl\wordslab-start.bat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\wsl\wordslab-stop.bat">
+    <Content Include="scripts\vm\wsl\wordslab-stop.bat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -115,6 +88,10 @@
     <PackageReference Include="Serilog.AspNetCore" Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.43.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="scripts\vm\googlecloud\" />
   </ItemGroup>
 
 </Project>

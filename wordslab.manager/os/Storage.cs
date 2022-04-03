@@ -183,7 +183,23 @@ namespace wordslab.manager.os
             return (int)(directorySize / MEGA);
         }
 
-        private const uint MEGA = 1000 * 1000;
+        public static uint GetAvailableSpaceForDirectoryMB(DirectoryInfo parentDirectory, Dictionary<string, DriveInfo> drivesInfo)
+        {
+            var realDirectory = parentDirectory.ResolveLinkTarget(true);
+
+            var sortedMountPoints = drivesInfo.Keys.OrderByDescending(path => path.Length);
+            foreach(var mountPoint in sortedMountPoints)
+            {
+                if(realDirectory.FullName.StartsWith(mountPoint))
+                {
+                    var driveInfo = drivesInfo[mountPoint];
+                    return driveInfo.FreeSpaceMB;
+                }
+            }
+            return 0;
+        }
+
+        private const uint MEGA = 1024 * 1024;
 
         public static DirectoryInfo GetApplicationDirectory()
         {

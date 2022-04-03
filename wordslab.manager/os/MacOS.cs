@@ -14,14 +14,19 @@ namespace wordslab.manager.os
             else { return false; }
         }
         
-        public static bool IsHomebrewInstalled()
+        public static bool IsHomebrewPackageManagerAvailable()
         {
-            throw new NotImplementedException();
+            bool isAvailable = false;
+            Command.Run("brew", "--version", exitCodeHandler: code => isAvailable = code == 0);
+            return isAvailable;
         }
 
-        public static string GetHomebrewInstallMessage()
+        // This script requires admin privileges and user interaction
+        // - interaction 1 : type sudo password
+        // - interaction 2 : press Enter to validate the list of changes which will be applied
+        public static string GetHomebrewInstallCommand()
         {
-            throw new NotImplementedException();
+            return "/bin/bash -c \"$(curl - fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"";
         }
     }
 }

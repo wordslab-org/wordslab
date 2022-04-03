@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -30,7 +29,7 @@ namespace wordslab.manager.os
                 if (unicodeEncoding) proc.StartInfo.StandardErrorEncoding = Encoding.Unicode;
                 proc.StartInfo.RedirectStandardError = true;
                 proc.StartInfo.WorkingDirectory = workingDirectory;
-                if (mustRunAsAdmin && !IsRunningAsAdministrator())
+                if (mustRunAsAdmin && !OS.IsRunningAsAdministrator())
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
@@ -182,7 +181,7 @@ namespace wordslab.manager.os
                     }
                     else
                     {
-                        if (!IsRunningAsAdministrator())
+                        if (!OS.IsRunningAsAdministrator())
                         {
                             throw new InvalidOperationException("This operation needs admin privileges. Please retry this command with sudo.");
                         }
@@ -235,24 +234,6 @@ namespace wordslab.manager.os
 
         public static CommandOutputParser Output { get { return new CommandOutputParser(); } }
         public static CommandOutputParser Error { get { return new CommandOutputParser(); } }
-
-
-        [DllImport("libc")]
-        private static extern uint geteuid();
-
-        public static bool IsRunningAsAdministrator()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                WindowsIdentity identity = WindowsIdentity.GetCurrent();
-                WindowsPrincipal principal = new WindowsPrincipal(identity);
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
-            }
-            else
-            {
-                return geteuid() == 0;
-            }
-        }
 
         // On Linux, commands consist sometimes in reading virtual files (ex: /proc/cpuinfo or /proc/stat) 
         public static string[] TryReadFileLines(string path)

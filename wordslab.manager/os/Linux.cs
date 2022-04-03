@@ -61,5 +61,12 @@ namespace wordslab.manager.os
             }
             else { return false; }
         }
+
+        public static bool IsAptPackageManagerAvailable()
+        {
+            bool isAvailable = false;
+            Command.Run("apt", "--version", exitCodeHandler: code => isAvailable = code == 0);
+            return isAvailable;
+        }
     }
 }

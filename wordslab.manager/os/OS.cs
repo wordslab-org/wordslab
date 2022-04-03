@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 
 namespace wordslab.manager.os
 {
@@ -171,6 +172,23 @@ namespace wordslab.manager.os
             else
             {
                 throw new NotSupportedException("This method is only available for Windows, Linux and MacOS");
+            }
+        }
+
+        [DllImport("libc")]
+        private static extern uint geteuid();
+
+        public static bool IsRunningAsAdministrator()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                WindowsIdentity identity = WindowsIdentity.GetCurrent();
+                WindowsPrincipal principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            else
+            {
+                return geteuid() == 0;
             }
         }
     }

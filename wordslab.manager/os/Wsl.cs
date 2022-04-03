@@ -131,12 +131,12 @@ namespace wordslab.manager.os
         {
             string options = "";
             if (rollback) options += "--rollback ";
-            Command.Run("wsl.exe", $"--update {options}", timeoutSec: 30, unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--update {options}", timeoutSec: 30, unicodeEncoding: true);
         }
 
         // WSL 2 commands
 
-        public const string COMMAND = "wsl";
+        public const string WSLEXE = "wsl.exe";
 
         // Execute Linux binary files
 
@@ -148,7 +148,7 @@ namespace wordslab.manager.os
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
             if (userName != null) args += $"--user {userName} ";
-            return Command.Run("wsl.exe", args + $"--exec {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
+            return Command.Run(WSLEXE, args + $"--exec {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
                                           outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
         }
 
@@ -166,7 +166,7 @@ namespace wordslab.manager.os
             if (distribution != null) args += $"--distribution {distribution} ";
             if (workingDirectory != null) args += $"--CD \"{workingDirectory}\" ";
             if (userName != null) args += $"--user {userName} ";
-            int exitCode = Command.Run("wsl.exe", args + $"-- {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
+            int exitCode = Command.Run(WSLEXE, args + $"-- {commandLine}", timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding,
                                           outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler);
 
             if (!String.IsNullOrEmpty(error))
@@ -199,20 +199,20 @@ namespace wordslab.manager.os
 
         public static void install(string distributionName = "Ubuntu")
         {
-            Command.Run("wsl.exe", $"--install --distribution {distributionName}", timeoutSec: 300, unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--install --distribution {distributionName}", timeoutSec: 300, unicodeEncoding: true);
         }
 
         public static void setDefaultVersion(int version)
         {
             if (Wsl.status().DefaultVersion != version)
             {
-                Command.Run("wsl.exe", $"--set-default-version {version}", unicodeEncoding: true);
+                Command.Run(WSLEXE, $"--set-default-version {version}", unicodeEncoding: true);
             }
         }
 
         public static void shutdown()
         {
-            Command.Run("wsl.exe", "--shutdown", unicodeEncoding: true);
+            Command.Run(WSLEXE, "--shutdown", unicodeEncoding: true);
         }
 
         public class StatusResult
@@ -252,20 +252,18 @@ namespace wordslab.manager.os
             return result;
         }
 
-       
-
         // Manage distributions in Windows Subsystem for Linux
 
         public static void export(string distribution, string filename)
         {
-            Command.Run("wsl.exe", $"--export {distribution} \"{filename}\"", timeoutSec: 60, unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--export {distribution} \"{filename}\"", timeoutSec: 60, unicodeEncoding: true);
         }
 
         public static void import(string distribution, string installPath, string filename, int? version = null)
         {
             string options = "";
             if (version.HasValue) options += $"--version {version.Value} ";
-            Command.Run("wsl.exe", $"--import {distribution} \"{installPath}\" \"{filename}\" {options}", timeoutSec: 60, unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--import {distribution} \"{installPath}\" \"{filename}\" {options}", timeoutSec: 60, unicodeEncoding: true);
         }
 
         public class DistributionInfo
@@ -291,7 +289,7 @@ namespace wordslab.manager.os
                                                WslVersion = Int32.Parse(dict["version"]) },
                     result);
 
-                Command.Run("wsl.exe", "--list --verbose", unicodeEncoding: true, outputHandler: outputParser.Run);
+                Command.Run(WSLEXE, "--list --verbose", unicodeEncoding: true, outputHandler: outputParser.Run);
             }
             else
             {
@@ -305,29 +303,29 @@ namespace wordslab.manager.os
                     },
                     result);
 
-                Command.Run("wsl.exe", "--list --online", unicodeEncoding: true, outputHandler: outputParser.Run);
+                Command.Run(WSLEXE, "--list --online", unicodeEncoding: true, outputHandler: outputParser.Run);
             }
             return result.Cast<DistributionInfo>().ToList();
         }
 
         public static void setDefaultDistribution(string distribution)
         {
-            Command.Run("wsl.exe", $"--set-default {distribution}", unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--set-default {distribution}", unicodeEncoding: true);
         }
 
         public static void setVersion(string distribution, int version)
         {
-            Command.Run("wsl.exe", $"--set-version {distribution} {version}", unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--set-version {distribution} {version}", unicodeEncoding: true);
         }
 
         public static void terminate(string distribution)
         {
-            Command.Run("wsl.exe", $"--terminate {distribution}", unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--terminate {distribution}", unicodeEncoding: true);
         }
 
         public static void unregister(string distribution)
         {
-            Command.Run("wsl.exe", $"--unregister {distribution}", timeoutSec: 30, unicodeEncoding: true);
+            Command.Run(WSLEXE, $"--unregister {distribution}", timeoutSec: 30, unicodeEncoding: true);
         }
     }
 }

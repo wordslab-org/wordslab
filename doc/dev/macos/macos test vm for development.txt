@@ -1,2 +1,13 @@
-Linux: https://github.com/foxlet/macOS-Simple-KVM
-Windows: https://github.com/myspaghetti/macos-virtualbox/blob/master/macos-guest-virtualbox.sh
+Setup instructions on Linux with KVM: https://github.com/kholia/OSX-KVM 
+
+Notes:
+- you need a recent Linux version: Ubuntu 20.04 or later, and QEMU 4.2.0 or later
+- you can use "wordslab host system info" to check is your system supports the native hypervisor KVM
+
+(initially tried https://github.com/foxlet/macOS-Simple-KVM but it does not support nested virtualization)
+(also tried on Windows https://github.com/myspaghetti/macos-virtualbox/blob/master/macos-guest-virtualbox.sh but it was way too slow)
+
+Important setup steps (in macOS System Preferences) :
+1. Fix keyboard type : PC compatible 
+2. Fix mouse buttons : Right click
+3. Enable SSH connections : System Preferences... / Internet & Wireless / Sharing => Remote Login
