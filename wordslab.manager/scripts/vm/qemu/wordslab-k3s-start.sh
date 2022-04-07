@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+!/bin/bash
 mount -o bind /mnt/wordslab-cluster/etc/rancher /etc/rancher
 mount -o bind /mnt/wordslab-cluster/var/lib /var/lib
 mount -o bind /mnt/wordslab-cluster/var/log/rancher /var/log/rancher

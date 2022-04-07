@@ -1,4 +1,5 @@
-﻿using wordslab.manager.storage;
+﻿using System.Diagnostics;
+using wordslab.manager.storage;
 
 namespace wordslab.manager.os
 {
@@ -76,7 +77,7 @@ namespace wordslab.manager.os
             var gpus = Compute.GetNvidiaGPUsInfo();
             foreach (var gpuInfo in gpus)
             {
-                if (gpuInfo.Architecture >= Compute.GPUArchitectureInfo.Pascal) { return $"{gpuInfo.Name} ({gpuInfo.MemoryMB} MB)"; }
+                if (gpuInfo.Architecture >= Compute.GPUArchitectureInfo.Pascal) { return $"{gpuInfo.ModelName} ({gpuInfo.MemoryMB} MB)"; }
             }
             return null;
         }
@@ -121,7 +122,7 @@ namespace wordslab.manager.os
         // 2.3 Download and run the Linux kernel update package (https://wslstorestorage.blob.core.Windows.net/wslblob/wsl_update_x64.msi) - as Administrator
         // 2.4 Reboot the computer
 
-        public static async Task LegacyDownloadAndInstallLinuxKernelUpdatePackage(StorageManager storageManager)
+        public static async Task LegacyDownloadAndInstallLinuxKernelUpdatePackage(HostStorage storageManager)
         {
             var kernelUpdate = await storageManager.DownloadFileWithCache("https://wslstorestorage.blob.core.Windows.net/wslblob/wsl_update_x64.msi", "wsl_update_x64.msi");
             Command.Run("msiexec.exe", "/i " + kernelUpdate.FullName, timeoutSec: 60);
@@ -252,6 +253,251 @@ namespace wordslab.manager.os
             return result;
         }
 
+        // https://docs.microsoft.com/en-us/windows/wsl/wsl-config#wslconfig
+        public class WslConfig
+        {
+            // An absolute Windows path to a custom Linux kernel.
+            // default: The Microsoft built kernel provided inbox
+            public string kernel;
+
+            // How much memory to assign to the WSL 2 VM.
+            // default: 50% of total memory on Windows or 8GB, whichever is less; on builds before 20175: 80% of your total memory on Windows
+            public int? memoryMB;
+
+            // How many processors to assign to the WSL 2 VM.
+            // default: The same number of processors on Windows
+            public int? processors;
+
+            // Boolean specifying if ports bound to wildcard or localhost in the WSL 2 VM should be connectable from the host via localhost:port.
+            // default: true
+            public bool? localhostForwarding;
+
+            // Additional kernel command line arguments.
+            // default: Blank
+            public string kernelCommandLine;
+
+            // How much swap space to add to the WSL 2 VM, 0 for no swap file. Swap storage is disk-based RAM used when memory demand exceeds limit on hardware device.
+            // default: 25% of memory size on Windows rounded up to the nearest GB
+            public int? swap;
+
+            // An absolute Windows path to the swap virtual hard disk.
+            // default: %USERPROFILE%\AppData\Local\Temp\swap.vhdx
+            public string swapFile;
+
+            // Default true setting enables Windows to reclaim unused memory allocated to WSL 2 virtual machine.
+            // default: true
+            public bool? pageReporting;
+
+            // Boolean to turn on or off support for GUI applications(WSLg) in WSL. Only available for Windows 11.
+            // default: true
+            public bool? guiApplications;
+
+            // Boolean to turn on an output console Window that shows the contents of dmesg upon start of a WSL 2 distro instance. Only available for Windows 11.
+            // default: false
+            public bool? debugConsole;
+
+            // Boolean to turn on or off nested virtualization, enabling other nested VMs to run inside WSL 2. Only available for Windows 11.
+            // default: true
+            public bool? nestedVirtualization;
+
+            // The number of milliseconds that a VM is idle, before it is shut down. Only available for Windows 11.
+            // default: 60000
+            public int? vmIdleTimeout;
+
+            public void SetDefaultValues()
+            {
+                var memoryInfo = Memory.GetMemoryInfo();
+                if(memoryInfo.TotalPhysicalMB >= 16000)
+                {
+                    memoryMB = 8 * 1024;
+                }
+                else
+                {
+                    memoryMB = (int)Math.Round(memoryInfo.TotalPhysicalMB / 2000f) * 1024;
+                }
+                var cpuInfo = Compute.GetCPUInfo();
+                processors = (int)cpuInfo.NumberOfLogicalProcessors;
+                localhostForwarding = true;
+            }
+
+            // true only if the values were loaded from the wslconfig file
+            public bool LoadedFromFile = false;
+        }
+
+        private static readonly string wslconfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wslconfig");
+
+        public static WslConfig Read_wslconfig()
+        {    
+            var config = new WslConfig();
+            // Try to read the config file
+            if (File.Exists(wslconfigPath))
+            {
+                try
+                {
+                    using(StreamReader sr = new StreamReader(wslconfigPath))
+                    {
+                        string line = null;
+                        while((line=sr.ReadLine()) != null)
+                        {
+                            line = line.Trim();
+                            if (line.Length == 0) continue;
+                            if (line.StartsWith('#') || line.StartsWith('[')) continue;
+                            int indexEquals = line.IndexOf('=');
+                            if(indexEquals > 0)
+                            {
+                                string key = line.Substring(0, indexEquals).Trim();
+                                string value = line.Substring(indexEquals + 1).Trim();
+                                switch (key)
+                                {
+                                    case "kernel":
+                                        config.kernel = value;
+                                        break;
+                                    case "memory":
+                                        config.memoryMB = ParseSizeMB(value);
+                                        break;
+                                    case "processors":
+                                        config.processors = int.Parse(value);
+                                        break;
+                                    case "localhostForwarding":
+                                        config.localhostForwarding = ParseBoolean(value);
+                                        break;
+                                    case "kernelCommandLine":
+                                        config.kernelCommandLine = value;
+                                        break;
+                                    case "swap":
+                                        config.swap = ParseSizeMB(value);
+                                        break;
+                                    case "swapFile":
+                                        config.swapFile = value.Replace("\\\\", "\\");
+                                        break;
+                                    case "pageReporting":
+                                        config.pageReporting = ParseBoolean(value);
+                                        break;
+                                    case "guiApplications":
+                                        config.guiApplications = ParseBoolean(value);
+                                        break;
+                                    case "debugConsole":
+                                        config.debugConsole = ParseBoolean(value);
+                                        break;
+                                    case "nestedVirtualization":
+                                        config.nestedVirtualization = ParseBoolean(value);
+                                        break;
+                                    case "vmIdleTimeout":
+                                        config.vmIdleTimeout = int.Parse(value);
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                    config.LoadedFromFile = true;
+                    return config;
+                } catch { }
+            }
+            // If it didn't work, return the default values
+            config.SetDefaultValues();
+            return config;
+        }
+
+        private static bool ParseBoolean(string value)
+        {
+            return value == "true";
+        }
+
+        private static int? ParseSizeMB(string value)
+        {
+            if(value.EndsWith("MB"))
+            {
+                return int.Parse(value.Substring(0, value.Length - 2));
+            } 
+            else if (value.EndsWith("GB"))
+            {
+                return int.Parse(value.Substring(0, value.Length - 2)) * 1024;
+            }
+            return null;
+        }
+
+        // WARNING: overrides the existing MACHINE-WIDE configuration
+        public static void Write_wslconfig(WslConfig config)
+        {
+            using(StreamWriter sw = new StreamWriter(wslconfigPath))
+            {
+                sw.WriteLine("[wsl2]");
+                if(config.kernel != null)
+                {
+                    sw.WriteLine($"kernel = {config.kernel}");
+                }
+                if (config.memoryMB.HasValue)
+                {
+                    WriteSize(sw, "memory", config.memoryMB.Value);
+                }
+                if (config.processors.HasValue)
+                {
+                    sw.WriteLine($"processors = {config.processors.Value}");
+                }
+                if(config.localhostForwarding.HasValue)
+                {
+                    WriteBoolean(sw, "localhostForwarding", config.localhostForwarding.Value);
+                }
+                if(config.kernelCommandLine != null)
+                {
+                    sw.WriteLine($"kernelCommandLine = {config.kernelCommandLine}");
+                }
+                if(config.swap.HasValue)
+                {
+                    WriteSize(sw, "swap", config.swap.Value);
+                }
+                if(config.swapFile != null)
+                {
+                    sw.WriteLine($"swapFile = {config.swapFile.Replace("\\","\\\\")}");
+                }
+                if(config.pageReporting.HasValue)
+                {
+                    WriteBoolean(sw, "pageReporting", config.pageReporting.Value);
+                }
+                if (config.guiApplications.HasValue)
+                {
+                    WriteBoolean(sw, "guiApplications", config.guiApplications.Value);
+                }
+                if(config.debugConsole.HasValue)
+                {
+                    WriteBoolean(sw, "debugConsole", config.debugConsole.Value);
+                }
+                if(config.nestedVirtualization.HasValue)
+                {
+                    WriteBoolean(sw, "nestedVirtualization", config.nestedVirtualization.Value);
+                }
+                if (config.vmIdleTimeout.HasValue)
+                {
+                    sw.WriteLine($"vmIdleTimeout = {config.vmIdleTimeout.Value}");
+                }
+                config.LoadedFromFile = true;
+            }
+        }
+
+        private static void WriteBoolean(StreamWriter sw, string key, bool value)
+        {
+            if(value)
+            {
+                sw.WriteLine($"{key} = true");
+            }
+            else
+            {
+                sw.WriteLine($"{key} = false");
+            }
+        }
+
+        private static void WriteSize(StreamWriter sw, string key, int size)
+        {
+            if (size >= 1024)
+            {
+                sw.WriteLine($"{key} = {size/1024}GB");
+            }
+            else
+            {
+                sw.WriteLine($"{key} = {size}MB");
+            }
+        }
+
         // Manage distributions in Windows Subsystem for Linux
 
         public static void export(string distribution, string filename)
@@ -326,6 +572,23 @@ namespace wordslab.manager.os
         public static void unregister(string distribution)
         {
             Command.Run(WSLEXE, $"--unregister {distribution}", timeoutSec: 30, unicodeEncoding: true);
+        }
+
+        // Get running process properties
+
+        private static readonly int MEGA = 1024 * 1024;
+
+        public static uint GetVirtualMachineWorkingSetMB()
+        {
+            var processes = Process.GetProcessesByName("vmmem");
+            if(processes.Length == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                return (uint)(processes[0].WorkingSet64 / MEGA);
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 mv k3s /usr/local/bin/k3s
 chmod a+x /usr/local/bin/k3s
 

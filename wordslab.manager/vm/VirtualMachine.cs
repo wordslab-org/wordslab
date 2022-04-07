@@ -10,20 +10,32 @@ namespace wordslab.manager.vm
 
         public int MemoryMB { get; protected set; }
 
-        public abstract bool Resize(int cores, int memoryMB, bool useGPU, string gpuType);
-
-        public VirtualDisk OsDisk { get; protected set; }
+        public VirtualDisk VmDisk { get; protected set; }
 
         public VirtualDisk ClusterDisk { get; protected set; }
 
         public VirtualDisk DataDisk { get; protected set; }
 
-        public abstract bool IsInstalled();
+        public abstract bool IsRunning();
 
-        public abstract IPAddress Start();
+        public abstract VMEndpoint Start();
 
-        public abstract bool Stop();
+        public abstract void Stop();
+    }
 
-        public abstract bool Delete();
+    public class VMEndpoint
+    {
+        public VMEndpoint(string ip, int sshPort, string kubeConfigPath)
+        {
+            Address = IPAddress.Parse(ip);
+            SSHPort = sshPort;
+            KubeConfigPath = kubeConfigPath;
+        }
+
+        public IPAddress Address { get; private set; }
+
+        public int SSHPort { get; private set; }
+
+        public string KubeConfigPath { get; private set; }
     }
 }

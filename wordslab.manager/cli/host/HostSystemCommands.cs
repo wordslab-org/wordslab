@@ -66,7 +66,7 @@ namespace wordslab.manager.cli.host
                 foreach (var gpu in gpus) 
                 {
                     AnsiConsole.WriteLine($"GPU {gpu.Index} info:");
-                    AnsiConsole.WriteLine($"- model name   : {gpu.Name}");
+                    AnsiConsole.WriteLine($"- model name   : {gpu.ModelName}");
                     AnsiConsole.WriteLine($"- memory       : {Math.Round(gpu.MemoryMB / 1024f)} GB");
                     AnsiConsole.WriteLine($"- architecture : {gpu.Architecture}");
                     AnsiConsole.WriteLine();
@@ -138,7 +138,7 @@ namespace wordslab.manager.cli.host
             {
                 foreach (var gpu in gpuStats)
                 {
-                    AnsiConsole.WriteLine($"GPU {gpu.Index} usage: {gpus[gpu.Index].Name}");
+                    AnsiConsole.WriteLine($"GPU {gpu.Index} usage: {gpus[gpu.Index].ModelName}");
                     AnsiConsole.WriteLine($"- gpu load    : {gpu.PercentGPUTime} %");
                     AnsiConsole.WriteLine($"- used memory : {gpu.MemoryUsedMB} MB");
                     AnsiConsole.WriteLine($"- free memory : {gpu.MemoryFreeMB} MB");

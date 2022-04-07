@@ -5,27 +5,27 @@ namespace wordslab.manager.storage
 {
     public class ConfigStore : DbContext
     {
-        private readonly StorageManager storageManager;
+        private readonly HostStorage hostStorage;
 
-        public ConfigStore(DbContextOptions<ConfigStore> options, StorageManager storageManager)
+        public ConfigStore(DbContextOptions<ConfigStore> options, HostStorage hostStorage)
             : base(options)
         {
-            this.storageManager = storageManager;
+            this.hostStorage = hostStorage;
         }
 
-        public DbSet<LocalDirectory> LocalDirectories { get; set; }
+        public DbSet<HostStorage.HostDirectory> HostDirectories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<LocalDirectory>().ToTable("LocalDirectory");
+            modelBuilder.Entity<HostStorage.HostDirectory>().ToTable("HostDirectory");
         }
 
         internal void Initialize()
         {
-            if (LocalDirectories.Any()) { return; }
+            if (HostDirectories.Any()) { return; }
 
-            var localDirectories = storageManager.GetConfigurableDirectories();
-            LocalDirectories.AddRange(localDirectories);
+            var localDirectories = hostStorage.GetConfigurableDirectories();
+            HostDirectories.AddRange(localDirectories);
             SaveChanges();
         }
 

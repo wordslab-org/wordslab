@@ -21,9 +21,6 @@
     <Content Include="scripts\vm\qemu\wordslab-k3s-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\qemu\wordslab-ubuntu-prepare.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="scripts\vm\qemu\wordslab-vm-create.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -69,16 +66,10 @@
     <Content Include="scripts\vm\wsl\wordslab-gpu-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\wsl\wordslab-os-init.sh">
+    <Content Include="scripts\vm\wsl\wordslab-vm-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\wsl\wordslab-os-start.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\wsl\wordslab-start.bat">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\wsl\wordslab-stop.bat">
+    <Content Include="scripts\vm\wsl\wordslab-vm-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -88,10 +79,6 @@
     <PackageReference Include="Serilog.AspNetCore" Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.43.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="scripts\vm\googlecloud\" />
   </ItemGroup>
 
 </Project>

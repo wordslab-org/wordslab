@@ -26,7 +26,7 @@ chmod a+x /usr/local/bin/helm
 cp $downloadpath/wordslab-gpu-init.sh /root/wordslab-gpu-init.sh
 chmod a+x /root/wordslab-gpu-init.sh
 
-cp $downloadpath/wordslab-os-start.sh /root/wordslab-os-start.sh
-chmod a+x /root/wordslab-os-start.sh
+cp $downloadpath/wordslab-vm-start.sh /root/wordslab-vm-start.sh
+chmod a+x /root/wordslab-vm-start.sh
 
 echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" >> /etc/wsl.conf

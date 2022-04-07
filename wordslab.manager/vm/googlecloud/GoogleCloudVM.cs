@@ -1,30 +1,18 @@
-﻿using System.Net;
-
-namespace wordslab.manager.vm.googlecloud
+﻿namespace wordslab.manager.vm.googlecloud
 {
     public class GoogleCloudVM : VirtualMachine
     {
-        public override bool Delete()
+        public override bool IsRunning()
         {
             throw new NotImplementedException();
         }
 
-        public override bool IsInstalled()
+        public override VMEndpoint Start()
         {
             throw new NotImplementedException();
         }
 
-        public override bool Resize(int cores, int memoryMB, bool useGPU, string gpuType)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override IPAddress Start()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override bool Stop()
+        public override void Stop()
         {
             throw new NotImplementedException();
         }

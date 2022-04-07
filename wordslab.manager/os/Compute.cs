@@ -343,33 +343,33 @@ namespace wordslab.manager.os
 
         public class GPUInfo
         {
-            public GPUInfo(int index, string name, int memory)
+            public GPUInfo(int index, string modelName, int memory)
             {
                 Index = index;
-                Name = name;
+                ModelName = modelName;
                 MemoryMB = memory;
             }
 
             public int Index { get; set; }
-            public string Name { get; set; }
+            public string ModelName { get; set; }
             public int MemoryMB { get; set; }
             public GPUArchitectureInfo Architecture
             {
                 get
                 {
-                    if (Name.Contains("GeForce GTX 10") || Name.Contains("TITAN X"))
+                    if (ModelName.Contains("GeForce GTX 10") || ModelName.Contains("TITAN X"))
                     {
                         return GPUArchitectureInfo.Pascal;
                     }
-                    else if (Name.Contains("TITAN V"))
+                    else if (ModelName.Contains("TITAN V"))
                     {
                         return GPUArchitectureInfo.Volta;
                     }
-                    else if (Name.Contains("GeForce GTX 16") || Name.Contains("GeForce RTX 20") || Name.Contains("TITAN RTX"))
+                    else if (ModelName.Contains("GeForce GTX 16") || ModelName.Contains("GeForce RTX 20") || ModelName.Contains("TITAN RTX"))
                     {
                         return GPUArchitectureInfo.Turing;
                     }
-                    else if (Name.Contains("GeForce GTX 30"))
+                    else if (ModelName.Contains("GeForce GTX 30"))
                     {
                         return GPUArchitectureInfo.Ampere;
                     }

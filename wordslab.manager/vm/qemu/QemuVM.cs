@@ -1,30 +1,29 @@
-﻿using System.Net;
+﻿using wordslab.manager.storage;
 
 namespace wordslab.manager.vm.qemu
 {
     public class QemuVM : VirtualMachine
-    {
-        public override bool Delete()
+    {        
+        public static QemuVM LocalInstance(HostStorage hostStorage) { return new QemuVM(hostStorage); }
+
+        private HostStorage hostStorage;
+
+        internal QemuVM(HostStorage hostStorage)
+        {
+            this.hostStorage = hostStorage;
+        }
+
+        public override bool IsRunning()
         {
             throw new NotImplementedException();
         }
 
-        public override bool IsInstalled()
+        public override VMEndpoint Start()
         {
             throw new NotImplementedException();
         }
 
-        public override bool Resize(int cores, int memoryMB, bool useGPU, string gpuType)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override IPAddress Start()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override bool Stop()
+        public override void Stop()
         {
             throw new NotImplementedException();
         }

@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 ssh-keyscan -H -p 3022 0.0.0.0 >> ~/.ssh/known_hosts
 scp -P 3022 k3s ubuntu@0.0.0.0:~/k3s
 scp -P 3022 k3s-airgap-images-amd64.tar ubuntu@0.0.0.0:~/k3s-airgap-images-amd64.tar

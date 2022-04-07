@@ -14,13 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Initialize local storage and register local storage manager
 
-var storageManager = new StorageManager();
-builder.Services.AddSingleton<StorageManager>(storageManager);
+var hostStorage = new HostStorage();
+builder.Services.AddSingleton<HostStorage>(hostStorage);
 
 // Configure logging to a local file with a daily rotation
 // See: https://github.com/serilog/serilog-aspnetcore and https://github.com/serilog/serilog-sinks-file
 
-var logPath = Path.Combine(storageManager.LogsDirectory.FullName, "wordslab-.log");
+var logPath = Path.Combine(hostStorage.LogsDirectory, "wordslab-.log");
 Log.Logger = new LoggerConfiguration().Enrich.FromLogContext().WriteTo.File(logPath, rollingInterval: RollingInterval.Day).CreateLogger();
 builder.WebHost.UseSerilog();
 
@@ -28,7 +28,7 @@ try
 {
     // Configure database connection and register an Entity Framework Core database context factory
 
-    var databasePath = Path.Combine(storageManager.ConfigDirectory.FullName, "wordslab-config.db");
+    var databasePath = Path.Combine(hostStorage.ConfigDirectory, "wordslab-config.db");
     builder.Services.AddDbContextFactory<ConfigStore>(options => options.UseSqlite($"Data Source={databasePath}"));
 
     // Create the database if it doesn't exist
