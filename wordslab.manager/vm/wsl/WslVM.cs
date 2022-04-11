@@ -9,6 +9,13 @@ namespace wordslab.manager.vm.wsl
         public const string CLUSTER_DISTRIB_NAME = "wordslab-cluster-disk";
         public const string DATA_DISTRIB_NAME = "wordslab-data-disk";
 
+        public const int MIN_CORES = 2;
+        public const int MIN_MEMORY_GB = 4;
+
+        public WslVM(string name, int processors, int memoryGB, int osDiskSizeGB, int clusterDiskSizeGB, int dataDiskSizeGB, HostStorage storage) 
+            : base(name, processors, memoryGB, osDiskSizeGB, clusterDiskSizeGB, dataDiskSizeGB, storage) 
+        { }
+
         public override bool IsRunning()
         {
             try
@@ -26,32 +33,21 @@ namespace wordslab.manager.vm.wsl
             Wsl.execShell("/root/wordslab-cluster-start.sh", CLUSTER_DISTRIB_NAME);
             Wsl.execShell("/root/wordslab-vm-start.sh", VM_DISTRIB_NAME, ignoreError: "screen size is bogus");
 
-            /*var vmEndPoint = new VMEndpoint();
-            var ip = Wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", VM_DISTRIB_NAME);
-            vmEndPoint.Address = new System.Net.IPAddress(ip);
-            var kubeconfig = wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", VM_DISTRIB_NAME);
-            kubeconfigPath = Path.Combine(storage.ConfigDirectory.FullName, ".kube", "config");
+            string ip = null;
+            Wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", VM_DISTRIB_NAME, outputHandler: output => ip = output);
+            var kubeconfig = Wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", VM_DISTRIB_NAME);
+            var kubeconfigPath = Path.Combine(storage.ConfigDirectory, ".kube", "wslvm.config");
             Directory.CreateDirectory(kubeconfigPath);
             using (StreamWriter sw = new StreamWriter(kubeconfigPath))
             {
                 sw.Write(kubeconfig);
-            }*/
+            }
 
-            throw new NotImplementedException();
+            var vmEndpoint = new VMEndpoint(Name, ip, 0, kubeconfigPath);
+            return vmEndpoint;
         }
 
         public override void Stop()
-        {
-            throw new NotImplementedException();
-        }
-
-
-        public static void StartCluster(HostStorage storage, out int vmIP, out string kubeconfigPath)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static void StopCluster()
         {
             Wsl.terminate(VM_DISTRIB_NAME);
             Wsl.terminate(CLUSTER_DISTRIB_NAME);

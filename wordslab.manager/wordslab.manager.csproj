@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="scripts\vm\qemu\metadata.yaml">
+    <Content Include="scripts\vm\qemu\meta-data.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="scripts\vm\qemu\user-data.yaml">

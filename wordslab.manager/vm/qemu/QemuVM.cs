@@ -1,17 +1,13 @@
-﻿using wordslab.manager.storage;
+﻿using wordslab.manager.os;
+using wordslab.manager.storage;
 
 namespace wordslab.manager.vm.qemu
 {
     public class QemuVM : VirtualMachine
     {        
-        public static QemuVM LocalInstance(HostStorage hostStorage) { return new QemuVM(hostStorage); }
-
-        private HostStorage hostStorage;
-
-        internal QemuVM(HostStorage hostStorage)
-        {
-            this.hostStorage = hostStorage;
-        }
+        internal QemuVM(string name, int processors, int memoryGB, int osDiskSizeGB, int clusterDiskSizeGB, int dataDiskSizeGB, HostStorage storage) 
+            : base(name, processors, memoryGB, osDiskSizeGB, clusterDiskSizeGB, dataDiskSizeGB, storage) 
+        { }
 
         public override bool IsRunning()
         {
