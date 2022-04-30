@@ -68,5 +68,11 @@ namespace wordslab.manager.os
             Command.Run("apt", "--version", exitCodeHandler: code => isAvailable = code == 0);
             return isAvailable;
         }
+
+        // This command requires admin privileges and user interaction to enter password
+        public static string GetAptInstallCommand()
+        {
+            return "curl -L -o apt_2.4.5_amd64.deb http://us.archive.ubuntu.com/ubuntu/pool/main/a/apt/apt_2.4.5_amd64.deb && sudo dpkg -i apt_2.4.5_amd64.deb";
+        }
     }
 }

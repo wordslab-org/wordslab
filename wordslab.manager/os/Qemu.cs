@@ -89,7 +89,7 @@
             if (OS.IsLinux)
             {
                 Command.Run("apt", "update -y", mustRunAsAdmin: true);
-                Command.Run("apt", "install -y qemu qemu-utils qemu-kvm", mustRunAsAdmin: true);
+                Command.Run("apt", "install -y genisoimage qemu qemu-utils qemu-kvm", mustRunAsAdmin: true);
             }
             // No need to be admin when using Howebrew on macOS
             else if(OS.IsMacOS)

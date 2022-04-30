@@ -6,20 +6,20 @@ namespace wordslab.manager.vm
     {
         public string Name;
 
-        public int Cores;
-        public int MemoryMB;
+        public int LogicalProcessors;
+        public int MemoryGB;
 
         public string GPUModel;
-        public int    GPUMemoryMB;
+        public int    GPUMemoryGB;
         public bool   WithGPU { get { return GPUModel != "None"; } }
 
-        public int  VmDiskSizeMB;
+        public int  VmDiskSizeGB;
         public bool VmDiskIsSSD;
 
-        public int  ClusterDiskSizeMB;
+        public int  ClusterDiskSizeGB;
         public bool ClusterDiskIsSSD;
 
-        public int  DataDiskSizeMB;
+        public int  DataDiskSizeGB;
         public bool DataDiskIsSSD;
 
         public static VirtualMachineSpec Minimum
@@ -28,19 +28,19 @@ namespace wordslab.manager.vm
             {
                 var vmSpec = new VirtualMachineSpec();
 
-                vmSpec.Cores = 2;
-                vmSpec.MemoryMB = 4000;
+                vmSpec.LogicalProcessors = 2;
+                vmSpec.MemoryGB = 4;
 
                 if (OS.IsWindows)
                 {
-                    vmSpec.VmDiskSizeMB = 2000;
+                    vmSpec.VmDiskSizeGB = 2;
                 }
                 else
                 {
-                    vmSpec.VmDiskSizeMB = 2000;
+                    vmSpec.VmDiskSizeGB = 2;
                 }
-                vmSpec.ClusterDiskSizeMB = 5000;
-                vmSpec.DataDiskSizeMB = 5000;
+                vmSpec.ClusterDiskSizeGB = 5;
+                vmSpec.DataDiskSizeGB = 5;
 
                 return vmSpec;
             }
@@ -52,15 +52,15 @@ namespace wordslab.manager.vm
             {
                 var vmSpec = new VirtualMachineSpec();
 
-                vmSpec.Cores = 8;
-                vmSpec.MemoryMB = 12000;
+                vmSpec.LogicalProcessors = 8;
+                vmSpec.MemoryGB = 12;
 
                 vmSpec.GPUModel = "NVIDIA GeForce GTX 1060";
-                vmSpec.GPUMemoryMB = 6000;
+                vmSpec.GPUMemoryGB = 6;
 
-                vmSpec.VmDiskSizeMB = 5000;
-                vmSpec.ClusterDiskSizeMB = 10000;
-                vmSpec.DataDiskSizeMB = 15000;
+                vmSpec.VmDiskSizeGB = 5;
+                vmSpec.ClusterDiskSizeGB = 10;
+                vmSpec.DataDiskSizeGB = 15;
 
                 return vmSpec;
             }

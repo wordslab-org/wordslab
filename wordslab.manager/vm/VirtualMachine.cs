@@ -65,6 +65,29 @@ namespace wordslab.manager.vm
         }
 
         public abstract void Stop();
+
+        // --- wordslab virtual machine software ---
+
+        // Versions last updated : January 9 2022
+
+        // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/
+        internal static readonly string k3sVersion = "1.22.5+k3s1";
+        internal static readonly string k3sExecutableURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s";
+        internal static readonly int    k3sExecutableSize = 53473280;
+        internal static readonly string k3sExecutableFileName = $"k3s-{k3sVersion}";
+        internal static readonly string k3sImagesURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s-airgap-images-amd64.tar";
+        internal static readonly int    k3sImagesSize = 492856320;
+        internal static readonly string k3sImagesFileName = $"k3s-airgap-images-{k3sVersion}.tar";
+
+        // Helm releases: https://github.com/helm/helm/releases
+        internal static readonly string helmVersion = "3.7.2";
+        internal static readonly string helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
+        internal static readonly int    helmExecutableSize = 45731840; // 13870692 compressed
+        internal static readonly int    helmExtractedSize = 0;
+        internal static readonly string helmFileName = $"heml-{helmVersion}.tar";
+
+        // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases
+        internal static readonly string nvidiaContainerRuntimeVersion = "3.7.0-1";
     }
 
     public class VMEndpoint

@@ -17,11 +17,12 @@
                 Command.Run("apt", "update -y", mustRunAsAdmin: true);
                 Command.Run("apt", "install -y openssh-client", mustRunAsAdmin: true);
             }
-            // On WIndows, elevation will be required
+            // On Windows, elevation will be required
             else if(OS.IsWindows)
             {
                 Command.Run("powershell.exe", "Add-WindowsCapability -Online -Name OpenSSH.Client*", mustRunAsAdmin: true);
             }
+            // On MacOS: always installed by default
         }
 
         public static string GetLinuxInstallCommand()

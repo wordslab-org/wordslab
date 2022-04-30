@@ -37,25 +37,29 @@ public static class ConsoleApp
         host
           system
             info
-            usage
+            status
           storage
+            info
             status
             quota [disk] [size]
             move [storagearea] [directory]
             analyze [storagearea]
             clean [storagearea] [retentionperiod]
           compute
+            info
             status
             quota [cpu|gpu|memory] [number|size]
             analyze [cpu|gpu|memory]
           network
+            info
             status
             config [platformservice] [portnumber] [exposelan]
           os
-            status
+            info
             hypervisor [enable|disable]
             update [packagename]
           vm
+            info
             status
             create [cores] [memory] [gpu] [disksizes]
             update [cores] [memory] [gpu] [disksizes]
@@ -152,18 +156,20 @@ public static class ConsoleApp
 
         config.AddBranch("host", config =>
         {
-            config.SetDescription("Manage wordslab storage, compute and ports allocation on your local host machine");
+            config.SetDescription("Manage wordslab storage, compute, ports, secrets and vm on your local host machine");
             config.AddBranch("system", config =>
             {
                 config.SetDescription("Display host machine system information and usage metrics");
                 config.AddCommand<SystemInfoCommand>("info")
                     .WithDescription("Display host machine hardware and operating system information");
-                config.AddCommand<SystemUsageCommand>("usage")
-                    .WithDescription("Display host machine usage metrics (cpu, memory, storage, network)");
+                config.AddCommand<SystemStatusCommand>("status")
+                    .WithDescription("Display host machine usage metrics: cpu, memory, storage, network");
             });
             config.AddBranch("storage", config =>
             {
                 config.SetDescription("Manage wordslab working directories and disk space quotas on your local host machine");
+                config.AddCommand<StorageInfoCommand>("info")
+                    .WithDescription("Display host machine disk space information");
                 config.AddCommand<StorageStatusCommand>("status")
                     .WithDescription("Display host machine working directories and disk space usage");
 
@@ -171,20 +177,24 @@ public static class ConsoleApp
             config.AddBranch("compute", config =>
             {
                 config.SetDescription("Manage wordslab cpu, gpu, and memory quotas on your local host machine");
+                config.AddCommand<ComputeInfoCommand>("info")
+                    .WithDescription("Display host machine cpu, gpu, and memory information");
                 config.AddCommand<ComputeStatusCommand>("status")
                     .WithDescription("Display host machine cpu, gpu, and memory usage");
             });
             config.AddBranch("network", config =>
             {
                 config.SetDescription("Manage wordslab services ports and network traffic on your local host machine");
+                config.AddCommand<NetworkInfoCommand>("info")
+                    .WithDescription("Display host machine network information");
                 config.AddCommand<NetworkStatusCommand>("status")
-                    .WithDescription("Display wordslab services ports and network traffic on your host machine");
+                    .WithDescription("Display host machine network ports usage");
             });
             config.AddBranch("os", config =>
             {
                 config.SetDescription("Manage operating system hypervisor and required packages on your local host machine");
-                config.AddCommand<OsStatusCommand>("status")
-                    .WithDescription("Display host machine hypervisor status and required os packages versions");
+                config.AddCommand<OsInfoCommand>("info")
+                    .WithDescription("Display host machine operating system and hypervisor information");
             });
             config.AddBranch("vm", config =>
             {

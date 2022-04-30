@@ -26,7 +26,7 @@ namespace wordslab.manager.os
         // - interaction 2 : press Enter to validate the list of changes which will be applied
         public static string GetHomebrewInstallCommand()
         {
-            return "/bin/bash -c \"$(curl - fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"";
+            return "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"";
         }
     }
 }
