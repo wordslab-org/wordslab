@@ -193,16 +193,21 @@ namespace wordslab.manager.os
             var parentDirectory = new FileInfo(path).Directory;
             var realDirectory = parentDirectory.ResolveLinkTarget(true);
 
-            var sortedMountPoints = drivesInfo.Keys.OrderByDescending(path => path.Length);
+            var sortedMountPoints = GetDrivesInfo().Keys.OrderByDescending(path => path.Length);
             foreach(var mountPoint in sortedMountPoints)
             {
                 if(realDirectory.FullName.StartsWith(mountPoint))
                 {
-                    var driveInfo = drivesInfo[mountPoint];
+                    var driveInfo = GetDrivesInfo()[mountPoint];
                     return driveInfo;
                 }
             }
             return null;
+        }
+
+        public static DriveInfo GetDriveInfoForUserProfile()
+        {
+            return GetDriveInfoFromPath(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
         }
 
         public static bool IsPathOnSSD(string path)

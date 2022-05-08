@@ -4,9 +4,14 @@ using wordslab.manager.storage;
 namespace wordslab.manager.vm.qemu
 {
     public class QemuVM : VirtualMachine
-    {        
-        internal QemuVM(string name, int processors, int memoryGB, int osDiskSizeGB, int clusterDiskSizeGB, int dataDiskSizeGB, HostStorage storage) 
-            : base(name, processors, memoryGB, osDiskSizeGB, clusterDiskSizeGB, dataDiskSizeGB, storage) 
+    {
+        public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal QemuVM(string name, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
+            : base(name, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage) 
         { }
 
         public override bool IsRunning()
@@ -14,7 +19,7 @@ namespace wordslab.manager.vm.qemu
             throw new NotImplementedException();
         }
 
-        public override VMEndpoint Start()
+        public override VMEndpoint Start(VirtualMachineSpec vmSpec)
         {
             throw new NotImplementedException();
         }

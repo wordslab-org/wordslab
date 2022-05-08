@@ -4,7 +4,7 @@ namespace wordslab.manager.vm.qemu
 {
     public class QemuVMInstaller
     {
-        public static VirtualMachine FindLocalVM(HostStorage hostStorage)
+        public static VirtualMachine TryFindByName(string vmName, HostStorage hostStorage)
         {
             throw new NotImplementedException();
         }
@@ -16,7 +16,7 @@ namespace wordslab.manager.vm.qemu
             throw new NotImplementedException();
         }
 
-        public static async Task<bool> Uninstall(HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<bool> Uninstall(string vmName, HostStorage hostStorage, InstallProcessUI ui)
         {
             throw new NotImplementedException();
         }

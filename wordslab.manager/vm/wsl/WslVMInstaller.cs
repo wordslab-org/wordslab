@@ -5,17 +5,6 @@ namespace wordslab.manager.vm.wsl
 {
     public class WslVMInstaller
     {
-        public static VirtualMachine FindLocalVM(HostStorage hostStorage)
-        {
-            try
-            {
-                // Wsl.execShell("ls /usr/local/bin/k3s", VM_DISTRIB_NAME);
-                return null;
-            }
-            catch { }
-            return null;
-        }
-
         public static async Task<VirtualMachine> Install(VirtualMachineSpec vmSpec, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
@@ -29,61 +18,31 @@ namespace wordslab.manager.vm.wsl
 
                 ui.DisplayInstallStep(1, 6, "Check hardware requirements");
 
-                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.LogicalProcessors} + 2 logical processors");
+                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.Processors} (VM) + {VirtualMachineSpec.MIN_HOST_PROCESSORS} (host) logical processors");
                 var cpuInfo = Compute.GetCPUInfo();
-                cpuSpecOK = cpuInfo.NumberOfLogicalProcessors >= (vmSpec.LogicalProcessors+2);
-                ui.DisplayCommandResult(c1, cpuSpecOK, cpuSpecOK ? null : $"Sorry, a CPU with {cpuInfo.NumberOfLogicalProcessors} logical processors is not powerful enough to host the required virtual machine");
+                string cpuErrorMessage;
+                cpuSpecOK = vmSpec.CheckCPURequirements(cpuInfo, out cpuErrorMessage);
+                ui.DisplayCommandResult(c1, cpuSpecOK, cpuSpecOK ? null : cpuErrorMessage);
                 if (!cpuSpecOK)
                 {
                     return null;
                 }
 
-                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.MemoryGB} + 4 GB physical memory");
+                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.MemoryGB} (VM) + {VirtualMachineSpec.MIN_HOST_MEMORY_GB} (host) GB physical memory");
                 var memInfo = Memory.GetMemoryInfo();
-                memorySpecOK = memInfo.TotalPhysicalMB >= (ulong)((vmSpec.MemoryGB+4)*1000);
-                ui.DisplayCommandResult(c2, memorySpecOK, memorySpecOK ? null : $"Sorry, a machine with {memInfo.TotalPhysicalMB} MB of memory is not powerful enough to host the required virtual machine");
+                string memoryErrorMessage;
+                memorySpecOK = vmSpec.CheckMemoryRequirements(memInfo, out memoryErrorMessage);
+                ui.DisplayCommandResult(c2, memorySpecOK, memorySpecOK ? null : memoryErrorMessage);
                 if (!memorySpecOK)
                 {
                     return null;
                 }
 
-                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.VmDiskSizeGB+vmSpec.ClusterDiskSizeGB+vmSpec.DataDiskSizeGB} + 2 GB free storage space");
-                var storageReqsGB = new Dictionary<os.DriveInfo, int>();
-                var downloadCacheDrive = Storage.GetDriveInfoFromPath(hostStorage.DownloadCacheDirectory);
-                storageReqsGB.Add(downloadCacheDrive, 2);
-                var vmDrives = new os.DriveInfo[] { 
-                    Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineOSDirectory),
-                    Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineClusterDirectory),
-                    Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineDataDirectory) };
-                var vmStorageReqs = new int[] { vmSpec.VmDiskSizeGB, vmSpec.ClusterDiskSizeGB, vmSpec.DataDiskSizeGB };
-                var vmSSDReqs = new bool[] { vmSpec.VmDiskIsSSD, vmSpec.ClusterDiskIsSSD, vmSpec.DataDiskIsSSD };
-                var storageSpaceMessage = "";
-                foreach (var tuple in vmDrives.Zip(vmStorageReqs, vmSSDReqs))
-                {
-                    var (vmDrive, vmStorageReq, vmSSDReq) = tuple;
-                    if (storageReqsGB.ContainsKey(vmDrive))
-                    {
-                        storageReqsGB[vmDrive] += vmStorageReq;
-                    }
-                    else
-                    {
-                        storageReqsGB.Add(vmDrive, vmStorageReq);
-                    }
-                    if(vmSSDReq && !vmDrive.IsSSD)
-                    {
-                        storageSpecOK = false;
-                        storageSpaceMessage += $"Sorry, the volume {vmDrive.VolumeName} is not an SSD: this was required for one virtual machine disk in the virtual machine spec. ";
-                    }
-                }
-                foreach(var drive in storageReqsGB.Keys)
-                {
-                    if(drive.FreeSpaceMB < (storageReqsGB[drive]*1000))
-                    {
-                        storageSpecOK = false;
-                        storageSpaceMessage += $"Sorry, not enough free storage space on {drive.VolumeName}: {(int)(drive.FreeSpaceMB/1000)} GB avaible but {storageReqsGB[drive]} GB required. ";
-                    }
-                }
-                ui.DisplayCommandResult(c3, storageSpecOK, storageSpecOK ? null : $"{storageSpaceMessage} You can try to update wordslab storage configuration by moving the VM directories to another disk where more space is available.");
+                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.VmDiskSizeGB+vmSpec.ClusterDiskSizeGB+vmSpec.DataDiskSizeGB} (VM) + {VirtualMachineSpec.MIN_HOST_DISK_GB + VirtualMachineSpec.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
+                Dictionary<os.DriveInfo, int> storageReqsGB;
+                string storageErrorMessage;
+                storageSpecOK = vmSpec.CheckStorageRequirements(hostStorage, out storageReqsGB, out storageErrorMessage);
+                ui.DisplayCommandResult(c3, storageSpecOK, storageSpecOK ? null : $"{storageErrorMessage}You can try to update wordslab storage configuration by moving the VM directories to another disk where more space is available.");
                 if (!storageSpecOK)
                 {
                     return null;
@@ -103,17 +62,10 @@ namespace wordslab.manager.vm.wsl
                 if (vmSpec.WithGPU)
                 {
                     var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: {vmSpec.GPUModel} and at least {vmSpec.GPUMemoryGB} GB GPU memory");
-                    var gpus = Compute.GetNvidiaGPUsInfo();
-                    var availableGPU = gpus.Where(gpu => gpu.ModelName == vmSpec.GPUModel).FirstOrDefault();
-                    if(availableGPU != null)
-                    {
-                        gpuSpecOK = availableGPU.MemoryMB >= (vmSpec.GPUMemoryGB*1000);
-                    }
-                    else
-                    {
-                        gpuSpecOK = false;
-                    }
-                    ui.DisplayCommandResult(c5, gpuSpecOK, gpuSpecOK ? availableGPU.ModelName : "Sorry, could not find the required Nvidia GPU on the host machine. If the card is physically inserted in the machine, you can try to update your Nvidia drivers and to install nvidia-smi");
+                    var gpusInfo = Compute.GetNvidiaGPUsInfo();
+                    string gpuErrorMessage;
+                    gpuSpecOK = vmSpec.CheckGPURequirements(gpusInfo, out gpuErrorMessage);
+                    ui.DisplayCommandResult(c5, gpuSpecOK, gpuSpecOK ? null : gpuErrorMessage);
                     if (!gpuSpecOK)
                     {
                         return null;
@@ -300,6 +252,8 @@ namespace wordslab.manager.vm.wsl
                 bool virtualDiskClusterOK = true;
                 bool virtualDiskDataOK = true;
 
+                ui.DisplayInstallStep(5, 6, "Initialize wordslab VM virtual disks");
+
                 var wslDistribs = Wsl.list();
                 var cachePath = hostStorage.DownloadCacheDirectory;
 
@@ -308,44 +262,86 @@ namespace wordslab.manager.vm.wsl
                 {
                     var c22 = ui.DisplayCommandLaunch("Initializing wordslab data virtual disk");
                     dataDisk = WslDisk.CreateBlank(vmSpec.Name, VirtualDiskFunction.Data, hostStorage);
-                    ui.DisplayCommandResult(c22, dataDisk != null);
+                    virtualDiskDataOK = dataDisk != null;
+                    ui.DisplayCommandResult(c22, virtualDiskDataOK);
                 }
+                if(!virtualDiskDataOK) { return null; }
 
                 var clusterDisk = WslDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Cluster, hostStorage);
                 if (clusterDisk == null)
                 {
                     var c23 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
                     clusterDisk = WslDisk.CreateBlank(vmSpec.Name, VirtualDiskFunction.Cluster, hostStorage);
-                    ui.DisplayCommandResult(c23, clusterDisk != null);
+                    virtualDiskClusterOK = clusterDisk != null;
+                    ui.DisplayCommandResult(c23, virtualDiskClusterOK);
                 }
+                if (!virtualDiskClusterOK) { return null; }
 
                 var osDisk = WslDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.OS, hostStorage);
                 if (osDisk == null)
                 {
-                    var c24 = ui.DisplayCommandLaunch("Initializing wordslab vm virtual disk");
+                    var c24 = ui.DisplayCommandLaunch("Initializing wordslab VM virtual disk");
                     osDisk = WslDisk.CreateFromOSImage(vmSpec.Name, Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName), hostStorage);
-                    ui.DisplayCommandResult(c24, osDisk != null);
+                    virtualDiskVMOK = osDisk != null;
+                    ui.DisplayCommandResult(c24, virtualDiskVMOK);
                 }
+                if (!virtualDiskVMOK) { return null; }
 
-                if (useGpu)
+                if (createVMWithGPUSupport)
                 {
-                    var c19 = ui.DisplayCommandLaunch("Installing nvidia GPU software inside virtual machine");
-                    Wsl.execShell($"/root/wordslab-cluster-start.sh", "wordslab-cluster");
-                    Wsl.execShell("nvidia-smi -L", "wordslab-os");
-                    Wsl.execShell($"/root/wordslab-gpu-init.sh '{cachePath}' '{nvidiaContainerRuntimeVersion}'", "wordslab-os", ignoreError: "perl: warning");
-                    Wsl.terminate("wordslab-cluster");
-                    ui.DisplayCommandResult(c19, true);
+                    var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on VM virtual disk");
+                    ((WslDisk)osDisk).InstallNvidiaContainerRuntimeOnOSImage(clusterDisk);
+                    ui.DisplayCommandResult(c25, true);
                 }
 
-                // 6. Initialize and start local Virtual Machine
+                // 6. Configure and start local Virtual Machine
+                bool vmConfigOK = true;
+                bool vmInitOK = true;
 
-                var localVM = FindLocalVM(hostStorage);
+                ui.DisplayInstallStep(6, 6, "Configure and start wordslab Virtual Machine");
+                                
+                var wslConfig = Wsl.Read_wslconfig();
+                var needToUpdateWslConfig = 
+                    (!wslConfig.processors.HasValue || wslConfig.processors.Value != vmSpec.Processors)      ||
+                    (!wslConfig.memoryMB.HasValue   || wslConfig.memoryMB.Value   != vmSpec.MemoryGB * 1024) ||
+                    (wslConfig.localhostForwarding.HasValue && wslConfig.localhostForwarding.Value != true)  ||
+                    (wslConfig.pageReporting.HasValue       && wslConfig.pageReporting.Value       != true);
 
-                var c20 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
-                int vmIP;
-                string kubeconfigPath;
-                var vmEndPoint = localVM.Start();
-                ui.DisplayCommandResult(c20, true, $"Virtual machine IP = {vmEndPoint.Address}, KUBECONFIG = {vmEndPoint.KubeConfigPath}");
+                var updateWslConfig = false;
+                if (needToUpdateWslConfig)
+                {
+                    updateWslConfig = await ui.DisplayQuestionAsync($"Do you confirm you want to update the Windows Subsystem for Linux configuration to match with your VM specification: {vmSpec.Processors} processors, {vmSpec.MemoryGB} GB memory ? This will affect all WSL distributions launched from your Windows account, not only wordslab.");
+                }
+                if (updateWslConfig && Wsl.list().Any(d => d.IsRunning))
+                {
+                    updateWslConfig = await ui.DisplayQuestionAsync("All WSL distributions currently running will be stopped: please make sure you take all the necessary measures for a graceful shutdown before continuing. Are you ready now ?");
+                }               
+                if (updateWslConfig)
+                {
+                    var c26 = ui.DisplayCommandLaunch($"Updating Windows Subsystem for Linux configuration to match your VM specification: {vmSpec.Processors} processors, {vmSpec.MemoryGB} GB memory");
+                    Wsl.shutdown();
+                    wslConfig.processors = vmSpec.Processors;
+                    wslConfig.memoryMB = vmSpec.MemoryGB*1024;
+                    wslConfig.localhostForwarding = true;
+                    wslConfig.pageReporting = true;
+                    Wsl.Write_wslconfig(wslConfig);
+                    ui.DisplayCommandResult(c26, true);
+                }
+
+                var localVM = WslVM.TryFindByName(vmSpec.Name, hostStorage);
+
+                var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
+                VMEndpoint localVMEndpoint = null;
+                if (!localVM.IsRunning())
+                {
+                    localVMEndpoint = localVM.Start(vmSpec);
+                }
+                else
+                {
+                    localVMEndpoint = localVM.Endpoint;
+                }
+
+                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, SSH port = {localVMEndpoint.SSHPort}");
 
                 return localVM;
             }
@@ -356,11 +352,11 @@ namespace wordslab.manager.vm.wsl
             }
         }
 
-        public static async Task<bool> Uninstall(HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<bool> Uninstall(string vmName, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
-                var localVM = FindLocalVM(hostStorage);
+                var localVM = WslVM.TryFindByName(vmName, hostStorage);
 
                 var c1 = ui.DisplayCommandLaunch("Stopping wordslab virtual machine and local k3s cluster");
                 localVM.Stop();
@@ -370,9 +366,9 @@ namespace wordslab.manager.vm.wsl
                 if (confirm)
                 {
                     var c2 = ui.DisplayCommandLaunch("Deleting wordslab virtual machine and local k3s cluster");
-                    Wsl.unregister("wordslab-os");
-                    Wsl.unregister("wordslab-cluster");
-                    Wsl.unregister("wordslab-data");
+                    localVM.OsDisk.Delete();
+                    localVM.ClusterDisk.Delete();
+                    localVM.DataDisk.Delete();
                     ui.DisplayCommandResult(c2, true);
 
                     return true;

@@ -17,6 +17,8 @@ namespace wordslab.manager.vm
             RefreshState();
         }
 
+        private const string localVMName = "localvm"; 
+
         private VirtualMachine localVM;
 
         public VirtualMachine LocalVM { get { return localVM; } }
@@ -25,11 +27,11 @@ namespace wordslab.manager.vm
         {
             if(OS.IsWindows)
             {
-                localVM = WslVMInstaller.FindLocalVM(hostStorage);
+                localVM = WslVM.TryFindByName(localVMName, hostStorage);
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                localVM = QemuVMInstaller.FindLocalVM(hostStorage);
+                localVM = QemuVM.TryFindByName(localVMName, hostStorage);
             }
         }
 
@@ -59,11 +61,11 @@ namespace wordslab.manager.vm
             bool uninstallSuccess = false;
             if (OS.IsWindows)
             {
-                uninstallSuccess = await WslVMInstaller.Uninstall(hostStorage, installUI);               
+                uninstallSuccess = await WslVMInstaller.Uninstall(localVMName, hostStorage, installUI);               
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                uninstallSuccess = await QemuVMInstaller.Uninstall(hostStorage, installUI);
+                uninstallSuccess = await QemuVMInstaller.Uninstall(localVMName, hostStorage, installUI);
             }
 
             if (uninstallSuccess)

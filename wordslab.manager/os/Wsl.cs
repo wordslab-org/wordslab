@@ -322,6 +322,11 @@ namespace wordslab.manager.os
 
             // true only if the values were loaded from the wslconfig file
             public bool LoadedFromFile = false;
+
+            public WslConfig Clone()
+            {
+                return (WslConfig)this.MemberwiseClone();
+            }
         }
 
         private static readonly string wslconfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wslconfig");

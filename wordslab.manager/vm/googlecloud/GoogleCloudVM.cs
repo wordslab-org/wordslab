@@ -4,8 +4,8 @@ namespace wordslab.manager.vm.googlecloud
 {
     public class GoogleCloudVM : VirtualMachine
     {
-        internal GoogleCloudVM(string name, int processors, int memoryGB, int osDiskSizeGB, int clusterDiskSizeGB, int dataDiskSizeGB, HostStorage storage)
-            : base(name, processors, memoryGB, osDiskSizeGB, clusterDiskSizeGB, dataDiskSizeGB, storage)
+        internal GoogleCloudVM(string name, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage)
+            : base(name, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage)
         { }
 
         public override bool IsRunning()
@@ -13,7 +13,7 @@ namespace wordslab.manager.vm.googlecloud
             throw new NotImplementedException();
         }
 
-        public override VMEndpoint Start()
+        public override VMEndpoint Start(VirtualMachineSpec vmSpec)
         {
             throw new NotImplementedException();
         }

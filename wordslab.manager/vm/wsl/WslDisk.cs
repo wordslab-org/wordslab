@@ -5,11 +5,6 @@ namespace wordslab.manager.vm.wsl
 {
     public class WslDisk : VirtualDisk
     {
-        private static string GetLocalStoragePath(string vmName, VirtualDiskFunction function, HostStorage storage)
-        {
-            return VirtualDisk.GetHostStoragePathWithoutExtension(vmName, function, storage) + ".vhdx";
-        }
-
         public static VirtualDisk TryFindByName(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
             var serviceName = GetServiceName(vmName, function);
@@ -25,20 +20,11 @@ namespace wordslab.manager.vm.wsl
             return null;
         }
 
-        private static string GetDiskInitScript(VirtualDiskFunction function)
+        private static string GetLocalStoragePath(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
-            switch (function)
-            {
-                case VirtualDiskFunction.OS:
-                    return vmDiskInitScript;
-                case VirtualDiskFunction.Cluster:
-                    return clusterDiskInitScript;
-                case VirtualDiskFunction.Data:
-                    return dataDiskInitScript;
-            }
-            return null;
+            return VirtualDisk.GetHostStoragePathWithoutExtension(vmName, function, storage) + ".vhdx";
         }
-
+                
         public static VirtualDisk CreateFromOSImage(string vmName, string osImagePath, /*int maxSizeGB,*/ HostStorage storage)
         {
             // See below:  public override void Resize(int maxSizeGB)
@@ -57,18 +43,20 @@ namespace wordslab.manager.vm.wsl
             Wsl.execShell($"cp $(wslpath '{cacheDirectory}')/{diskInitScript} /root/{diskInitScript}", serviceName);
             Wsl.execShell($"chmod a+x /root/{diskInitScript}", serviceName);
             Wsl.execShell($"/root/{diskInitScript} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.helmFileName}'", serviceName, ignoreError: "perl: warning");
+            Wsl.terminate(serviceName);
 
             return TryFindByName(vmName, VirtualDiskFunction.OS, storage);
         }
 
-        public bool InstallNvidiaContainerRuntime()
+        public bool InstallNvidiaContainerRuntimeOnOSImage(VirtualDisk clusterDisk)
         {
             if (Function == VirtualDiskFunction.OS)
             {
-                StartService();
+                clusterDisk.StartService();
                 Wsl.execShell("nvidia-smi -L", ServiceName);
                 Wsl.execShell($"/root/{vmGPUInitScript} '{hostStorage.DownloadCacheDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, ignoreError: "perl: warning");
-                StopService();
+                Wsl.terminate(ServiceName);
+                clusterDisk.StopService();
                 return true;
             }
             else
@@ -189,12 +177,27 @@ namespace wordslab.manager.vm.wsl
 
         // --- wordslab virtual machine scripts ---
 
-        static readonly string vmDiskInitScript      = "wordslab-vm-init.sh";
-        static readonly string vmGPUInitScript       = "wordslab-gpu-init.sh";
-        static readonly string clusterDiskInitScript = "wordslab-cluster-init.sh";
-        static readonly string dataDiskInitScript    = "wordslab-data-init.shh";
+        internal static readonly string vmDiskInitScript      = "wordslab-vm-init.sh";
+        internal static readonly string vmGPUInitScript       = "wordslab-gpu-init.sh";
+        internal static readonly string clusterDiskInitScript = "wordslab-cluster-init.sh";
+        internal static readonly string dataDiskInitScript    = "wordslab-data-init.shh";
 
-        static readonly string clusterDiskStartupScript = "wordslab-cluster-start.sh";
-        static readonly string dataDiskStartupScript    = "wordslab-data-start.sh";
+        internal static readonly string vmStartupScript          = "wordslab-vm-start.sh";
+        internal static readonly string clusterDiskStartupScript = "wordslab-cluster-start.sh";
+        internal static readonly string dataDiskStartupScript    = "wordslab-data-start.sh";
+
+        private static string GetDiskInitScript(VirtualDiskFunction function)
+        {
+            switch (function)
+            {
+                case VirtualDiskFunction.OS:
+                    return vmDiskInitScript;
+                case VirtualDiskFunction.Cluster:
+                    return clusterDiskInitScript;
+                case VirtualDiskFunction.Data:
+                    return dataDiskInitScript;
+            }
+            return null;
+        }
     }
 }

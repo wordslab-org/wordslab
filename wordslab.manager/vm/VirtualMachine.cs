@@ -8,20 +8,18 @@ namespace wordslab.manager.vm
     {
         protected HostStorage storage;
 
-        public VirtualMachine(string name, int processors, int memoryGB, int osDiskSizeGB, int clusterDiskSizeGB, int dataDiskSizeGB, HostStorage storage)
+        protected VirtualMachine(string vmName, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage)
         {
-            if(!NAME_REGEX.IsMatch(name))
+            if(!NAME_REGEX.IsMatch(vmName))
             {
                 throw new ArgumentException("A virtual machine name can only contain lowercase letters, digits and -");
             }
-            Name = name;
+            Name = vmName;
             Processors = processors;
             MemoryGB = memoryGB;
-
-            this.osDiskSizeGB = osDiskSizeGB;
-            this.clusterDiskSizeGB = clusterDiskSizeGB;
-            this.dataDiskSizeGB = dataDiskSizeGB;
-
+            OsDisk = osDisk;
+            ClusterDisk = clusterDisk;
+            DataDisk = dataDisk;
             this.storage = storage;
         }
 
@@ -33,10 +31,6 @@ namespace wordslab.manager.vm
 
         public int MemoryGB { get; protected set; }
 
-        protected int osDiskSizeGB;
-        protected int clusterDiskSizeGB;
-        protected int dataDiskSizeGB;
-
         public VirtualDisk OsDisk { get; protected set; }
 
         public VirtualDisk ClusterDisk { get; protected set; }
@@ -45,7 +39,7 @@ namespace wordslab.manager.vm
 
         public abstract bool IsRunning();
 
-        public abstract VMEndpoint Start();
+        public abstract VMEndpoint Start(VirtualMachineSpec vmSpec);
 
         protected VMEndpoint endpoint;
 
@@ -63,6 +57,8 @@ namespace wordslab.manager.vm
                 return endpoint;
             }
         }
+
+        public string KubeconfigPath => Path.Combine(storage.ConfigDirectory, ".kube", $"{Name}.config");
 
         public abstract void Stop();
 
@@ -92,21 +88,24 @@ namespace wordslab.manager.vm
 
     public class VMEndpoint
     {
-        public VMEndpoint(string name, string ip, int sshPort, string kubeConfigPath)
+        public VMEndpoint(string vmName, string ip, int sshPort, int kubernetesPort, int httpIngressPort)
         {
-            Name = name;
-            Address = IPAddress.Parse(ip);
+            VMName = vmName;
+            IPAddress = IPAddress.Parse(ip);
             SSHPort = sshPort;
-            KubeConfigPath = kubeConfigPath;
+            KubernetesPort = kubernetesPort;
+            HttpIngressPort = httpIngressPort; 
         }
 
-        public string Name {  get; private set; }
+        public string VMName {  get; private set; }
 
-        public IPAddress Address { get; private set; }
+        public IPAddress IPAddress { get; private set; }
 
         public int SSHPort { get; private set; }
 
-        public string KubeConfigPath { get; private set; }
+        public int KubernetesPort { get; private set; }
+
+        public int HttpIngressPort { get; private set; }
 
         public static string GetFilePath(HostStorage storage, string name)
         {
@@ -115,11 +114,12 @@ namespace wordslab.manager.vm
 
         public void Save(HostStorage storage)
         {            
-            using(StreamWriter sw = new StreamWriter(GetFilePath(storage, Name)))
+            using(StreamWriter sw = new StreamWriter(GetFilePath(storage, VMName)))
             {
-                sw.WriteLine(Address.ToString());
+                sw.WriteLine(IPAddress.ToString());
                 sw.WriteLine(SSHPort);
-                sw.WriteLine(KubeConfigPath);
+                sw.WriteLine(KubernetesPort);
+                sw.WriteLine(HttpIngressPort);
             }
         }
 
@@ -132,8 +132,9 @@ namespace wordslab.manager.vm
                 {
                     var ip = sr.ReadLine();
                     var sshPort = Int32.Parse(sr.ReadLine());
-                    var kubeconfigPath = sr.ReadLine();
-                    return new VMEndpoint(name, ip, sshPort, kubeconfigPath);
+                    var kubernetesPort = Int32.Parse(sr.ReadLine());
+                    var httpIngressPort = Int32.Parse(sr.ReadLine());
+                    return new VMEndpoint(name, ip, sshPort, kubernetesPort, httpIngressPort);
                 }
             }
             else
