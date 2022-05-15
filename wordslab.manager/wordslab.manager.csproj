@@ -21,21 +21,6 @@
     <Content Include="scripts\vm\qemu\wordslab-k3s-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\qemu\wordslab-vm-create.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\qemu\wordslab-vm-delete.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\qemu\wordslab-vm-k3s-install.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\qemu\wordslab-vm-k3s-start.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\qemu\wordslab-vm-start.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="scripts\os\Windows\check-wsl.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

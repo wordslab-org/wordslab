@@ -88,10 +88,10 @@ namespace wordslab.manager.vm
 
     public class VMEndpoint
     {
-        public VMEndpoint(string vmName, string ip, int sshPort, int kubernetesPort, int httpIngressPort)
+        public VMEndpoint(string vmName, string ipAddress, int sshPort, int kubernetesPort, int httpIngressPort)
         {
             VMName = vmName;
-            IPAddress = IPAddress.Parse(ip);
+            IPAddress = ipAddress;
             SSHPort = sshPort;
             KubernetesPort = kubernetesPort;
             HttpIngressPort = httpIngressPort; 
@@ -99,7 +99,7 @@ namespace wordslab.manager.vm
 
         public string VMName {  get; private set; }
 
-        public IPAddress IPAddress { get; private set; }
+        public string IPAddress { get; private set; }
 
         public int SSHPort { get; private set; }
 
@@ -116,7 +116,7 @@ namespace wordslab.manager.vm
         {            
             using(StreamWriter sw = new StreamWriter(GetFilePath(storage, VMName)))
             {
-                sw.WriteLine(IPAddress.ToString());
+                sw.WriteLine(IPAddress);
                 sw.WriteLine(SSHPort);
                 sw.WriteLine(KubernetesPort);
                 sw.WriteLine(HttpIngressPort);
@@ -130,11 +130,11 @@ namespace wordslab.manager.vm
             {
                 using (StreamReader sr = new StreamReader(filepath))
                 {
-                    var ip = sr.ReadLine();
+                    var ipAddress = sr.ReadLine();
                     var sshPort = Int32.Parse(sr.ReadLine());
                     var kubernetesPort = Int32.Parse(sr.ReadLine());
                     var httpIngressPort = Int32.Parse(sr.ReadLine());
-                    return new VMEndpoint(name, ip, sshPort, kubernetesPort, httpIngressPort);
+                    return new VMEndpoint(name, ipAddress, sshPort, kubernetesPort, httpIngressPort);
                 }
             }
             else

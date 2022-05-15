@@ -1,4 +1,7 @@
-﻿namespace wordslab.manager.os
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
+
+namespace wordslab.manager.os
 {
     // QEMU
     // A generic and open source machine emulator and virtualizer
@@ -6,6 +9,7 @@
     public static class Qemu
     {
         public const string QEMUEXE = "qemu-system-x86_64";
+        public const string QEMUIMG = "qemu-img";
 
         // 0. Check if Qemu is already installed
 
@@ -122,14 +126,14 @@
 
         // 3. Create virtual disks
 
-        public static void CreateVirtualDisk(string diskFilePathWithoutExt, int maxSizeGB)
+        public static void CreateVirtualDisk(string diskFilePath, int maxSizeGB)
         {
-            Command.Run("qemu-img", $"create -f qcow2 {diskFilePathWithoutExt}.img {maxSizeGB}G");
+            Command.Run(QEMUIMG, $"create -f qcow2 {diskFilePath} {maxSizeGB}G");
         }
         
-        public static void CreateVirtualDiskFromOsImageWithCloudInit(string osDiskFilePathWithoutExt, string osImagePath, string metadataFilePath, string userdataTemplatePath)
+        public static void CreateVirtualDiskFromOsImageWithCloudInit(string osDiskFilePath, string osImagePath, string metadataFilePath, string userdataTemplatePath)
         {
-            string osDiskFileDir = Directory.GetParent(osDiskFilePathWithoutExt).FullName;
+            string osDiskFileDir = Directory.GetParent(osDiskFilePath).FullName;
 
             string tmpDir = null;
             Command.Run("mktemp", "-d /tmp/wordslab.XXXXXX", outputHandler: output => tmpDir = output);
@@ -144,13 +148,29 @@
 
             Command.Run("rm", $"-Rf {tmpDir}");
 
-            Command.Run($"qemu-img", $"create -F qcow2 -b {osImagePath} -f qcow2 {osDiskFilePathWithoutExt}.img");
+            Command.Run(QEMUIMG, $"create -F qcow2 -b {osImagePath} -f qcow2 {osDiskFilePath}");
+        }
+
+        public static int GetVirtualDiskSizeGB(string diskFilePath)
+        {
+            string sizeStr = null;
+            var outputParser = Command.Output.GetValue("virtual size:.*\\((\\d+)\\sbytes\\)", value => sizeStr = value);
+            Command.Run(QEMUIMG, $"info {diskFilePath}", outputHandler: outputParser.Run);
+
+            if (String.IsNullOrEmpty(sizeStr))
+            {
+                throw new Exception($"Failed to get virtual disk size for file: {diskFilePath}");
+            }
+            else
+            {
+                return (int)(long.Parse(sizeStr)/(1024*1024*1024));
+            }
         }
 
         // 4. Run Qemu virtual machine
 
-        public static void StartVirtualMachine(int processors, int memoryGB,
-            string osDiskFilePathWithoutExt, string clusterDiskFilePathWithoutExt, string dataDiskFilePathWithoutExt,
+        public static int StartVirtualMachine(int processors, int memoryGB,
+            string osDiskFilePath, string clusterDiskFilePath, string dataDiskFilePath,
             int sshForwardPort=3022, int httpForwardPort=3080, int kubernetesForwardPort=3443)
         {
             string accelParam = null;
@@ -163,13 +183,69 @@
                 accelParam = "hvf";
             }
 
-            string osDiskFileDir = Directory.GetParent(osDiskFilePathWithoutExt).FullName;
+            string osDiskFileDir = Directory.GetParent(osDiskFilePath).FullName;
 
-            Command.Run(QEMUEXE, $"-machine accel={accelParam},type=q35 -cpu host -smp {processors} -m {memoryGB}G -nographic " +
-                                 $"-device virtio-net-pci,netdev=net0 -netdev user,id=net0,hostfwd=tcp::{sshForwardPort}-:22,hostfwd=tcp::{httpForwardPort}-:80,hostfwd=tcp::{kubernetesForwardPort}-:6443 " +
-                                 $"-drive if=virtio,format=qcow2,file={osDiskFilePathWithoutExt}.img -drive if=virtio,format=raw,file={osDiskFileDir}/cloudinit.img " +
-                                 $"-drive if=virtio,format=qcow2,file={clusterDiskFilePathWithoutExt}.img " +
-                                 $"-drive if=virtio,format=qcow2,file={dataDiskFilePathWithoutExt}.img");  
+            var pid = Command.LaunchAndForget(QEMUEXE, $"-machine accel={accelParam},type=q35 -cpu host -smp {processors} -m {memoryGB}G -nographic " +
+                        $"-device virtio-net-pci,netdev=net0 -netdev user,id=net0,hostfwd=tcp::{sshForwardPort}-:22,hostfwd=tcp::{httpForwardPort}-:80,hostfwd=tcp::{kubernetesForwardPort}-:6443 " +
+                        $"-drive if=virtio,format=qcow2,file={osDiskFilePath} -drive if=virtio,format=raw,file={osDiskFileDir}/cloudinit.img " +
+                        $"-drive if=virtio,format=qcow2,file={clusterDiskFilePath} " +
+                        $"-drive if=virtio,format=qcow2,file={dataDiskFilePath}", showWindow: false);
+            return pid;
+        }
+
+        public class QemuProcessProperties
+        {
+            public int PID;
+            public int Processors;
+            public int MemoryGB;
+            public string OsDiskFilePath;
+            public string ClusterDiskFilePath;
+            public string DataDiskFilePath;
+            public int sshForwardPort;
+            public int httpForwardPort;
+            public int kubernetesForwardPort;
+        }
+
+        public static QemuProcessProperties TryFindVirtualMachineProcess(string osDiskFilePath)
+        {
+            string strPID = null;
+            string strCMD = null;
+            Command.Output.GetValue($"\\s*(\\d+)\\s+R\\s+.*{osDiskFilePath}.*", value => strPID = value);
+            Command.Output.GetValue($"\\s*\\d+\\s+R\\s+(.*{osDiskFilePath}.*)", value => strCMD = value);   
+            Command.Run("ps", $"-C {QEMUEXE} -o pid,state,command --no-headers -w -w", outputHandler: Command.Output.Run);
+
+            if (!String.IsNullOrEmpty(strPID))
+            {
+                var process = new QemuProcessProperties();
+                process.PID = Int32.Parse(strPID);
+
+                var qemuCommandRegex = new Regex("-smp\\s(\\d+).*-m\\s(\\d+)G.*tcp::(\\d+)-:22.*tcp::(\\d+)-:80.*tcp::(\\d+)-:6443.*-drive if=virtio,format=qcow2,file=([^\\s]+) -drive if=virtio,format=raw,file=[^\\s]+/cloudinit.img -drive if=virtio,format=qcow2,file=([^\\s]+) -drive if=virtio,format=qcow2,file=([^\\s]+)");
+                var match = qemuCommandRegex.Match(strCMD);
+                if (match.Success)
+                {
+                    process.Processors = Int32.Parse(match.Groups[1].Value);
+                    process.MemoryGB = Int32.Parse(match.Groups[2].Value);
+                    process.sshForwardPort = Int32.Parse(match.Groups[3].Value);
+                    process.httpForwardPort = Int32.Parse(match.Groups[4].Value);
+                    process.kubernetesForwardPort = Int32.Parse(match.Groups[5].Value);
+                    process.OsDiskFilePath = match.Groups[6].Value;
+                    process.ClusterDiskFilePath = match.Groups[7].Value;
+                    process.DataDiskFilePath = match.Groups[8].Value;
+                    return process;
+                }
+            }
+            return null;
+        }
+
+        public static bool StopVirtualMachine(int pid)
+        {
+            var vmProcess = Process.GetProcessById(pid);
+
+            // https://stackoverflow.com/questions/283128/how-do-i-send-ctrlc-to-a-process-in-c
+            // Send Ctrl-C
+            vmProcess.StandardInput.WriteLine("\x3");
+            vmProcess.StandardOutput.ReadToEnd();
+            return vmProcess.HasExited;
         }
     }
 }

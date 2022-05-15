@@ -82,7 +82,7 @@ namespace wordslab.manager.vm.wsl
 
                 if (createVMWithGPUSupport)
                 {
-                    var c6 = ui.DisplayCommandLaunch("Checking if operating system version is Windows 10 version 21H2 or higher");
+                    var c6 = ui.DisplayCommandLaunch("Checking if operating system version is Windows 10 x64 version 21H2 or higher");
                     windowsVersionOK = Wsl.IsWindowsVersionOKForWSL2WithGPU();
                     ui.DisplayCommandResult(c6, windowsVersionOK);                    
                 }
@@ -109,7 +109,7 @@ namespace wordslab.manager.vm.wsl
                     if (!nvidiaDriverVersionOK)
                     {
                         var c10 = ui.DisplayCommandLaunch("Please update your Nvidia driver to the latest version. Trying to launch Geforce experience ...");
-                        Nvidia.TryOpenNvidiaUpdate();
+                        Nvidia.TryOpenNvidiaUpdateOnWindows();
                         ui.DisplayCommandResult(c10, true, "Go to the Pilots section and check if a newer version is available");
 
                         var driverUpdateOK = await ui.DisplayQuestionAsync("Did you manage to update the Nvidia driver to the latest version ?");
@@ -254,9 +254,6 @@ namespace wordslab.manager.vm.wsl
 
                 ui.DisplayInstallStep(5, 6, "Initialize wordslab VM virtual disks");
 
-                var wslDistribs = Wsl.list();
-                var cachePath = hostStorage.DownloadCacheDirectory;
-
                 var dataDisk = WslDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Data, hostStorage);
                 if (dataDisk == null)
                 {
@@ -362,7 +359,7 @@ namespace wordslab.manager.vm.wsl
                 localVM.Stop();
                 ui.DisplayCommandResult(c1, true);
 
-                var confirm = await ui.DisplayQuestionAsync("Are you sure you want to delete the virtual machine : ALL DATA WILL BE LOST ?");
+                var confirm = await ui.DisplayQuestionAsync("Are you sure you want to delete the virtual machine: ALL DATA WILL BE LOST !!");
                 if (confirm)
                 {
                     var c2 = ui.DisplayCommandLaunch("Deleting wordslab virtual machine and local k3s cluster");

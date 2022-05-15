@@ -22,7 +22,7 @@ namespace wordslab.manager.os
             }
         }
 
-        public static bool IsNvidiaDriver20Sep21OrLater(Version driverVersion)
+        public static bool IsNvidiaDriverForWindows20Sep21OrLater(Version driverVersion)
         {
             if(driverVersion != null)
             {
@@ -32,7 +32,7 @@ namespace wordslab.manager.os
             else { return false; }
         }
 
-        public static bool IsNvidiaDriver16Nov21OrLater(Version driverVersion)
+        public static bool IsNvidiaDriverForWindows16Nov21OrLater(Version driverVersion)
         {
             if (driverVersion != null)
             {
@@ -41,8 +41,18 @@ namespace wordslab.manager.os
             }
             else { return false; }
         }
+        
+        public static bool IsNvidiaDriverForLinux13Dec21OrLater(Version driverVersion)
+        {
+            if (driverVersion != null)
+            {
+                var targetVersion = new Version(495, 46);
+                return driverVersion >= targetVersion;
+            }
+            else { return false; }
+        }
 
-        public static void TryOpenNvidiaUpdate()
+        public static void TryOpenNvidiaUpdateOnWindows()
         {
             if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {

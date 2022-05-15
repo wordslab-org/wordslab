@@ -52,6 +52,7 @@ namespace wordslab.manager.vm.wsl
             }
 
             endpoint = new VMEndpoint(Name, ip, 0, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
+            endpoint.Save(storage);
             return endpoint;
         }
 

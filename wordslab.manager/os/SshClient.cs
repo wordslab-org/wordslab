@@ -53,6 +53,11 @@
             return publicKey;
         }
 
+        public static void ImportKnownHostOnLinuxClient(string remoteIpAddress, int remotePort)
+        {
+            Command.Run("ssh-keyscan", $"-H -p {remotePort} {remoteIpAddress} >> ~/.ssh/known_hosts");
+        }
+
         public static void CopyFileToRemoteMachine(string localFilePath, string remoteUser, string remoteIpAddress, int remotePort, string remoteFilePath)
         {
             Command.Run("scp", $"-P {remotePort} {localFilePath} {remoteUser}@{remoteIpAddress}:{remoteFilePath}");

@@ -9,7 +9,7 @@ namespace wordslab.manager.os
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 var targetVersion = new Version(10,15);
-                return OS.GetOSVersion() >= targetVersion;
+                return OS.IsOSArchitectureX64() && OS.GetOSVersion() >= targetVersion;
             }
             else { return false; }
         }

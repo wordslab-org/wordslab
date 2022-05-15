@@ -94,11 +94,11 @@ namespace wordslab.manager.os
                 var driverVersion = Nvidia.GetDriverVersion();
                 if (Windows.IsWindows11Version21HOrHigher())
                 {
-                    return Nvidia.IsNvidiaDriver20Sep21OrLater(driverVersion);
+                    return Nvidia.IsNvidiaDriverForWindows20Sep21OrLater(driverVersion);
                 }
                 else if (Windows.IsWindows10Version21H2OrHigher())
                 {
-                    return Nvidia.IsNvidiaDriver16Nov21OrLater(driverVersion);
+                    return Nvidia.IsNvidiaDriverForWindows16Nov21OrLater(driverVersion);
                 }
             }
             return false;

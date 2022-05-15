@@ -82,22 +82,24 @@ namespace wordslab.manager.os
             }
         }
 
-        public static void LaunchAndForget(string command, string arguments = "")
+        public static int LaunchAndForget(string command, string arguments = "", bool showWindow = true)
         {
             using (Process proc = new Process())
             {
                 proc.StartInfo.FileName = command;
                 proc.StartInfo.Arguments = arguments;
                 proc.StartInfo.UseShellExecute = true;
-                proc.StartInfo.CreateNoWindow = false;
+                proc.StartInfo.CreateNoWindow = !showWindow;
                 try
                 {
                     proc.Start();
+                    return proc.Id;
                 }
                 catch (System.ComponentModel.Win32Exception e)
                 {
                     throw new FileNotFoundException($"Command {command} not found", command, e);
                 }
+                return -1;
             }
         }
 
