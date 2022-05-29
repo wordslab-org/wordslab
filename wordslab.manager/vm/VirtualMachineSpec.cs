@@ -1,38 +1,21 @@
 ﻿using wordslab.manager.os;
 using wordslab.manager.storage;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm
 {
-    public class VirtualMachineSpec
+    public class VirtualMachineSpec : VirtualMachineConfig
     {
         public VirtualMachineSpec(string vmName)
         {
             Name = vmName;
         }
 
-        public string Name;
-
-        public int Processors;
-        public int MemoryGB;
-
-        public string GPUModel;
-        public int    GPUMemoryGB;
         public bool   WithGPU { get { return GPUModel != "None"; } }
 
-        public int  VmDiskSizeGB;
-        public bool VmDiskIsSSD;
-
-        public int  ClusterDiskSizeGB;
-        public bool ClusterDiskIsSSD;
-
-        public int  DataDiskSizeGB;
-        public bool DataDiskIsSSD;
-
-        public int HostSSHPort = 3022;
-        public int HostKubernetesPort = 3443;
-        public int HostHttpIngressPort = 3080;
-
         // Recommended Virtual Machine specs
+
+        public const string DEFAULT_LOCALVM_NAME = "localvm";
 
         public const int MIN_HOST_PROCESSORS = 2;
         public const int MIN_HOST_MEMORY_GB = 4;
@@ -56,6 +39,10 @@ namespace wordslab.manager.vm
 
         public const string REC_VM_GPUMODEL = "NVIDIA GeForce GTX 1060";
         public const int    REC_VM_GPUMEMORY_GB = 6;
+
+        public const int DEFAULT_HOST_SSH_PORT = 3022;
+        public const int DEFAULT_HOST_Kubernetes_PORT = 3443;
+        public const int DEFAULT_HOST_HttpIngress_PORT = 3080;
 
         public bool CheckCPURequirements(Compute.CPUInfo cpuInfo, out string cpuErrorMessage)
         {;

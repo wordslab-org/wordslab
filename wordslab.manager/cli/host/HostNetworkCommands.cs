@@ -56,7 +56,7 @@ namespace wordslab.manager.cli.host
         internal static void DisplayNetworkStatus()
         {
             AnsiConsole.WriteLine($"Network info: TCP ports in use");
-            var portsSets = Network.GetTcpPortsInUse();
+            var portsSets = Network.GetTcpPortsInUsePerIPAddress();
             foreach (var ip in portsSets.Keys)
             {
                 AnsiConsole.Write($"- {ip} : ");

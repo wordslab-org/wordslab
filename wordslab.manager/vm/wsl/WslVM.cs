@@ -1,10 +1,27 @@
 ﻿using wordslab.manager.os;
 using wordslab.manager.storage;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm.wsl
 {
     public class WslVM : VirtualMachine
     {
+        public static List<VirtualMachine> ListLocalVMs(HostStorage storage)
+        {
+            var vms = new List<VirtualMachine>();
+            try
+            {
+                var vmNames = WslDisk.ListVMNamesFromOsDisks(storage);            
+                var wslDistribs = Wsl.list();
+                foreach(var vmName in wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.OS), (d,n) => n))
+                {
+                    vms.Add(TryFindByName(vmName, storage));
+                }
+            }
+            catch { }
+            return vms;
+        }
+
         public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
         {
             var osDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.OS, storage);
@@ -22,7 +39,9 @@ namespace wordslab.manager.vm.wsl
 
         public WslVM(string vmName, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
             : base(vmName, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage) 
-        { }
+        {
+            Type = VirtualMachineType.Wsl;
+        }
 
         public override bool IsRunning()
         {
@@ -35,7 +54,7 @@ namespace wordslab.manager.vm.wsl
             return false;
         }
 
-        public override VMEndpoint Start(VirtualMachineSpec vmSpec)
+        public override VMEndpoint Start(VirtualMachineConfig vmSpec)
         {
             DataDisk.StartService();
             ClusterDisk.StartService();

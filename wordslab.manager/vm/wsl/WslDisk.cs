@@ -1,10 +1,24 @@
-﻿using wordslab.manager.os;
+﻿using System.Text.RegularExpressions;
+using wordslab.manager.os;
 using wordslab.manager.storage;
 
 namespace wordslab.manager.vm.wsl
 {
     public class WslDisk : VirtualDisk
     {
+        public static List<string> ListVMNamesFromOsDisks(HostStorage storage)
+        {
+            var vmNames = new List<string>();
+            var storagePathTemplate = GetLocalStoragePath("*", VirtualDiskFunction.OS, storage);
+            var filenames = Directory.GetFiles(Path.GetDirectoryName(storagePathTemplate), Path.GetFileName(storagePathTemplate));
+            var vmNameRegex = new Regex(storagePathTemplate.Replace("\\","\\\\").Replace("*", "(.+)"));
+            foreach(var filename in filenames)
+            {
+                vmNames.Add(vmNameRegex.Match(filename).Groups[1].Value);
+            }
+            return vmNames;
+        }
+
         public static VirtualDisk TryFindByName(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
             var serviceName = GetServiceName(vmName, function);

@@ -1,5 +1,6 @@
 ﻿using System.IO.Compression;
 using System.Text;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.storage
 {
@@ -230,25 +231,7 @@ namespace wordslab.manager.storage
 
                 stream.Seek(offset, SeekOrigin.Current);
             }
-        }
-
-        public class HostDirectory
-        {
-            public HostDirectory()
-            { }
-
-            public HostDirectory(StorageFunction function, string path)
-            {
-                Function = function;
-                Path = path;
-            }
-
-            public int Id { get; private set; }
-
-            public StorageFunction Function { get; private set; }
-
-            public string Path { get; private set; }
-        }
+        }       
 
         public enum StorageFunction
         {

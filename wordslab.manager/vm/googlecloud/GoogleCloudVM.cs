@@ -6,7 +6,9 @@ namespace wordslab.manager.vm.googlecloud
     {
         internal GoogleCloudVM(string name, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage)
             : base(name, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage)
-        { }
+        {
+            Type = VirtualMachineType.GoogleCloud;
+        }
 
         public override bool IsRunning()
         {

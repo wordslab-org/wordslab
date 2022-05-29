@@ -1,9 +1,16 @@
-﻿using System.Net;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using wordslab.manager.storage;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm
 {
+    public enum VirtualMachineType
+    {
+        Wsl,
+        Qemu,
+        GoogleCloud
+    }
+
     public abstract class VirtualMachine
     {
         protected HostStorage storage;
@@ -23,23 +30,33 @@ namespace wordslab.manager.vm
             this.storage = storage;
         }
 
+        public VirtualMachineType Type { get; internal set; }
+
         private static readonly Regex NAME_REGEX = new Regex("^[a-z0-9-]+$");
 
-        public string Name { get; protected set; }
+        public string Name { get; internal set; }
 
-        public int Processors { get; protected set; }
+        public int Processors { get; internal set; }
 
-        public int MemoryGB { get; protected set; }
+        public int MemoryGB { get; internal set; }
 
-        public VirtualDisk OsDisk { get; protected set; }
+        public string GPUModel { get; internal set; }
 
-        public VirtualDisk ClusterDisk { get; protected set; }
+        public int GPUMemoryGB { get; internal set; }
 
-        public VirtualDisk DataDisk { get; protected set; }
+        public VirtualDisk OsDisk { get; internal set; }
+
+        public VirtualDisk ClusterDisk { get; internal set; }
+
+        public VirtualDisk DataDisk { get; internal set; }
+
+        public int RequestedSSHPort { get; internal set; }
+        public int RequestedKubernetesPort { get; internal set; }
+        public int RequestedHttpIngressPort { get; internal set; }
 
         public abstract bool IsRunning();
 
-        public abstract VMEndpoint Start(VirtualMachineSpec vmSpec);
+        public abstract VMEndpoint Start(VirtualMachineConfig vmSpec);
 
         protected VMEndpoint endpoint;
 

@@ -24,7 +24,7 @@ namespace wordslab.manager.test.os
         [TestMethod]
         public void TestTcpPortsInUse()
         {
-            var portsInUse = Network.GetTcpPortsInUse();
+            var portsInUse = Network.GetTcpPortsInUsePerIPAddress();
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Assert.IsTrue(portsInUse.Keys.Count == 3);

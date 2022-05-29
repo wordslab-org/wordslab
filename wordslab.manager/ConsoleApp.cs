@@ -59,12 +59,13 @@ public static class ConsoleApp
             hypervisor [enable|disable]
             update [packagename]
           vm
-            info
-            status
-            create [cores] [memory] [gpu] [disksizes]
-            update [cores] [memory] [gpu] [disksizes]
-            start|stop
-            delete
+            list
+            status [machinename]
+            create [machinename] [cores] [memory] [gpu] [disksizes]
+            update [machinename] [cores] [memory] [gpu] [disksizes]
+            start [machinename]
+            stop [machinename] ([cores] [memory] [gpu]) 
+            delete [machinename]
           secret
             list
             export [resourcepath] [secretfunction] [password] 
@@ -81,7 +82,8 @@ public static class ConsoleApp
             budget [accountname] [cores] [memory] [gpu] [disksizes]
             status [machinename]
             create [accountname] [machinename] [cores] [memory] [gpu] [disksizes]
-            start [machinename] [timeout]
+            update [machinename] [cores] [memory] [gpu] [disksizes]
+            start [machinename] [timeout] ([cores] [memory] [gpu])
             stop [machinename]
             delete [machinename]
         cluster
@@ -198,9 +200,23 @@ public static class ConsoleApp
             });
             config.AddBranch("vm", config =>
             {
-                config.SetDescription("Create and manage a virtual machine on your host machine to run a local wordslab cluster ");
+                config.SetDescription("Create and manage virtual machines on your host machine to run local wordslab clusters");
+                config.AddCommand<VmListCommand>("list")
+                    .WithDescription("List all wordslab virtual machines created on your local host");
+                config.AddCommand<VmStartCommand>("start")
+                        .WithDescription("Start a local wordslab virtual machine on your local host");
+                config.AddCommand<VmStopCommand>("stop")
+                        .WithDescription("Stop a local wordslab virtual machine on your local host");
                 config.AddCommand<VmStatusCommand>("status")
-                    .WithDescription("Display the status of the wordlab virtual machine on your local host");
+                        .WithDescription("Display the status of a specific wordslab virtual machine on your local host");
+                config.AddCommand<VmAdviseCommand>("advise")
+                    .WithDescription("Advise a minimum, recommended and maximum config for a local virtual machine");
+                config.AddCommand<VmCreateCommand>("create")
+                        .WithDescription("Create a new wordslab virtual machine on your local host");
+                config.AddCommand<VmResizeCommand>("resize")
+                        .WithDescription("Resize the disks of an existing wordslab virtual machine on your local host");                
+                config.AddCommand<VmDeleteCommand>("delete")
+                        .WithDescription("DANGER - Delete a local wordslab virtual machine - ALL DATA WILL BE LOST");
             });
             config.AddBranch("secret", config =>
             {

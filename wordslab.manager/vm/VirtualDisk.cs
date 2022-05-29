@@ -4,7 +4,7 @@ namespace wordslab.manager.vm
 {
     public abstract class VirtualDisk 
     {
-        protected static string GetServiceName(string vmName, VirtualDiskFunction function)
+        internal static string GetServiceName(string vmName, VirtualDiskFunction function)
         {
             switch (function)
             {

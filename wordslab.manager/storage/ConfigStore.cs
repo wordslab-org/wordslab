@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.storage
 {
@@ -13,11 +14,14 @@ namespace wordslab.manager.storage
             this.hostStorage = hostStorage;
         }
 
-        public DbSet<HostStorage.HostDirectory> HostDirectories { get; set; }
+        public DbSet<HostDirectory> HostDirectories { get; set; }
+
+        public DbSet<VirtualMachineConfig> VirtualMachines { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<HostStorage.HostDirectory>().ToTable("HostDirectory");
+            modelBuilder.Entity<HostDirectory>().ToTable("HostDirectory");
+            modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
         }
 
         internal void Initialize()

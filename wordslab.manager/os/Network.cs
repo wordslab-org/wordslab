@@ -41,7 +41,7 @@ namespace wordslab.manager.os
             return addressesStatus;
         }
 
-        public static Dictionary<string,HashSet<int>> GetTcpPortsInUse()
+        public static Dictionary<string,HashSet<int>> GetTcpPortsInUsePerIPAddress()
         {
             var portsInUse = new Dictionary<string,HashSet<int>>();
             IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
@@ -65,6 +65,23 @@ namespace wordslab.manager.os
                 }
             }
             return portsInUse;
+        }
+
+        public static HashSet<int> GetAllTcpPortsInUse()
+        {
+            return new HashSet<int>(GetTcpPortsInUsePerIPAddress().Values.SelectMany(it => it));
+        }
+
+        public static int GetNextAvailablePort(int defaultPort, HashSet<int> portsInUse)
+        {
+            for(int port=defaultPort+1; port<defaultPort+1000; port++)
+            {
+                if(!portsInUse.Contains(port))
+                {
+                    return port;
+                }
+            }
+            return 0;
         }
 
         /*

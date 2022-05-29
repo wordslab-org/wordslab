@@ -1,10 +1,26 @@
 ﻿using wordslab.manager.os;
 using wordslab.manager.storage;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm.qemu
 {
     public class QemuVM : VirtualMachine
     {
+        public static List<VirtualMachine> ListLocalVMs(HostStorage storage)
+        {
+            var vms = new List<VirtualMachine>();
+            try
+            {
+                var vmNames = QemuDisk.ListVMNamesFromOsDisks(storage);                
+                foreach (var vmName in vmNames)
+                {
+                    vms.Add(TryFindByName(vmName, storage));
+                }
+            }
+            catch { }
+            return vms;
+        }
+
         public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
         {
             var osDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.OS, storage);
@@ -26,7 +42,9 @@ namespace wordslab.manager.vm.qemu
 
         internal QemuVM(string name, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
             : base(name, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage) 
-        { }
+        {
+            Type = VirtualMachineType.Qemu;        
+        }
 
         public override bool IsRunning()
         {
@@ -45,7 +63,7 @@ namespace wordslab.manager.vm.qemu
 
         private int processId = -1;
 
-        public override VMEndpoint Start(VirtualMachineSpec vmSpec)
+        public override VMEndpoint Start(VirtualMachineConfig vmSpec)
         {
             // Start qemu process
             processId = Qemu.StartVirtualMachine(vmSpec.Processors, vmSpec.MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, vmSpec.HostSSHPort, vmSpec.HostHttpIngressPort, vmSpec.HostKubernetesPort);
