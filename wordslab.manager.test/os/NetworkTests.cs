@@ -8,7 +8,7 @@ namespace wordslab.manager.test.os
     public class NetworkTests
     {
         [TestMethod]
-        public void TestIPAddressesAvailable()
+        public void TestGetIPAddressesAvailable()
         {
             var ipAdressesStatus = Network.GetIPAddressesAvailable();
             if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -22,7 +22,7 @@ namespace wordslab.manager.test.os
         }
 
         [TestMethod]
-        public void TestTcpPortsInUse()
+        public void TestGetTcpPortsInUsePerIPAddress()
         {
             var portsInUse = Network.GetTcpPortsInUsePerIPAddress();
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -30,6 +30,18 @@ namespace wordslab.manager.test.os
                 Assert.IsTrue(portsInUse.Keys.Count == 3);
                 Assert.IsTrue(portsInUse["0.0.0.0"].Count == 11);
             }
+        }
+
+        [TestMethod]
+        public void TestGetAllTcpPortsInUse()
+        {
+            Assert.IsTrue(true);
+        }
+
+        [TestMethod]
+        public void TestGetNextAvailablePort()
+        {
+            Assert.IsTrue(true);
         }
     }
 }

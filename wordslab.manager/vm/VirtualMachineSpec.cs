@@ -51,7 +51,7 @@ namespace wordslab.manager.vm
         public const int DEFAULT_HOST_HttpIngress_PORT = 3080;
 
         public bool CheckCPURequirements(Compute.CPUInfo cpuInfo, out string cpuErrorMessage)
-        {;
+        {
             var cpuSpecOK = cpuInfo.NumberOfLogicalProcessors >= (MIN_HOST_PROCESSORS + Processors);
             if (cpuSpecOK)
             {
@@ -269,7 +269,7 @@ namespace wordslab.manager.vm
             return minRequirementsOK;
         }
 
-        internal static void ApplyRecommendedSpec(VirtualMachineConfig vmConfig)
+        public static void ApplyRecommendedSpec(VirtualMachineConfig vmConfig)
         {
             vmConfig.Name = DEFAULT_LOCALVM_NAME;
 

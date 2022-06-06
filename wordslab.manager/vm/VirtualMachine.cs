@@ -56,11 +56,11 @@ namespace wordslab.manager.vm
 
         public abstract bool IsRunning();
 
-        public abstract VMEndpoint Start(VirtualMachineConfig vmSpec);
+        public abstract VirtualMachineEndpoint Start(VirtualMachineConfig vmSpec);
 
-        protected VMEndpoint endpoint;
+        protected VirtualMachineEndpoint endpoint;
 
-        public VMEndpoint Endpoint
+        public VirtualMachineEndpoint Endpoint
         {
             get
             {
@@ -68,7 +68,7 @@ namespace wordslab.manager.vm
                 {
                     if(IsRunning())
                     {
-                        endpoint = VMEndpoint.Load(storage, Name);
+                        endpoint = VirtualMachineEndpoint.Load(storage, Name);
                     }
                 }
                 return endpoint;
@@ -101,72 +101,5 @@ namespace wordslab.manager.vm
 
         // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases
         internal static readonly string nvidiaContainerRuntimeVersion = "3.7.0-1";
-    }
-
-    public class VMEndpoint
-    {
-        public VMEndpoint(string vmName, string ipAddress, int sshPort, int kubernetesPort, int httpIngressPort)
-        {
-            VMName = vmName;
-            IPAddress = ipAddress;
-            SSHPort = sshPort;
-            KubernetesPort = kubernetesPort;
-            HttpIngressPort = httpIngressPort; 
-        }
-
-        public string VMName {  get; private set; }
-
-        public string IPAddress { get; private set; }
-
-        public int SSHPort { get; private set; }
-
-        public int KubernetesPort { get; private set; }
-
-        public int HttpIngressPort { get; private set; }
-
-        public static string GetFilePath(HostStorage storage, string name)
-        {
-            return Path.Combine(storage.ConfigDirectory, "vm", $"{name}.endpoint");
-        }
-
-        public void Save(HostStorage storage)
-        {            
-            using(StreamWriter sw = new StreamWriter(GetFilePath(storage, VMName)))
-            {
-                sw.WriteLine(IPAddress);
-                sw.WriteLine(SSHPort);
-                sw.WriteLine(KubernetesPort);
-                sw.WriteLine(HttpIngressPort);
-            }
-        }
-
-        public static VMEndpoint Load(HostStorage storage, string name)
-        {
-            var filepath = GetFilePath(storage, name);
-            if (File.Exists(filepath))
-            {
-                using (StreamReader sr = new StreamReader(filepath))
-                {
-                    var ipAddress = sr.ReadLine();
-                    var sshPort = Int32.Parse(sr.ReadLine());
-                    var kubernetesPort = Int32.Parse(sr.ReadLine());
-                    var httpIngressPort = Int32.Parse(sr.ReadLine());
-                    return new VMEndpoint(name, ipAddress, sshPort, kubernetesPort, httpIngressPort);
-                }
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        public static void Delete(HostStorage storage, string name)
-        {
-            var filepath = GetFilePath(storage, name);
-            if (File.Exists(filepath))
-            {
-                File.Delete(filepath);
-            }
-        }
-    }
+    }    
 }

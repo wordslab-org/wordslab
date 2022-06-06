@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.storage.config;
+using wordslab.manager.vm;
 
 namespace wordslab.manager.storage
 {
@@ -17,6 +18,28 @@ namespace wordslab.manager.storage
         public DbSet<HostDirectory> HostDirectories { get; set; }
 
         public DbSet<VirtualMachineConfig> VirtualMachines { get; set; }
+
+        public void AddVirtualMachineConfig(VirtualMachineConfig vmConfig)
+        {
+            VirtualMachines.Add(vmConfig);
+            SaveChanges();
+        }
+
+        public VirtualMachineConfig TryGetVirtualMachineConfig(string vmName)
+        {
+            return VirtualMachines.Where(vm => vm.Name == vmName).FirstOrDefault();
+        }
+
+
+        public void RemoveVirtualMachineConfig(string vmName)
+        {
+            var vmConfig = VirtualMachines.Where(vmConfig => vmConfig.Name == vmName).FirstOrDefault();
+            if (vmConfig != null)
+            {
+                VirtualMachines.Remove(vmConfig);
+                SaveChanges();
+            }
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -54,7 +54,7 @@ namespace wordslab.manager.vm.qemu
             return Path.Combine(storage.DownloadCacheDirectory, "scripts", "linux");
         }
 
-        public static void InstallK3sOnVirtualMachine(VMEndpoint vmEndpoint, HostStorage storage)
+        public static void InstallK3sOnVirtualMachine(VirtualMachineEndpoint vmEndpoint, HostStorage storage)
         {
             SshClient.ImportKnownHostOnLinuxClient(vmEndpoint.IPAddress, vmEndpoint.SSHPort);
 

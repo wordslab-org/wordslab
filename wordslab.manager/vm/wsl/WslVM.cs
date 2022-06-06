@@ -54,7 +54,7 @@ namespace wordslab.manager.vm.wsl
             return false;
         }
 
-        public override VMEndpoint Start(VirtualMachineConfig vmSpec)
+        public override VirtualMachineEndpoint Start(VirtualMachineConfig vmSpec)
         {
             DataDisk.StartService();
             ClusterDisk.StartService();
@@ -70,7 +70,7 @@ namespace wordslab.manager.vm.wsl
                 sw.Write(kubeconfig);
             }
 
-            endpoint = new VMEndpoint(Name, ip, 0, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
+            endpoint = new VirtualMachineEndpoint(Name, ip, 0, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
             endpoint.Save(storage);
             return endpoint;
         }
@@ -78,7 +78,7 @@ namespace wordslab.manager.vm.wsl
         public override void Stop()
         {            
             endpoint = null;
-            VMEndpoint.Delete(storage, Name);
+            VirtualMachineEndpoint.Delete(storage, Name);
 
             Wsl.terminate(OsDisk.ServiceName);
             ClusterDisk.StopService();

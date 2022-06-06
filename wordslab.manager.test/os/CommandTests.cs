@@ -1,49 +1,43 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
 namespace wordslab.manager.test.os
 {
     [TestClass]
-    public class SshClientTests
+    public class CommandTests
     {
         [TestMethod]
-        public void TestIsInstalled()
+        public void TestRun()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestInstall()
+        public void TestLaunchAndForget()
+        {
+            Assert.IsTrue(true);
+        }
+              
+        [TestMethod]
+        public void TestGetScriptContent()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetLinuxInstallCommand()
+        public void TestExecuteShellScript()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetPublicKeyForCurrentUser()
+        public void TestCommandOutputParser()
         {
             Assert.IsTrue(true);
         }
-
+                
         [TestMethod]
-        public void TestImportKnownHostOnLinuxClient()
-        {
-            Assert.IsTrue(true);
-        }
-
-        [TestMethod]
-        public void TestCopyFileToRemoteMachine()
-        {
-            Assert.IsTrue(true);
-        }
-
-        [TestMethod]
-        public void TestExecuteRemoteCommand()
+        public void TestTryReadFileLines()
         {
             Assert.IsTrue(true);
         }

@@ -1,13 +1,13 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
-namespace wordslab.manager.test.os
+namespace wordslab.manager.test
 {
     [TestClass]
-    public class MemoryTests
+    public class WebAppTests
     {
         [TestMethod]
-        public void TestGetMemoryInfo()
+        public void TestRun()
         {
             Assert.IsTrue(true);
         }

@@ -1,49 +1,43 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
-namespace wordslab.manager.test.os
+namespace wordslab.manager.test.vm
 {
     [TestClass]
-    public class SshClientTests
+    public class VirtualMachineSpecTests
     {
         [TestMethod]
-        public void TestIsInstalled()
+        public void TestCheckCPURequirements()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestInstall()
+        public void TestCheckMemoryRequirements()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetLinuxInstallCommand()
+        public void TestCheckStorageRequirements()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetPublicKeyForCurrentUser()
+        public void TestCheckGPURequirements()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestImportKnownHostOnLinuxClient()
+        public void TestGetRecommendedVMSpecs()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestCopyFileToRemoteMachine()
-        {
-            Assert.IsTrue(true);
-        }
-
-        [TestMethod]
-        public void TestExecuteRemoteCommand()
+        public void TestApplyRecommendedSpec()
         {
             Assert.IsTrue(true);
         }

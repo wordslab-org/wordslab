@@ -6,5 +6,10 @@ namespace wordslab.manager.test.os
     [TestClass]
     public class WebBrowserTests
     {
+        [TestMethod]
+        public void TestOpen()
+        {
+            Assert.IsTrue(true);
+        }
     }
 }

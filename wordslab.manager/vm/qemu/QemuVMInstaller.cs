@@ -342,7 +342,7 @@ namespace wordslab.manager.vm.qemu
                 var localVM = QemuVM.TryFindByName(vmSpec.Name, hostStorage);
 
                 var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
-                VMEndpoint localVMEndpoint = null;
+                VirtualMachineEndpoint localVMEndpoint = null;
                 if (!localVM.IsRunning())
                 {
                     localVMEndpoint = localVM.Start(vmSpec);

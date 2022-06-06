@@ -1,91 +1,79 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
-namespace wordslab.manager.test.os
+namespace wordslab.manager.test.vm.wsl
 {
     [TestClass]
-    public class QemuTests
+    public class WslDiskTests
     {
         [TestMethod]
-        public void TestIsInstalled()
+        public void TestListVMNamesFromOsDisks()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetInstalledVersion()
+        public void TestTryFindByName()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestIsCDRomToolInstalled()
+        public void TestGetLocalStoragePath()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestIsOsVersionOKForQemu()
+        public void TestCreateFromOSImage()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestIsInstalledVersionSupported()
+        public void TestInstallNvidiaContainerRuntimeOnOSImage()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestInstall()
+        public void TestCreateBlank()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestInstallCDRomTool()
+        public void TestResize()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetLinuxInstallCommand()
+        public void TestDelete()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestCreateVirtualDisk()
+        public void TestIsServiceRequired()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestCreateVirtualDiskFromOsImageWithCloudInit()
+        public void TestStartService()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetVirtualDiskSizeGB()
+        public void TestIsServiceRunnig()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestStartVirtualMachine()
-        {
-            Assert.IsTrue(true);
-        }
-
-        [TestMethod]
-        public void TestTryFindVirtualMachineProcess()
-        {
-            Assert.IsTrue(true);
-        }
-
-        [TestMethod]
-        public void TestStopVirtualMachine()
+        public void TestStopService()
         {
             Assert.IsTrue(true);
         }

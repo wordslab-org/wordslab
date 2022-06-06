@@ -248,7 +248,7 @@ namespace wordslab.manager.cli.host
             }
 
             // Step 1 : initialize vm config with the values from the last run
-            var vmConfig = configStore.VirtualMachines.Where(vm => vm.Name == vmName).FirstOrDefault();
+            var vmConfig = configStore.TryGetVirtualMachineConfig(vmName);
             if(vmConfig == null)
             {
                 AnsiConsole.WriteLine($"Could not find the configuration of the virtual machine: {vmName}");
@@ -440,8 +440,7 @@ namespace wordslab.manager.cli.host
             }
 
             // Save the new virtual machine config in the database
-            configStore.VirtualMachines.Add(new VirtualMachineConfig(vm));
-            configStore.SaveChanges();
+            configStore.AddVirtualMachineConfig(new VirtualMachineConfig(vm));
 
             return 0;
         }        
@@ -455,7 +454,7 @@ namespace wordslab.manager.cli.host
         public override int Execute([NotNull] CommandContext context, [NotNull] VmConfigSettings settings)
         {
             AnsiConsole.WriteLine("ERROR: host vm resize command not yet implemented");
-            return 0;
+            return -1;
         }
     }
         
@@ -488,8 +487,7 @@ namespace wordslab.manager.cli.host
             }
 
             // Remove the virtual machine from the database
-            configStore.VirtualMachines.Remove(configStore.VirtualMachines.Where(vmConfig => vmConfig.Name == vm.Name).First());
-            configStore.SaveChanges();
+            configStore.RemoveVirtualMachineConfig(vm.Name);
 
             return 0;
         }

@@ -1,49 +1,49 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
-namespace wordslab.manager.test.os
+namespace wordslab.manager.test.storage
 {
     [TestClass]
-    public class SshClientTests
+    public class ConfigStoreTests
     {
         [TestMethod]
-        public void TestIsInstalled()
+        public void TestHostDirectories()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestInstall()
+        public void TestVirtualMachines()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetLinuxInstallCommand()
+        public void TestAddVirtualMachineConfig()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestGetPublicKeyForCurrentUser()
+        public void TestTryGetVirtualMachineConfig()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestImportKnownHostOnLinuxClient()
+        public void TestRemoveVirtualMachineConfig()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestCopyFileToRemoteMachine()
+        public void TestInitialize()
         {
             Assert.IsTrue(true);
         }
-
+                
         [TestMethod]
-        public void TestExecuteRemoteCommand()
+        public void TestCreateDbIfNotExists()
         {
             Assert.IsTrue(true);
         }

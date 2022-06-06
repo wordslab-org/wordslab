@@ -42,7 +42,7 @@ namespace wordslab.manager.vm
             // Remove configs not found on disk from database 
             foreach (var configNameNotFoundOnDisk in vmConfigNames.Except(vms.Select(vm => vm.Name)))
             {
-                configStore.VirtualMachines.Remove(vmConfigsDict[configNameNotFoundOnDisk]);
+                configStore.RemoveVirtualMachineConfig(vmConfigsDict[configNameNotFoundOnDisk].Name);
             }
 
             // Restrict list of vms to configs registered in database

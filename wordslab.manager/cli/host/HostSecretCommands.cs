@@ -9,9 +9,8 @@ namespace wordslab.manager.cli.host
     {
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
-            AnsiConsole.WriteLine($"List of secrets stored on the host machine: {OS.GetMachineName()}");
-
-            return 0;
+            AnsiConsole.WriteLine("ERROR: host secret list command not yet implemented");
+            return -1;
         }
 
         public class Settings : CommandSettings

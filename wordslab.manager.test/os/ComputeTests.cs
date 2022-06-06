@@ -27,7 +27,13 @@ namespace wordslab.manager.test.os
         [TestMethod]
         public void TestGetNvidiaGPUsInfo()
         {
-            Assert.IsTrue(true);
+            var gpus = Compute.GetNvidiaGPUsInfo();
+            Assert.IsTrue(gpus.Count > 0);
+            foreach (var gpu in gpus)
+            {
+                Assert.IsTrue(gpu.MemoryMB > 1000);
+                Assert.IsTrue(gpu.Architecture != Compute.GPUArchitectureInfo.Unknown);
+            }
         }
 
         [TestMethod]

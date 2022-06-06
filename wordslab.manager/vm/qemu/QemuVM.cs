@@ -63,7 +63,7 @@ namespace wordslab.manager.vm.qemu
 
         private int processId = -1;
 
-        public override VMEndpoint Start(VirtualMachineConfig vmSpec)
+        public override VirtualMachineEndpoint Start(VirtualMachineConfig vmSpec)
         {
             // Start qemu process
             processId = Qemu.StartVirtualMachine(vmSpec.Processors, vmSpec.MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, vmSpec.HostSSHPort, vmSpec.HostHttpIngressPort, vmSpec.HostKubernetesPort);
@@ -84,7 +84,7 @@ namespace wordslab.manager.vm.qemu
                 sw.Write(kubeconfig);
             }
 
-            endpoint = new VMEndpoint(Name, ip, vmSpec.HostSSHPort, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
+            endpoint = new VirtualMachineEndpoint(Name, ip, vmSpec.HostSSHPort, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
             endpoint.Save(storage);
             return endpoint;
         }

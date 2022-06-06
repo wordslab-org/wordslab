@@ -1,32 +1,31 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
-namespace wordslab.manager.test.os
+namespace wordslab.manager.test.vm
 {
     [TestClass]
-    public class LinuxTests
+    public class VirtualMachinesManagerTests
     {
         [TestMethod]
-        public void TestGetOSDistribution()
+        public void TestListLocalVMs()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestIsLinuxVersionUbuntu1804OrHigher()
+        public void TestTryFindLocalVM()
         {
             Assert.IsTrue(true);
         }
 
         [TestMethod]
-        public void TestIsAptPackageManagerAvailable()
+        public void TestCreateLocalVM()
         {
             Assert.IsTrue(true);
         }
 
-        // This command requires admin privileges and user interaction to enter password
         [TestMethod]
-        public void TestGetAptInstallCommand()
+        public void TestDeleteLocalVM()
         {
             Assert.IsTrue(true);
         }

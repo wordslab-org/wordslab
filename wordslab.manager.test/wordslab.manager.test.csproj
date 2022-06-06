@@ -18,4 +18,8 @@
     <ProjectReference Include="..\wordslab.manager\wordslab.manager.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="cli\host\" />
+  </ItemGroup>
+
 </Project>
