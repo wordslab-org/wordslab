@@ -193,54 +193,69 @@ namespace wordslab.manager.vm.wsl
 
                 ui.DisplayInstallStep(4, 6, "Download Virtual Machine OS images and Kubernetes tools");
 
-                var c17 = ui.DisplayCommandLaunchWithProgress($"Downloading Alpine Linux operating system image (v{WslDisk.alpineVersion})", WslDisk.alpineImageSize, "Bytes");
-                var download1 = hostStorage.DownloadFileWithCache(WslDisk.alpineImageURL, WslDisk.alpineFileName, gunzip: true, progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c17, totalBytesDownloaded));
+                var c17 = new LongRunningCommand($"Downloading Alpine Linux operating system image (v{WslDisk.alpineVersion})", WslDisk.alpineImageSize, "Bytes",
+                    displayProgress => hostStorage.DownloadFileWithCache(WslDisk.alpineImageURL, WslDisk.alpineFileName, gunzip: true, 
+                                        progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                    displayResult =>
+                    {
+                        var alpineFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.alpineFileName));
+                        alpineImageOK = alpineFile.Exists && alpineFile.Length == WslDisk.alpineImageSize;
+                        displayResult(alpineImageOK);
+                    });
 
-                var c18 = ui.DisplayCommandLaunchWithProgress($"Downloading Ubuntu Linux operating system image ({WslDisk.ubuntuRelease} {WslDisk.ubuntuVersion})", WslDisk.ubuntuImageSize, "Bytes");
-                var download2 = hostStorage.DownloadFileWithCache(WslDisk.ubuntuImageURL, WslDisk.ubuntuFileName, gunzip: true, progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c18, totalBytesDownloaded));
+                var c18 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({WslDisk.ubuntuRelease} {WslDisk.ubuntuVersion})", WslDisk.ubuntuImageSize, "Bytes",
+                    displayProgress => hostStorage.DownloadFileWithCache(WslDisk.ubuntuImageURL, WslDisk.ubuntuFileName, gunzip: true, 
+                                        progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                    displayResult =>
+                    {
+                        var ubuntuFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName));
+                        ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == WslDisk.ubuntuImageSize;
+                        displayResult(ubuntuImageOK);
+                    });
 
-                var c19 = ui.DisplayCommandLaunchWithProgress($"Downloading Rancher K3s executable (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sExecutableSize, "Bytes");
-                var download3 = hostStorage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName, progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c19, totalBytesDownloaded));
+                var c19 = new LongRunningCommand($"Downloading Rancher K3s executable (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sExecutableSize, "Bytes",
+                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName, 
+                                        progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                    displayResult =>
+                    {
+                        var k3sExecFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName));
+                        k3sExecutableOK = k3sExecFile.Exists && k3sExecFile.Length == VirtualMachine.k3sExecutableSize;
+                        displayResult(k3sExecutableOK);
+                    });
 
-                var c20 = ui.DisplayCommandLaunchWithProgress($"Downloading Rancher K3s containers images (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sImagesSize, "Bytes");
-                var download4 = hostStorage.DownloadFileWithCache(VirtualMachine.k3sImagesURL, VirtualMachine.k3sImagesFileName, progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c20, totalBytesDownloaded));
+                var c20 = new LongRunningCommand($"Downloading Rancher K3s containers images (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sImagesSize, "Bytes",
+                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.k3sImagesURL, VirtualMachine.k3sImagesFileName,
+                                        progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                    displayResult =>
+                    {
+                        var k3sImagesFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName));
+                        k3sImagesOK = k3sImagesFile.Exists && k3sImagesFile.Length == VirtualMachine.k3sImagesSize;
+                        displayResult(k3sImagesOK);
+                    });
 
-                var c21 = ui.DisplayCommandLaunchWithProgress($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableSize, "Bytes");
-                var download5 = hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true, progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => ui.DisplayCommandProgress(c21, totalBytesDownloaded));
+                var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableSize, "Bytes",
+                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true, 
+                                        progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                    displayResult =>
+                    {
+                        // Extract helm executable from the downloaded tar file
+                        var helmExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "helm");
+                        if (!File.Exists(helmExecutablePath))
+                        {
+                            var helmTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.helmFileName);
+                            var helmTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "helm-temp");
+                            Directory.CreateDirectory(helmTmpDir);
+                            HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
+                            File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
+                            Directory.Delete(helmTmpDir, true);
+                        }
 
-                Task.WaitAll(download1, download2, download3, download4, download5);
+                        var helmExecFile = new FileInfo(helmExecutablePath);
+                        helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExtractedSize;
+                        displayResult(helmExecutableOK);
+                    });
 
-                // Extract helm executable from the downloaded tar file
-                var helmExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "helm");
-                if (!File.Exists(helmExecutablePath))
-                {
-                    var helmTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.helmFileName);
-                    var helmTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "helm-temp");
-                    Directory.CreateDirectory(helmTmpDir);
-                    HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
-                    File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
-                    Directory.Delete(helmTmpDir, true);
-                }
-
-                var alpineFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.alpineFileName));
-                alpineImageOK = alpineFile.Exists && alpineFile.Length == WslDisk.alpineImageSize;
-                ui.DisplayCommandResult(c17, alpineImageOK);
-
-                var ubuntuFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName));
-                ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == WslDisk.ubuntuImageSize;
-                ui.DisplayCommandResult(c18, ubuntuImageOK);
-
-                var k3sExecFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName));
-                k3sExecutableOK = k3sExecFile.Exists && k3sExecFile.Length == VirtualMachine.k3sExecutableSize;
-                ui.DisplayCommandResult(c19, k3sExecutableOK);
-
-                var k3sImagesFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName));
-                k3sImagesOK = k3sImagesFile.Exists && k3sImagesFile.Length == VirtualMachine.k3sImagesSize;
-                ui.DisplayCommandResult(c20, k3sImagesOK);
-
-                var helmExecFile = new FileInfo(helmExecutablePath);
-                helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExtractedSize;
-                ui.DisplayCommandResult(c21, helmExecutableOK);
+                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c17, c18, c19, c20, c21 });
 
                 if (!alpineImageOK || !ubuntuImageOK || !k3sExecutableOK || !k3sImagesOK || !helmExecutableOK)
                 {

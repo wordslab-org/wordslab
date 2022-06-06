@@ -1,4 +1,5 @@
 ﻿using wordslab.manager.storage;
+using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm.googlecloud
 {
@@ -15,7 +16,7 @@ namespace wordslab.manager.vm.googlecloud
             throw new NotImplementedException();
         }
 
-        public override VMEndpoint Start(VirtualMachineSpec vmSpec)
+        public override VMEndpoint Start(VirtualMachineConfig vmConfig)
         {
             throw new NotImplementedException();
         }

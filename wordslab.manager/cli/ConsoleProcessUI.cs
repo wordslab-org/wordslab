@@ -11,20 +11,53 @@ namespace wordslab.manager.cli
             AnsiConsole.WriteLine("");
         }
 
+        private int lastCommandId = -1;
         private List<string> commandDescriptions = new List<string>();
 
         public int DisplayCommandLaunch(string commandDescription)
         {
-            progressContext = null;
             var commandId = commandDescriptions.Count;
+            lastCommandId = commandId;
             commandDescriptions.Add(commandDescription);
             AnsiConsole.WriteLine(commandDescription);
             return commandId;
         }
-        
+
+        public void RunCommandsAndDisplayProgress(LongRunningCommand[] commands)
+        {
+            lastCommandId = -1;
+            AnsiConsole.Progress().Start(ctx =>
+            {
+                var runningTasks = new List<Task>();
+                foreach (var command in commands)
+                {
+                    command.Id = commandDescriptions.Count;
+                    commandDescriptions.Add(command.Description);
+                    var uiTask = ctx.AddTask(command.Description, maxValue: command.MaxValue);
+                    var runTask = command.RunFunction(val => uiTask.Value = val);
+                    runningTasks.Add(runTask);
+                }
+                Task.WaitAll(runningTasks.ToArray());
+            });
+            AnsiConsole.WriteLine();
+            foreach (var command in commands)
+            {
+                if (command.CheckFunction != null)
+                {
+                    command.CheckFunction(success =>
+                    {
+                        AnsiConsole.Write(command.Description);
+                        AnsiConsole.Write(": ");
+                        AnsiConsole.MarkupLine(success ? "[green]OK[/]" : "[red]ERROR[/]");
+                    });
+                }
+            }
+            AnsiConsole.WriteLine();
+        }
+
         public void DisplayCommandResult(int commandId, bool success, string? resultInfo = null, string? errorMessage = null)
         {
-            if(commandId != commandDescriptions.Count - 1)
+            if (commandId != lastCommandId)
             {
                 AnsiConsole.Write(commandDescriptions[commandId]);
                 AnsiConsole.Write(": ");
@@ -39,21 +72,6 @@ namespace wordslab.manager.cli
                 AnsiConsole.WriteLine(errorMessage);
             }
             AnsiConsole.WriteLine();
-        }
-
-        private ProgressContext progressContext;
-
-        public int DisplayCommandLaunchWithProgress(string commandDescription, long maxValue, string unit)
-        {
-            AnsiConsole.Progress().Start(ctx =>
-            {
-                progressContext = ctx;
-            });
-        }
-
-        public void DisplayCommandProgress(int commandId, long currentValue)
-        {
-            throw new NotImplementedException();
         }
 
         public Task<bool> DisplayQuestionAsync(string question)
@@ -81,5 +99,40 @@ namespace wordslab.manager.cli
             AnsiConsole.WriteLine(errorMessage);
             AnsiConsole.WriteLine();
         }
+    }
+
+    public static class AsyncUtil
+    {
+        private static readonly TaskFactory _taskFactory = new
+            TaskFactory(CancellationToken.None,
+                        TaskCreationOptions.None,
+                        TaskContinuationOptions.None,
+                        TaskScheduler.Default);
+
+        /// <summary>
+        /// Executes an async Task method which has a void return value synchronously
+        /// USAGE: AsyncUtil.RunSync(() => AsyncMethod());
+        /// </summary>
+        /// <param name="task">Task method to execute</param>
+        public static void RunSync(Func<Task> task)
+            => _taskFactory
+                .StartNew(task)
+                .Unwrap()
+                .GetAwaiter()
+                .GetResult();
+
+        /// <summary>
+        /// Executes an async Task<T> method which has a T return type synchronously
+        /// USAGE: T result = AsyncUtil.RunSync(() => AsyncMethod<T>());
+        /// </summary>
+        /// <typeparam name="TResult">Return Type</typeparam>
+        /// <param name="task">Task<T> method to execute</param>
+        /// <returns></returns>
+        public static TResult RunSync<TResult>(Func<Task<TResult>> task)
+            => _taskFactory
+                .StartNew(task)
+                .Unwrap()
+                .GetAwaiter()
+                .GetResult();
     }
 }

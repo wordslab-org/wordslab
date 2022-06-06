@@ -6,25 +6,40 @@
 
         int DisplayCommandLaunch(string commandDescription);
 
-        int DisplayCommandsWithProgress(LongRunningCommand[] commands);
-
         void DisplayCommandResult(int commandId, bool success, string? resultInfo = null, string? errorMessage = null);
+
+        void DisplayCommandError(string errorMessage);
+
+        void RunCommandsAndDisplayProgress(LongRunningCommand[] commands);
 
         Task<bool> DisplayQuestionAsync(string question);
 
         Task<bool> DisplayAdminScriptQuestionAsync(string scriptDescription, string scriptContent);
-
-        void DisplayCommandError(string errorMessage);
     }
 
-    public delegate void DisplayCommandProgress(double currentValue);
+    public delegate Task RunAndDisplayProgress(Action<double> displayProgress);
+
+    public delegate void CheckAndDisplayResult(Action<bool> displayResult);
 
     public class LongRunningCommand
     {
-        public string   CommandDescription;
-        public double   MaxValue;
-        public string   Unit;
+        public LongRunningCommand(string commandDescription, double maxValue, string unit, RunAndDisplayProgress runFunction, CheckAndDisplayResult checkFunction)
+        {
+            Description = commandDescription;
+            MaxValue = maxValue;
+            Unit = unit;
+            RunFunction = runFunction;
+            CheckFunction = checkFunction;
+        }
 
-        public Action<DisplayCommandProgress> Action;
+        public int Id;
+
+        public string   Description { get; init; }
+        public double   MaxValue { get; init; }
+        public string   Unit { get; init; }
+
+        public RunAndDisplayProgress RunFunction { get; init; }
+
+        public CheckAndDisplayResult CheckFunction { get; init; }
     }
 }

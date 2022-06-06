@@ -5,15 +5,36 @@ using wordslab.manager.os;
 namespace wordslab.manager.test.os
 {
     [TestClass]
-    public class StorageTests
+    public class WslTests
     {
         [TestMethod]
-        public void TestDirectorySize()
+        public void TestVirtualMachineWorkingSet()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var dirSizeMB = Storage.GetDirectorySizeMB(new System.IO.DirectoryInfo(@"C:\Users\laure\OneDrive\Dev\C#"));
-                Assert.IsTrue(dirSizeMB > 6000 && dirSizeMB < 7000);
+                var vmMemoryMB = Wsl.GetVirtualMachineWorkingSetMB();
+                Assert.IsTrue(vmMemoryMB > 100 && vmMemoryMB < 2000);
+            }
+        }
+
+        [TestMethod]
+        public void TestReadWslConfig()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var config = Wsl.Read_wslconfig();
+                Assert.IsTrue(config != null);
+            }
+        }
+
+        [TestMethod]
+        public void TestWriteWslConfig()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var config = Wsl.Read_wslconfig();
+                Wsl.Write_wslconfig(config);
+                Assert.IsTrue(config.LoadedFromFile);
             }
         }
     }

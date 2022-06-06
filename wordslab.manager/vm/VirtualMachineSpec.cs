@@ -6,6 +6,12 @@ namespace wordslab.manager.vm
 {
     public class VirtualMachineSpec : VirtualMachineConfig
     {
+        public VirtualMachineSpec()
+        {
+            // Initialize spec with all recommended values
+            // in VirtualMachineConfig constructor 
+        }
+
         public VirtualMachineSpec(string vmName)
         {
             Name = vmName;
@@ -261,6 +267,26 @@ namespace wordslab.manager.vm
             maxVMSpec.DataDiskIsSSD = vmDataDrive.IsSSD;
 
             return minRequirementsOK;
+        }
+
+        internal static void ApplyRecommendedSpec(VirtualMachineConfig vmConfig)
+        {
+            vmConfig.Name = DEFAULT_LOCALVM_NAME;
+
+            vmConfig.Processors = REC_VM_PROCESSORS;
+            vmConfig.MemoryGB = REC_VM_MEMORY_GB;
+
+            // No GPU by default
+            vmConfig.GPUModel = null;
+            vmConfig.GPUMemoryGB = 0;
+
+            vmConfig.VmDiskSizeGB = REC_VM_OSDISK_GB;
+            vmConfig.ClusterDiskSizeGB = REC_VM_CLUSTERDISK_GB;
+            vmConfig.DataDiskSizeGB = REC_VM_DATADISK_GB;
+
+            vmConfig.HostSSHPort = DEFAULT_HOST_SSH_PORT;
+            vmConfig.HostKubernetesPort = DEFAULT_HOST_Kubernetes_PORT;
+            vmConfig.HostHttpIngressPort = DEFAULT_HOST_HttpIngress_PORT;
         }
     }
 }

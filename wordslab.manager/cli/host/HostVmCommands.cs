@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.os;
 using wordslab.manager.storage;
+using wordslab.manager.storage.config;
 using wordslab.manager.vm;
 
 namespace wordslab.manager.cli.host
@@ -55,19 +56,108 @@ namespace wordslab.manager.cli.host
         [CommandOption("--httpport")]
         [DefaultValue(VirtualMachineSpec.DEFAULT_HOST_HttpIngress_PORT)]
         public int? HttpIngressPort { get; init; }
+
+        public string ApplyToVMConfig(VirtualMachineConfig vmConfig, HostStorage hostStorage)
+        {
+            var vmSettings = this;
+
+            // Step 2 : override compute values with min, rec or max specs 
+            if (vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
+            {
+                VirtualMachineSpec minSpec, recSpec, maxSpec;
+                string minErrMsg, recErrMsg;
+                VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage, out minSpec, out recSpec, out maxSpec, out minErrMsg, out recErrMsg);
+
+                VirtualMachineSpec targetSpec = null;
+                if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
+                {
+                    if (minErrMsg != null)
+                    {
+                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the minimum config: {minErrMsg}";
+                        return errorMessage;
+                    }
+                    targetSpec = minSpec;
+                }
+                if (vmSettings.UseRecommendedSpecs.HasValue && vmSettings.UseRecommendedSpecs.Value)
+                {
+                    if (recErrMsg != null)
+                    {
+                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the recommended config: {recErrMsg}";
+                        return errorMessage;
+                    }
+                    targetSpec = recSpec;
+                }
+                if (vmSettings.UseMaximumSpecs.HasValue && vmSettings.UseMaximumSpecs.Value)
+                {
+                    targetSpec = maxSpec;
+                }
+
+                vmConfig.Processors = targetSpec.Processors;
+                vmConfig.MemoryGB = targetSpec.MemoryGB;
+                if (string.IsNullOrEmpty(targetSpec.GPUModel))
+                {
+                    vmConfig.GPUModel = null;
+                }
+                else if (string.IsNullOrEmpty(vmConfig.GPUModel))
+                {
+                    vmConfig.GPUModel = maxSpec.GPUModel;
+                    vmConfig.GPUMemoryGB = maxSpec.GPUMemoryGB;
+                }
+            }
+
+            // Step 3 : apply all the values explicitly set on the command line
+            if (vmSettings.Processors.HasValue)
+            {
+                vmConfig.Processors = vmSettings.Processors.Value;
+            }
+            if (vmSettings.MemoryGB.HasValue)
+            {
+                vmConfig.MemoryGB = vmSettings.MemoryGB.Value;
+            }
+            if (vmSettings.GPUDevice.HasValue)
+            {
+                int gpuDevice = vmSettings.GPUDevice.Value;
+                var gpusInfo = Compute.GetNvidiaGPUsInfo();
+                if (gpuDevice < 1 || gpuDevice > gpusInfo.Count)
+                {
+                    var errorMessage = $"Invalid GPU selected: requested GPU device {gpuDevice} while {gpusInfo.Count} GPUs were detected on this machine";
+                    return errorMessage;
+                }
+                var selectedGPU = gpusInfo[gpuDevice - 1];
+                vmConfig.GPUModel = selectedGPU.ModelName;
+                vmConfig.GPUMemoryGB = selectedGPU.MemoryMB / 1024;
+            }
+            if (vmSettings.SSHPort.HasValue)
+            {
+                vmConfig.HostSSHPort = vmSettings.SSHPort.Value;
+            }
+            if (vmSettings.KubernetesPort.HasValue)
+            {
+                vmConfig.HostKubernetesPort = vmSettings.KubernetesPort.Value;
+            }
+            if (vmSettings.HttpIngressPort.HasValue)
+            {
+                vmConfig.HostHttpIngressPort = vmSettings.HttpIngressPort.Value;
+            }
+
+            return null;
+        }
     }
 
     public class VmConfigSettings : VmComputeSettings
     {
         [Description("OS disk size in GB")]
         [CommandOption("--osdisk")]
-        public int OsDiskSizeGB { get; init; }
+        [DefaultValue(VirtualMachineSpec.REC_VM_OSDISK_GB)]
+        public int? OsDiskSizeGB { get; init; }
         [Description("Cluster disk size in GB")]
         [CommandOption("--clusterdisk")]
-        public int ClusterDiskSizeGB { get; init; }
+        [DefaultValue(VirtualMachineSpec.REC_VM_CLUSTERDISK_GB)]
+        public int? ClusterDiskSizeGB { get; init; }
         [Description("Data disk size in GB")]
         [CommandOption("--datadisk")]
-        public int DataDiskSizeGB { get; init; }
+        [DefaultValue(VirtualMachineSpec.REC_VM_DATADISK_GB)]
+        public int? DataDiskSizeGB { get; init; }
     }
 
     public abstract class VmCommand<TSettings> : Command<TSettings> where TSettings : CommandSettings
@@ -165,87 +255,20 @@ namespace wordslab.manager.cli.host
                 return 1;
             }
 
-            // Step 2 : override compute values with min, rec or max specs 
-            if(vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
+            // Step 2 & 3 : override with command line parameters
+            var errorMessage = vmSettings.ApplyToVMConfig(vmConfig, hostStorage);
+            if(errorMessage != null)
             {
-                VirtualMachineSpec minSpec, recSpec, maxSpec;
-                string minErrMsg, recErrMsg;
-                VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage, out minSpec, out recSpec, out maxSpec, out minErrMsg, out recErrMsg);
-
-                VirtualMachineSpec targetSpec = null;
-                if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
-                {
-                    if (minErrMsg != null)
-                    {
-                        AnsiConsole.WriteLine($"The host machine is not powerful enough to run a virtual machine with the minimum config: {minErrMsg}");
-                        return 1;
-                    }
-                    targetSpec = minSpec;
-                }
-                if (vmSettings.UseRecommendedSpecs.HasValue && vmSettings.UseRecommendedSpecs.Value)
-                {
-                    if (recErrMsg != null)
-                    {
-                        AnsiConsole.WriteLine($"The host machine is not powerful enough to run a virtual machine with the recommended config: {recErrMsg}");
-                        return 1;
-                    }
-                    targetSpec = recSpec;
-                }
-                if (vmSettings.UseMaximumSpecs.HasValue && vmSettings.UseMaximumSpecs.Value)
-                {
-                    targetSpec = maxSpec;
-                }
-
-                vmConfig.Processors = targetSpec.Processors;
-                vmConfig.MemoryGB = targetSpec.MemoryGB;
-                if (string.IsNullOrEmpty(targetSpec.GPUModel))
-                {
-                    vmConfig.GPUModel = null;
-                }
-                else if(string.IsNullOrEmpty(vmConfig.GPUModel))
-                {
-                    vmConfig.GPUModel = maxSpec.GPUModel;
-                    vmConfig.GPUMemoryGB = maxSpec.GPUMemoryGB;
-                }
-            }
-
-            // Step 3 : apply all the values explicitly set on the command line
-            if(vmSettings.Processors.HasValue)
-            {
-                vmConfig.Processors = vmSettings.Processors.Value;
-            }
-            if (vmSettings.MemoryGB.HasValue)
-            {
-                vmConfig.MemoryGB = vmSettings.MemoryGB.Value;
-            }
-            if (vmSettings.GPUDevice.HasValue)
-            {
-                int gpuDevice = vmSettings.GPUDevice.Value;
-                var gpusInfo = Compute.GetNvidiaGPUsInfo();
-                if(gpuDevice < 1 || gpuDevice > gpusInfo.Count)
-                {
-                    AnsiConsole.WriteLine($"Invalid GPU selected: requested GPU device {gpuDevice} while {gpusInfo.Count} GPUs were detected on this machine");
-                    return 1;
-                }
-                var selectedGPU = gpusInfo[gpuDevice - 1];
-                vmConfig.GPUModel = selectedGPU.ModelName;
-                vmConfig.GPUMemoryGB = selectedGPU.MemoryMB/1024;
-            }
-            if (vmSettings.SSHPort.HasValue)
-            {
-                vmConfig.HostSSHPort = vmSettings.SSHPort.Value;
-            }
-            if (vmSettings.KubernetesPort.HasValue)
-            {
-                vmConfig.HostKubernetesPort = vmSettings.KubernetesPort.Value;
-            }
-            if (vmSettings.HttpIngressPort.HasValue)
-            {
-                vmConfig.HostHttpIngressPort = vmSettings.HttpIngressPort.Value;
+                AnsiConsole.WriteLine(errorMessage);
+                return 1;
             }
 
             // Then start the VM with the merged config properties
             vm.Start(vmConfig);
+
+            // Save the new config to the database
+            configStore.SaveChanges();
+
             return 0;
         }
     }
@@ -392,9 +415,34 @@ namespace wordslab.manager.cli.host
         public VmCreateCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmConfigSettings settings)
+        public override int Execute([NotNull] CommandContext context, [NotNull] VmConfigSettings vmSettings)
         {
-            vmManager.CreateLocalVM(vmSpec, installUI);
+            // Step 1 : initialize vm config with default values
+            var vmSpec = new VirtualMachineSpec();
+            VirtualMachineSpec.ApplyRecommendedSpec(vmSpec);
+
+            // Step 2 & 3 : override with command line parameters
+            var errorMessage = vmSettings.ApplyToVMConfig(vmSpec, hostStorage);
+            if (errorMessage != null)
+            {
+                AnsiConsole.WriteLine(errorMessage);
+                return 1;
+            }
+            if(vmSettings.OsDiskSizeGB.HasValue) vmSpec.VmDiskSizeGB = vmSettings.OsDiskSizeGB.Value;
+            if(vmSettings.ClusterDiskSizeGB.HasValue) vmSpec.ClusterDiskSizeGB = vmSettings.ClusterDiskSizeGB.Value;
+            if(vmSettings.DataDiskSizeGB.HasValue) vmSpec.DataDiskSizeGB = vmSettings.DataDiskSizeGB.Value;
+
+            var installUI = new ConsoleProcessUI();
+            var vm = AsyncUtil.RunSync(() => vmManager.CreateLocalVM(vmSpec, installUI));
+            if (vm == null)
+            {
+                return 1;
+            }
+
+            // Save the new virtual machine config in the database
+            configStore.VirtualMachines.Add(new VirtualMachineConfig(vm));
+            configStore.SaveChanges();
+
             return 0;
         }        
     }
@@ -432,7 +480,17 @@ namespace wordslab.manager.cli.host
                 return 1;
             }
 
-            vmManager.DeleteLocalVM(vmName, installUI);
+            var installUI = new ConsoleProcessUI();
+            var success = AsyncUtil.RunSync(() => vmManager.DeleteLocalVM(vm.Name, installUI));
+            if (!success)
+            {
+                return 1;
+            }
+
+            // Remove the virtual machine from the database
+            configStore.VirtualMachines.Remove(configStore.VirtualMachines.Where(vmConfig => vmConfig.Name == vm.Name).First());
+            configStore.SaveChanges();
+
             return 0;
         }
     }
