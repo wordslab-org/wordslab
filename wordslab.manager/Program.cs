@@ -31,11 +31,11 @@ try
     var databasePath = Path.Combine(hostStorage.ConfigDirectory, "wordslab-config.db");
     builder.Services.AddDbContextFactory<ConfigStore>(options => options.UseSqlite($"Data Source={databasePath}"));
 
-    // Create the database if it doesn't exist
+    // Create the database if it doesn't exist and initialize the host storage directories
 
     using (var hostServiceProvider = builder.Services.BuildServiceProvider())
     {
-        ConfigStore.CreateDbIfNotExists(hostServiceProvider);
+        ConfigStore.CreateDbIfNotExistsAndInitializeHostStorage(hostServiceProvider);
     }
 
     // Start a console application (which may then start a web application in ManagerCommand)

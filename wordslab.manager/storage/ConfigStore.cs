@@ -30,7 +30,6 @@ namespace wordslab.manager.storage
             return VirtualMachines.Where(vm => vm.Name == vmName).FirstOrDefault();
         }
 
-
         public void RemoveVirtualMachineConfig(string vmName)
         {
             var vmConfig = VirtualMachines.Where(vmConfig => vmConfig.Name == vmName).FirstOrDefault();
@@ -47,18 +46,23 @@ namespace wordslab.manager.storage
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
         }
 
-        internal void Initialize()
+        private void InitializeHostStorage()
         {
-            if (HostDirectories.Any()) { return; }
-
-            var localDirectories = hostStorage.GetConfigurableDirectories();
-            HostDirectories.AddRange(localDirectories);
-            SaveChanges();
+            if (HostDirectories.Any())
+            {
+                hostStorage.InitConfigurableDirectories(HostDirectories);
+            }
+            else
+            {
+                var localDirectories = hostStorage.GetConfigurableDirectories();
+                HostDirectories.AddRange(localDirectories);
+                SaveChanges();
+            }
         }
 
         // EF Core is not compatible with assembly trimming by default
         [DynamicDependency(DynamicallyAccessedMemberTypes.All,  typeof(DateOnly))]
-        public static void CreateDbIfNotExists(IServiceProvider hostServiceProvider)
+        public static void CreateDbIfNotExistsAndInitializeHostStorage(IServiceProvider hostServiceProvider)
         {
             using (var scope = hostServiceProvider.CreateScope())
             {
@@ -68,7 +72,7 @@ namespace wordslab.manager.storage
                     var dbContextFactory = servicesInScope.GetRequiredService<IDbContextFactory<ConfigStore>>();
                     using var configStore = dbContextFactory.CreateDbContext();
                     configStore.Database.EnsureCreated();
-                    configStore.Initialize();
+                    configStore.InitializeHostStorage();
                 }
                 catch (Exception ex)
                 {

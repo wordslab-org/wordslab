@@ -193,23 +193,23 @@ namespace wordslab.manager.vm.wsl
 
                 ui.DisplayInstallStep(4, 6, "Download Virtual Machine OS images and Kubernetes tools");
 
-                var c17 = new LongRunningCommand($"Downloading Alpine Linux operating system image (v{WslDisk.alpineVersion})", WslDisk.alpineImageSize, "Bytes",
+                var c17 = new LongRunningCommand($"Downloading Alpine Linux operating system image (v{WslDisk.alpineVersion})", WslDisk.alpineImageDownloadSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(WslDisk.alpineImageURL, WslDisk.alpineFileName, gunzip: true, 
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
                     {
                         var alpineFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.alpineFileName));
-                        alpineImageOK = alpineFile.Exists && alpineFile.Length == WslDisk.alpineImageSize;
+                        alpineImageOK = alpineFile.Exists && alpineFile.Length == WslDisk.alpineImageDiskSize;
                         displayResult(alpineImageOK);
                     });
 
-                var c18 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({WslDisk.ubuntuRelease} {WslDisk.ubuntuVersion})", WslDisk.ubuntuImageSize, "Bytes",
+                var c18 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({WslDisk.ubuntuRelease} {WslDisk.ubuntuVersion})", WslDisk.ubuntuImageDownloadSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(WslDisk.ubuntuImageURL, WslDisk.ubuntuFileName, gunzip: true, 
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
                     {
                         var ubuntuFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName));
-                        ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == WslDisk.ubuntuImageSize;
+                        ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == WslDisk.ubuntuImageDiskSize;
                         displayResult(ubuntuImageOK);
                     });
 
@@ -233,7 +233,7 @@ namespace wordslab.manager.vm.wsl
                         displayResult(k3sImagesOK);
                     });
 
-                var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableSize, "Bytes",
+                var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableDownloadSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true, 
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
@@ -251,7 +251,7 @@ namespace wordslab.manager.vm.wsl
                         }
 
                         var helmExecFile = new FileInfo(helmExecutablePath);
-                        helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExtractedSize;
+                        helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExecutableDiskSize;
                         displayResult(helmExecutableOK);
                     });
 

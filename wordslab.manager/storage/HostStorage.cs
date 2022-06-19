@@ -6,36 +6,13 @@ namespace wordslab.manager.storage
 {
     public class HostStorage
     {
-        public const string APP_NAME = "wordslab";
-
-        public HostStorage()
-        {            
-            // Users can choose where they install wordslab manager
-            string appPath = AppContext.BaseDirectory;
-            string databasePath = Path.Combine(appPath, "db");
-            string logsPath = Path.Combine(appPath, "logs");
-            string scriptsPath = Path.Combine(appPath, "scripts");
-
-            AppDirectory = appPath;
-            ConfigDirectory = databasePath;
-            if (!Directory.Exists(ConfigDirectory)) Directory.CreateDirectory(ConfigDirectory);
-            LogsDirectory = logsPath;
-            if (!Directory.Exists(LogsDirectory)) Directory.CreateDirectory(LogsDirectory);
-            ScriptsDirectory = scriptsPath;
-
-            // By default, all local data directories are relative to this install directory
-            string downloadCachePath = Path.Combine(appPath, "download");
-            string virtualMachineOSPath = Path.Combine(appPath, "vm");
-            string virtualMachineClusterPath = Path.Combine(appPath, "vm");
-            string virtualMachineDataPath = Path.Combine(appPath, "vm");
-            string localBackupPath = Path.Combine(appPath, "backup");
-     
-            DownloadCacheDirectory = downloadCachePath;
-            VirtualMachineOSDirectory = virtualMachineOSPath;
-            VirtualMachineClusterDirectory = virtualMachineClusterPath;
-            VirtualMachineDataDirectory = virtualMachineDataPath;
-            BackupDirectory = localBackupPath;
-        }
+        private const string APP = "wordslab";
+        private const string CONFIG = "config";
+        private const string LOGS = "logs";
+        private const string SCRIPTS = "scripts";
+        private const string DOWNLOAD = "download";
+        private const string VM = "vm";
+        private const string BACKUP = "backup";
 
         public string AppDirectory { get; init; }
 
@@ -45,7 +22,7 @@ namespace wordslab.manager.storage
 
         public string ScriptsDirectory { get; init; }
 
-        public string DownloadCacheDirectory { get; private set; }        
+        public string DownloadCacheDirectory { get; private set; }
 
         public string VirtualMachineOSDirectory { get; private set; }
 
@@ -54,34 +31,37 @@ namespace wordslab.manager.storage
         public string VirtualMachineDataDirectory { get; private set; }
 
         public string BackupDirectory { get; private set; }
-        
-        public void InitConfigurableDirectories(List<HostDirectory> localDirectories)
-        {
-            if(localDirectories != null)
-            {
-                foreach(var dir in localDirectories)
-                {
-                    switch(dir.Function)
-                    {
-                        case StorageFunction.DownloadCache:
-                            DownloadCacheDirectory = dir.Path;
-                            break;
-                        case StorageFunction.VirtualMachineOS:
-                            VirtualMachineOSDirectory = dir.Path;
-                            break;
-                        case StorageFunction.VirtualMachineCluster:
-                            VirtualMachineClusterDirectory = dir.Path;
-                            break;
-                        case StorageFunction.VirtualMachineData:
-                            VirtualMachineDataDirectory = dir.Path;
-                            break;
-                        case StorageFunction.LocalBackup:
-                            BackupDirectory = dir.Path;
-                            break;
-                    }
-                }
-            }
 
+        public HostStorage()
+        {
+            // The users can choose the base directory where they install wordslab manager
+            AppDirectory = AppContext.BaseDirectory;
+
+            // The config, logs, and scripts subdirectories are fixed inside this install directory
+            ConfigDirectory = Path.Combine(AppDirectory, CONFIG);
+            LogsDirectory = Path.Combine(AppDirectory, LOGS);
+            ScriptsDirectory = Path.Combine(AppDirectory, SCRIPTS);
+
+            // The config and logs subdirectories must be created during the first launch
+            if (!Directory.Exists(ConfigDirectory)) Directory.CreateDirectory(ConfigDirectory);
+            if (!Directory.Exists(LogsDirectory)) Directory.CreateDirectory(LogsDirectory);
+
+            // The scripts directory is included in the installation package
+
+            // The data directories are initialized as direct subdirectories of the install directory
+            // The users can then move them to other locations of their choice with MoveConfigurableDirectoryTo()
+            DownloadCacheDirectory = Path.Combine(AppDirectory, DOWNLOAD);
+            VirtualMachineOSDirectory = Path.Combine(AppDirectory, VM);
+            VirtualMachineClusterDirectory = Path.Combine(AppDirectory, VM);
+            VirtualMachineDataDirectory = Path.Combine(AppDirectory, VM);
+            BackupDirectory = Path.Combine(AppDirectory, BACKUP);
+
+            // The data directories must be created during the first launch
+            EnsureConfigurableDirectoriesExist();
+        }
+
+        private void EnsureConfigurableDirectoriesExist()
+        {
             if (!Directory.Exists(DownloadCacheDirectory)) Directory.CreateDirectory(DownloadCacheDirectory);
             if (!Directory.Exists(VirtualMachineOSDirectory)) Directory.CreateDirectory(VirtualMachineOSDirectory);
             if (!Directory.Exists(VirtualMachineClusterDirectory)) Directory.CreateDirectory(VirtualMachineClusterDirectory);
@@ -89,46 +69,82 @@ namespace wordslab.manager.storage
             if (!Directory.Exists(BackupDirectory)) Directory.CreateDirectory(BackupDirectory);
         }
 
+        public void InitConfigurableDirectories(IEnumerable<HostDirectory> localDirectories)
+        {
+            if (localDirectories != null)
+            {
+                foreach (var dir in localDirectories)
+                {
+                    switch (dir.Function)
+                    {
+                        case HostDirectory.StorageFunction.DownloadCache:
+                            DownloadCacheDirectory = dir.Path;
+                            break;
+                        case HostDirectory.StorageFunction.VirtualMachineOS:
+                            VirtualMachineOSDirectory = dir.Path;
+                            break;
+                        case HostDirectory.StorageFunction.VirtualMachineCluster:
+                            VirtualMachineClusterDirectory = dir.Path;
+                            break;
+                        case HostDirectory.StorageFunction.VirtualMachineData:
+                            VirtualMachineDataDirectory = dir.Path;
+                            break;
+                        case HostDirectory.StorageFunction.Backup:
+                            BackupDirectory = dir.Path;
+                            break;
+                    }
+                }
+            }
+
+            EnsureConfigurableDirectoriesExist();
+        }
+
         public List<HostDirectory> GetConfigurableDirectories()
         {
             var localDirectories = new List<HostDirectory>();
-            localDirectories.Add(new HostDirectory(StorageFunction.DownloadCache, DownloadCacheDirectory));
-            localDirectories.Add(new HostDirectory(StorageFunction.VirtualMachineOS, VirtualMachineOSDirectory));
-            localDirectories.Add(new HostDirectory(StorageFunction.VirtualMachineCluster, VirtualMachineClusterDirectory));
-            localDirectories.Add(new HostDirectory(StorageFunction.VirtualMachineData, VirtualMachineDataDirectory));
-            localDirectories.Add(new HostDirectory(StorageFunction.LocalBackup, BackupDirectory));
+            localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.DownloadCache, DownloadCacheDirectory));
+            localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineOS, VirtualMachineOSDirectory));
+            localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineCluster, VirtualMachineClusterDirectory));
+            localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineData, VirtualMachineDataDirectory));
+            localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.Backup, BackupDirectory));
             return localDirectories;
         }
 
-        public void MoveConfigurableDirectoryTo(HostDirectory localDirectory)
+        public void MoveConfigurableDirectoryTo(HostDirectory.StorageFunction storageFunction, string destinationBaseDir)
         {
             string sourcePath = null;
-            string destinationPath = localDirectory.Path;
-            switch (localDirectory.Function)
+            string destinationPath = null;
+
+            switch (storageFunction)
             {
-                case StorageFunction.DownloadCache:
+                case HostDirectory.StorageFunction.DownloadCache:
                     sourcePath = DownloadCacheDirectory;
-                    DownloadCacheDirectory = localDirectory.Path;
+                    destinationPath = Path.Combine(destinationBaseDir, APP, DOWNLOAD);
+                    DownloadCacheDirectory = destinationPath;
                     break;
-                case StorageFunction.VirtualMachineOS:
+                case HostDirectory.StorageFunction.VirtualMachineOS:
                     sourcePath = VirtualMachineOSDirectory;
-                    VirtualMachineOSDirectory = localDirectory.Path;
+                    destinationPath = Path.Combine(destinationBaseDir, APP, VM);
+                    VirtualMachineOSDirectory = destinationPath;
                     break;
-                case StorageFunction.VirtualMachineCluster:
+                case HostDirectory.StorageFunction.VirtualMachineCluster:
                     sourcePath = VirtualMachineClusterDirectory;
-                    VirtualMachineClusterDirectory = localDirectory.Path;
+                    destinationPath = Path.Combine(destinationBaseDir, APP, VM);
+                    VirtualMachineClusterDirectory = destinationPath;
                     break;
-                case StorageFunction.VirtualMachineData:
+                case HostDirectory.StorageFunction.VirtualMachineData:
                     sourcePath = VirtualMachineDataDirectory;
-                    VirtualMachineDataDirectory = localDirectory.Path;
+                    destinationPath = Path.Combine(destinationBaseDir, APP, VM);
+                    VirtualMachineDataDirectory = destinationPath;
                     break;
-                case StorageFunction.LocalBackup:
+                case HostDirectory.StorageFunction.Backup:
                     sourcePath = BackupDirectory;
-                    BackupDirectory = localDirectory.Path;
+                    destinationPath = Path.Combine(destinationBaseDir, APP, BACKUP);
+                    BackupDirectory = destinationPath;
                     break;
-            }            
+            }
             if (!Directory.Exists(destinationPath)) Directory.CreateDirectory(destinationPath);
-            
+
             MoveDirectoryTo(sourcePath, destinationPath);
         }
 
@@ -161,6 +177,20 @@ namespace wordslab.manager.storage
             }
         }
 
+        /// <summary>
+        /// WARNING : very dangerous method - all your data will be permanently lost !!
+        /// </summary>
+        public void DeleteAllDataDirectories()
+        {
+            if (Directory.Exists(ConfigDirectory)) Directory.Delete(ConfigDirectory, true);
+            if (Directory.Exists(LogsDirectory)) Directory.Delete(LogsDirectory, true);
+            if (Directory.Exists(DownloadCacheDirectory)) Directory.Delete(DownloadCacheDirectory, true);
+            if (Directory.Exists(VirtualMachineOSDirectory)) Directory.Delete(VirtualMachineOSDirectory, true);
+            if (Directory.Exists(VirtualMachineClusterDirectory)) Directory.Delete(VirtualMachineClusterDirectory, true);
+            if (Directory.Exists(VirtualMachineDataDirectory)) Directory.Delete(VirtualMachineDataDirectory, true);
+            if (Directory.Exists(BackupDirectory)) Directory.Delete(BackupDirectory, true);
+        }
+
         public async Task<FileInfo> DownloadFileWithCache(string remoteURL, string localFileName, bool gunzip = false, HttpDownloader.ProgressChangedHandler progressCallback = null)
         {
             var localFileInfo = new FileInfo(Path.Combine(DownloadCacheDirectory, localFileName));
@@ -176,12 +206,16 @@ namespace wordslab.manager.storage
                 {
                     downloader.ProgressChanged -= progressCallback;
                 }
+                return new FileInfo(localFileInfo.FullName);
             }
             else
             {
-                progressCallback(localFileInfo.Length, localFileInfo.Length, 100);
+                if (progressCallback != null)
+                {
+                    progressCallback(localFileInfo.Length, localFileInfo.Length, 100);
+                }
+                return localFileInfo;
             }
-            return localFileInfo;
         }
 
         public static void ExtractGZipFile(string gzipFilePath, string outpuFilePath)
@@ -232,14 +266,5 @@ namespace wordslab.manager.storage
                 stream.Seek(offset, SeekOrigin.Current);
             }
         }       
-
-        public enum StorageFunction
-        {
-            DownloadCache,
-            VirtualMachineOS,
-            VirtualMachineCluster,
-            VirtualMachineData,
-            LocalBackup
-        }
     }
 }

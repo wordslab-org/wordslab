@@ -179,14 +179,16 @@ namespace wordslab.manager.vm.wsl
         // Alpine mini root filesystem: https://alpinelinux.org/downloads/
         internal static readonly string alpineVersion   = "3.15.0";
         internal static readonly string alpineImageURL  = $"https://dl-cdn.alpinelinux.org/alpine/v{alpineVersion.Substring(0, 4)}/releases/x86_64/alpine-minirootfs-{alpineVersion}-x86_64.tar.gz";
-        internal static readonly int    alpineImageSize = 5867520; // 2731445 compressed
+        internal static readonly int    alpineImageDownloadSize = 2731445;
+        internal static readonly int    alpineImageDiskSize = 5867520;
         internal static readonly string alpineFileName  = $"alpine-{alpineVersion}.tar";
 
         // Ubuntu minimum images: https://partner-images.canonical.com/oci/
         internal static readonly string ubuntuRelease   = "focal";
         internal static readonly string ubuntuVersion   = "20220105";
         internal static readonly string ubuntuImageURL  = $"https://partner-images.canonical.com/oci/{ubuntuRelease}/{ubuntuVersion}/ubuntu-{ubuntuRelease}-oci-amd64-root.tar.gz";
-        internal static readonly int    ubuntuImageSize = 78499840; // 27746207 compressed
+        internal static readonly int    ubuntuImageDownloadSize = 27746207;
+        internal static readonly int    ubuntuImageDiskSize = 78499840;
         internal static readonly string ubuntuFileName  = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}.tar";
 
         // --- wordslab virtual machine scripts ---

@@ -95,8 +95,8 @@ namespace wordslab.manager.vm
         // Helm releases: https://github.com/helm/helm/releases
         internal static readonly string helmVersion = "3.7.2";
         internal static readonly string helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
-        internal static readonly int    helmExecutableSize = 45731840; // 13870692 compressed
-        internal static readonly int    helmExtractedSize = 0;
+        internal static readonly int    helmExecutableDownloadSize = 13870692;
+        internal static readonly int    helmExecutableDiskSize = 45731840;
         internal static readonly string helmFileName = $"heml-{helmVersion}.tar";
 
         // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases

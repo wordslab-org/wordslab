@@ -260,7 +260,7 @@ namespace wordslab.manager.vm.qemu
                         displayResult(k3sImagesOK);
                     });
 
-                var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableSize, "Bytes",
+                var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableDownloadSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true, 
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
@@ -278,7 +278,7 @@ namespace wordslab.manager.vm.qemu
                         }
 
                         var helmExecFile = new FileInfo(helmExecutablePath);
-                        helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExtractedSize;
+                        helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExecutableDiskSize;
                         displayResult(helmExecutableOK);
                     });
 

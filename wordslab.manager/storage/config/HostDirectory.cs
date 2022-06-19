@@ -15,6 +15,15 @@ namespace wordslab.manager.storage.config
 
         public int Id { get; private set; }
 
+        public enum StorageFunction
+        {
+            DownloadCache,
+            VirtualMachineOS,
+            VirtualMachineCluster,
+            VirtualMachineData,
+            Backup
+        }
+
         public StorageFunction Function { get; private set; }
 
         public string Path { get; private set; }
