@@ -45,15 +45,23 @@ namespace wordslab.manager.os
                 string error = null;
                 try
                 {
-                    // To avoid deadlocks, use an asynchronous read operation on at least one of the streams.
+                    // To be able to use a timeout, we need to read the standard output and error streams asynchronously
+                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) => { output += e.Data; });
                     proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => { error += e.Data; });
-                    proc.Start();  
+                    proc.Start();
+                    proc.BeginOutputReadLine();
                     proc.BeginErrorReadLine();
-                    output = proc.StandardOutput.ReadToEnd();
                 } 
                 catch(System.ComponentModel.Win32Exception e)
                 {
-                    throw new FileNotFoundException($"Command {command} not found", command, e);
+                    if (e.NativeErrorCode == 267)
+                    {
+                        throw new FileNotFoundException($"Working directory {workingDirectory} not found", workingDirectory, e);
+                    }
+                    else
+                    {
+                        throw new FileNotFoundException($"Command {command} not found", command, e);
+                    }
                 }
 
                 bool exitBeforeTimeout = true;
