@@ -60,6 +60,7 @@ namespace wordslab.manager.storage
             EnsureConfigurableDirectoriesExist();
         }
 
+        // First initialization
         private void EnsureConfigurableDirectoriesExist()
         {
             if (!Directory.Exists(DownloadCacheDirectory)) Directory.CreateDirectory(DownloadCacheDirectory);
@@ -69,7 +70,8 @@ namespace wordslab.manager.storage
             if (!Directory.Exists(BackupDirectory)) Directory.CreateDirectory(BackupDirectory);
         }
 
-        public void InitConfigurableDirectories(IEnumerable<HostDirectory> localDirectories)
+        // Second initialization - Interaction with ConfigStore
+        internal void InitConfigurableDirectories(IEnumerable<HostDirectory> localDirectories)
         {
             if (localDirectories != null)
             {
@@ -99,7 +101,8 @@ namespace wordslab.manager.storage
             EnsureConfigurableDirectoriesExist();
         }
 
-        public List<HostDirectory> GetConfigurableDirectories()
+        // Persistence - Interaction with ConfigStore
+        internal List<HostDirectory> GetConfigurableDirectories()
         {
             var localDirectories = new List<HostDirectory>();
             localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.DownloadCache, DownloadCacheDirectory));
@@ -110,7 +113,8 @@ namespace wordslab.manager.storage
             return localDirectories;
         }
 
-        public void MoveConfigurableDirectoryTo(HostDirectory.StorageFunction storageFunction, string destinationBaseDir)
+        // Move configurable directories - Use the public method on ConfigStore to ensure persistence
+        internal void MoveConfigurableDirectoryTo(HostDirectory.StorageFunction storageFunction, string destinationBaseDir)
         {
             string sourcePath = null;
             string destinationPath = null;

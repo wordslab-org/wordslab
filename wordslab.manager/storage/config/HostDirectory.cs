@@ -1,4 +1,4 @@
-﻿using static wordslab.manager.storage.HostStorage;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace wordslab.manager.storage.config
 {    
@@ -13,8 +13,6 @@ namespace wordslab.manager.storage.config
             Path = path;
         }
 
-        public int Id { get; private set; }
-
         public enum StorageFunction
         {
             DownloadCache,
@@ -24,6 +22,7 @@ namespace wordslab.manager.storage.config
             Backup
         }
 
+        [Key]
         public StorageFunction Function { get; private set; }
 
         public string Path { get; private set; }

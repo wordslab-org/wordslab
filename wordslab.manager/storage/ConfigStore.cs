@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.storage.config;
-using wordslab.manager.vm;
 
 namespace wordslab.manager.storage
 {
@@ -17,6 +16,22 @@ namespace wordslab.manager.storage
 
         public DbSet<HostDirectory> HostDirectories { get; set; }
 
+        /// <summary>
+        /// Moves the specified host directory and all its contents under a new base directory,
+        /// then saves the new location in the configuration database.
+        /// </summary>
+        public void MoveHostDirectoryTo(HostDirectory.StorageFunction storageFunction, string destinationBaseDir)
+        {
+            hostStorage.MoveConfigurableDirectoryTo(storageFunction, destinationBaseDir);
+
+            var oldHostDirectory = HostDirectories.Where(d => d.Function == storageFunction).First();
+            var newHostDirectory = hostStorage.GetConfigurableDirectories().Where(d => d.Function == storageFunction).First();
+
+            HostDirectories.Remove(oldHostDirectory);
+            HostDirectories.Add(newHostDirectory);
+            SaveChanges();
+        }
+
         public DbSet<VirtualMachineConfig> VirtualMachines { get; set; }
 
         public void AddVirtualMachineConfig(VirtualMachineConfig vmConfig)
@@ -25,14 +40,20 @@ namespace wordslab.manager.storage
             SaveChanges();
         }
 
+        /// <summary>
+        /// Returns null if a virtual machine config with the specified name is not found
+        /// </summary>
         public VirtualMachineConfig TryGetVirtualMachineConfig(string vmName)
         {
             return VirtualMachines.Where(vm => vm.Name == vmName).FirstOrDefault();
         }
 
+        /// <summary>
+        /// Does nothing a virtual machine config with the specified name is not found
+        /// </summary>
         public void RemoveVirtualMachineConfig(string vmName)
         {
-            var vmConfig = VirtualMachines.Where(vmConfig => vmConfig.Name == vmName).FirstOrDefault();
+            var vmConfig = TryGetVirtualMachineConfig(vmName);
             if (vmConfig != null)
             {
                 VirtualMachines.Remove(vmConfig);
@@ -40,12 +61,14 @@ namespace wordslab.manager.storage
             }
         }
 
+        // Configure table name
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<HostDirectory>().ToTable("HostDirectory");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
         }
 
+        // Bootstrap the config database
         private void InitializeHostStorage()
         {
             if (HostDirectories.Any())

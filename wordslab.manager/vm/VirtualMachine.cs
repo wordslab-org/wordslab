@@ -4,13 +4,6 @@ using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm
 {
-    public enum VirtualMachineType
-    {
-        Wsl,
-        Qemu,
-        GoogleCloud
-    }
-
     public abstract class VirtualMachine
     {
         protected HostStorage storage;

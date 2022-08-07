@@ -1,6 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Runtime.CompilerServices;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using wordslab.manager.storage;
+
+[assembly: InternalsVisibleToAttribute("wordslab.manager.test")]
 
 // Configure the application host
 

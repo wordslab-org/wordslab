@@ -1,4 +1,5 @@
-﻿using wordslab.manager.vm;
+﻿using System.ComponentModel.DataAnnotations;
+using wordslab.manager.vm;
 
 namespace wordslab.manager.storage.config
 {
@@ -34,12 +35,13 @@ namespace wordslab.manager.storage.config
 
         public VirtualMachineType Type { get; internal set; }
 
+        [Key]
         public string Name { get; internal set; }
 
         public int Processors { get; internal set; }
         public int MemoryGB { get; internal set; }
 
-        public string GPUModel { get; internal set; }
+        public string? GPUModel { get; internal set; }
         public int GPUMemoryGB { get; internal set; }
 
         public int VmDiskSizeGB { get; internal set; }
@@ -54,5 +56,37 @@ namespace wordslab.manager.storage.config
         public int HostSSHPort { get; internal set; }
         public int HostKubernetesPort { get; internal set; }
         public int HostHttpIngressPort { get; internal set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is VirtualMachineConfig config &&
+                   Type == config.Type &&
+                   Name == config.Name &&
+                   Processors == config.Processors &&
+                   MemoryGB == config.MemoryGB &&
+                   GPUModel == config.GPUModel &&
+                   GPUMemoryGB == config.GPUMemoryGB &&
+                   VmDiskSizeGB == config.VmDiskSizeGB &&
+                   VmDiskIsSSD == config.VmDiskIsSSD &&
+                   ClusterDiskSizeGB == config.ClusterDiskSizeGB &&
+                   ClusterDiskIsSSD == config.ClusterDiskIsSSD &&
+                   DataDiskSizeGB == config.DataDiskSizeGB &&
+                   DataDiskIsSSD == config.DataDiskIsSSD &&
+                   HostSSHPort == config.HostSSHPort &&
+                   HostKubernetesPort == config.HostKubernetesPort &&
+                   HostHttpIngressPort == config.HostHttpIngressPort;
+        }
+
+        public override int GetHashCode()
+        {            
+            return Name.GetHashCode();
+        }
+    }
+
+    public enum VirtualMachineType
+    {
+        Wsl,
+        Qemu,
+        GoogleCloud
     }
 }
