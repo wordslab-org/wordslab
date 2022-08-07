@@ -1,0 +1,52 @@
+
+#  Méthodologie apprentissage
+
+Niv 1 : conditions de succès
+Niv 2 : problèmes à éviter
+Niv 3 D : diagnostics pour mettre en évidence ces problèmes
+Niv 3 S : solutions à mettre en œuvre si le problème est avéré
+
+
+Catégories bien définies
+•         Catégories non exclusives / en chevauchement
+•         Catégories ne couvrant pas tous les exemples
+•         Catégories aux frontières floues
+•         Catégories impossibles à distinguer dans les exemples
+•         Nombre de catégories trop important au regard du nombre d'exemples
+•         Sous-estimation de l'intérêt d'une interaction utilisateur
+ 
+Caractéristiques mesurables
+•         Décision basée sur des données structurées non présentes dans le jeu d'entrainement
+•         Décision basée sur l'historique des interactions précédentes
+•         Décision ambigüe nécessitant de poser des questions complémentaire à l'utilisateur
+•         Décision basée sur le bon sens, la psychologie humaine ou l'actualité
+•         Décision basée sur des données non mesurables
+ 
+Données d'entrainement fiables et représentatives
+•         Biais dans la collecte des données d'entrainement
+•         Erreurs dans l'annotation des données
+•         Variété des exemples d'entrainement insuffisante par rapport à la production
+•         Pas de mesure de la maturité de l'apprentissage
+•         Pas de prise en compte de l'évolution des besoins
+ 
+Pas de surapprentissage des exemples d'entrainement
+•         Nombre d'exemples d'entrainement insuffisant
+•         Apprentissage accidentel sur des caractéristiques non significatives
+•         Nombre d'exemples déséquilibré entre catégories
+•         Mauvais réglage des mécanismes d'apprentissage permettant la généralisation
+ 
+Modèle adapté
+•         Données d'entrée du modèle au mauvais niveau de précision
+•         Données d'entrée du modèle trop bruitées
+•         Modèle incapable de capturer les caractéristiques importantes pour la décision
+•         Modèle trop simple ou trop complexe
+•         Modèle ne prenant pas en compte les spécificités du domaine
+ 
+Objectifs de performance pertinents
+•         Mesure des performances basée sur des annotations non fiables
+•         Mesure des performances sur les données d'entrainement ou de développement
+•         Priorité entre précision et rappel non identifiée
+•         Pas d'indicateur numérique d'optimisation unique défini
+•         Pas de critères d'acceptabilité additionnels précisément définis
+•         Modification simultanée des jeux d'entrainement et du dispositif de test
+ 

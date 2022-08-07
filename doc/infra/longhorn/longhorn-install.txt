@@ -1,0 +1,85 @@
+﻿# Install Longhorn on Kubernetes
+
+https://longhorn.io/docs/1.2.2/deploy/install/#installation-requirements
+
+- Kubernetes v1.18+.
+- open-iscsi is installed, and the iscsid daemon is running on all the nodes
+- a NFSv4 client is installed on each node (for RWX support)
+- the host filesystem supports the file extents feature : ext4 or XFS
+- bash, curl, findmnt, grep, awk, blkid, lsblk must be installed
+- mount propagation must be enabled.
+
+Using Longhorn in k3d
+
+https://github.com/rancher/k3d/discussions/478
+
+K3d is K3s built into an image that is then run inside docker.
+The K3d image is bare bones and you can't install 'open-iscsi' which is a requirement for Longhorn.
+No pod that requires Longhorn as a storage class can be scheduled on a node that can't run longhorn.
+
+Road to containing iSCSI
+
+https://www.docker.com/blog/road-to-containing-iscsi/
+
+Create a k3 cluster with iscsi enabled
+
+=> recipe 3 doesn't work because ldconfig is not installed : no distrib, statically linked k3s
+
+https://k3d.io/v5.0.1/usage/commands/k3d_cluster_create/
+
+sudo mount --make-rshared /
+
+k3d cluster create longhorn --agents 3 --image k3d-registry.localhost:5000/rancher/k3s \
+    -v ~/longhorn-cluster/server0/storage:/var/lib/longhorn:shared@server[0] \
+    -v ~/longhorn-cluster/agent0/storage:/var/lib/longhorn:shared@agent[0] \
+    -v ~/longhorn-cluster/agent1/storage:/var/lib/longhorn:shared@agent[1] \
+    -v ~/longhorn-cluster/agent2/storage:/var/lib/longhorn:shared@agent[2]
+
+---
+
+helm repo add longhorn https://charts.longhorn.io
+helm repo update
+
+kubectl create namespace longhorn-system
+helm install longhorn longhorn/longhorn --namespace default
+
+---
+
+laurent@Lenovo-Legion-T5:/mnt/c/Users/laure$ kubectl describe pod instance-manager-r-2079b8a2
+Name:         instance-manager-r-2079b8a2
+Node:         k3d-longhorn-agent-1/172.21.0.4
+Start Time:   Sun, 17 Oct 2021 09:54:37 +0200
+Controlled By:  InstanceManager/instance-manager-r-2079b8a2
+Containers:
+  replica-manager:
+    Image:         longhornio/longhorn-instance-manager:v1_20210731
+    Args:
+      longhorn-instance-manager
+      --debug
+      daemon
+      --listen
+      0.0.0.0:8500
+    State:          Waiting
+      Reason:       CreateContainerError
+    Ready:          False
+    Restart Count:  0
+    Requests:
+      cpu:        1440m
+    Mounts:
+      /host from host (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from longhorn-service-account-token-6zx4g (ro)
+Volumes:
+  host:
+    Type:          HostPath (bare host directory volume)
+    Path:          /
+    HostPathType:
+  longhorn-service-account-token-6zx4g:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  longhorn-service-account-token-6zx4g
+    Optional:    false
+Events:
+  Type     Reason   Age               From     Message
+  ----     ------   ----              ----     -------
+  Normal   Pulling  60s               kubelet  Pulling image "longhornio/longhorn-instance-manager:v1_20210731"
+  Normal   Pulled   37s               kubelet  Successfully pulled image "longhornio/longhorn-instance-manager:v1_20210731" in 22.512101246s
+  Warning  Failed   37s               kubelet  Error: failed to generate container "cfc738026d635e68f3f5b683450ae00487e5c80b0b14e9946773b8b21dc6c2a4" spec: failed to generate spec: path "/" is mounted on "/" but it is not a shared or slave mount

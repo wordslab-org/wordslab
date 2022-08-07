@@ -1,0 +1,188 @@
+// Executes : k3d version
+// Returns  : 
+// Version object if k3d.io version was correctly parsed
+// null otherwise
+public static Version CheckK3dVersion()
+{
+    try
+    {
+        string output;
+        string error;
+        int exitcode = Process.Run("k3d", "version", 5, out output, out error);
+        if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
+        {
+            // k3d version v4.4.7
+            // k3s version v1.21.2-k3s1 (default)
+            int versionIndex = output.IndexOf("version");
+            if (versionIndex > 0 && (versionIndex + 9) < output.Length)
+            {
+                versionIndex += 9;
+                int firstDot = output.IndexOf('.', versionIndex);
+                int secondDot = output.IndexOf('.', firstDot + 1);
+                int eol = output.IndexOf('\n', secondDot + 1);
+                if (firstDot > versionIndex && secondDot > firstDot && eol > secondDot)
+                {
+                    var major = Int32.Parse(output.Substring(versionIndex, firstDot - versionIndex));
+                    var minor = Int32.Parse(output.Substring(firstDot + 1, secondDot - firstDot - 1));
+                    var build = Int32.Parse(output.Substring(secondDot + 1, eol - secondDot - 1));
+                    return new Version(major, minor, build);
+                }
+            }
+        }
+    }
+    catch (Exception)
+    { }
+    return null;
+}
+
+// Executes : docker ps -f name=myregistry
+// Returns  : true if local registry already exists
+public static bool DoesLocalRegistryExist(string registryName)
+{
+    try
+    {
+        string output;
+        string error;
+        int exitcode = Process.Run("docker", $"ps -f name={registryName}", 5, out output, out error);
+        if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
+        {
+            // CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+            // ...
+            var lines = output.Split('\n');
+            foreach (var line in lines)
+            {
+                if (line.Contains(registryName))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    catch (Exception)
+    { }
+    return false;
+}
+
+// Executes : k3d registry create ...
+// Returns  : 
+// null is the cluster was sucessfully created
+// command string if the create command failed
+public static string CreateLocalRegistry(string registryName, int port = 5000)
+{
+    var command = $"registry create {registryName} --port {port}";
+    try
+    {
+        string output;
+        string error;
+        int exitcode = Process.Run("k3d", command, 60, out output, out error);
+        if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
+        {
+            return null;
+        }
+    }
+    catch (Exception)
+    { }
+    return command;
+}
+
+// Executes : k3d cluster list
+// Returns  : true if cluster already exists
+public static bool DoesK3dClusterExist(string clusterName)
+{
+    try
+    {
+        string output;
+        string error;
+        int exitcode = Process.Run("k3d", "cluster list", 5, out output, out error);
+        if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
+        {
+            // NAME                 SERVERS   AGENTS   LOADBALANCER
+            // wordslab-cluster   1/1       3/3      true
+            var lines = output.Split('\n');
+            foreach (var line in lines)
+            {
+                if (line.StartsWith(clusterName))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    catch (Exception)
+    { }
+    return false;
+}
+
+// Executes : k3d cluster create ...
+// Returns  : 
+// null is the cluster was sucessfully created
+// command string if the create command failed
+public static string CreateK3dCluster(string clusterName, int agents = 3, int hostWebPort = 8080,
+    string registryName = null, bool exposeYugabyteDBPorts = false, bool exposePostgresqlPort = false, 
+    bool mapHostPathDirectories = true, bool updateKubeconfig = true)
+{
+    var command = $"cluster create {clusterName} --agents {agents} -p {hostWebPort}:80@loadbalancer";
+    if (exposeYugabyteDBPorts)
+    {
+        command += " -p 7000:7000@loadbalancer -p 9042:9042@loadbalancer -p 6379:6379@loadbalancer -p 5433:5433@loadbalancer";
+    }
+    if (exposePostgresqlPort)
+    {
+        command += " -p 5432:5432@loadbalancer";
+    }
+    if (registryName != null)
+    {
+        command += $" --registry-use k3d-{registryName}:5000";
+    }
+    if (mapHostPathDirectories)
+    {
+        for (int i = 0; i < agents; i++)
+        {
+            command += $" --volume /var/lib/{clusterName}/storage/agent{i}:/var/lib/rancher/k3s/storage@agent[{i}]";
+        }
+    }
+    if (updateKubeconfig)
+    {
+        command += " --kubeconfig-update-default=true";
+    }
+    try
+    {
+        string output;
+        string error;
+        int exitcode = Process.Run("k3d", command, 900, out output, out error);
+        if (exitcode == 0 && String.IsNullOrEmpty(error) && !String.IsNullOrEmpty(output))
+        {
+            return null;
+        }
+    }
+    catch (Exception)
+    { }
+    return command;
+}
+
+// Executes : kubectl label nodes ...
+// Returns  : 
+// null is the nodes were sucessfully labeled
+// output+error string if the create command failed
+public static string LabelK3dClusterNodes(string clusterName, int agents = 3, string label = "disk=local")
+{
+    for (int i = 0; i < agents; i++)
+    {
+        var command = $"label --overwrite nodes k3d-{clusterName}-agent-{i} {label}";
+        try
+        {
+            string output;
+            string error;
+            int exitcode = Process.Run("kubectl", command, 5, out output, out error);
+            if (exitcode != 0 || !String.IsNullOrEmpty(error))
+            {
+                return output + " | " + error;
+            }
+        }
+        catch (Exception e)
+        {
+            return e.Message;
+        }
+    }
+    return null;
+}

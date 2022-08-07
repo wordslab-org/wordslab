@@ -1,0 +1,3 @@
+set windowsusername=laure
+set notebooksfolder=C:\Users\%windowsusername%\OneDrive\Dev\Python\CourseraPython
+C:\Users\%windowsusername%\Anaconda3\python.exe C:\Users\%windowsusername%\Anaconda3\cwp.py C:\Users\%windowsusername%\Anaconda3\envs\tensorflow C:\Users\%windowsusername%\Anaconda3\envs\tensorflow\python.exe C:\Users\%windowsusername%\Anaconda3\envs\tensorflow\Scripts\jupyter-notebook-script.py %notebooksfolder%

@@ -1,0 +1,443 @@
+﻿OrganizationServer
+- database of organization assets (metadata)
+- git server (data)
+- docker repository (exec environments / platform environment)
+- users / access rights / security
+- hosts user workspaces with priviledged access
+- public api for user workspaces
+
+UserLocalServer
+- database of user assets (metadata)
+- a user can be connected to several organization servers
+- git local directories
+
+UserWorkspace
+- definition saved on server (and optionally on user local server)
+- host machine : remote | local
+- exec environment : container
+- user volumes : mounted
+
+HostMachine
+- compute
+- memory
+- temporary storage
+- controlled network access
+- interact with UI and SSH
+
+ExecEnvironment
+- base os image
+- machine-wide libs
+- compatibility requirements: HostMachine
+
+PlatformEnvironment
+- local app talking to organization servers (plural) api
+- sdk for common languages
+- build | run
+
+UserVolume 
+- data | code & dependencies | dev tools & dependencies
+- compatibility requirements: HostMachine, ExecEnvironment, PlatformEnvironment
+- versioned : git repository (also used as backup/restore)
+
+
+
+DataDirectory
+- list of files in folders
+- each change inside the platform is tracked through user commits
+- snapshots / versions like Git
+- ExtractionRuns create a new snapshot, which can be rolled back
+- initial content is imported through an ExtractionRun
+
+
+DataSet
+- name
+- history of dataset versions
+
+DataSetVersion
+- datetime
+- label
+- list of data directories snapshots
+
+
+
+DataSource
+- rootUrl
+- scope : domain | subdomain | path
+- urlPatternsToExclude : list of Url patterns to exclude from the extraction (robots.txt spec)
+
+ExtractionJob
+- not started | in progress | finished
+- date start / end
+- perf monitor : total
+- scheduler state (checkpoint)
+- NlpTextDocuments in folders => DataDirectory
+- maxPageCount=500  : maximum number of pages extracted from the website
+- maxSizeOnDisk=0   : maximum size of the extracted text files on disk in Mb
+
+ExtractionRun
+- first | continue | restart=>first
+- date start / end
+- perf monitor : run
+- request logs
+- urlPatternsToExclude : list of Url patterns to exclude from the extraction (robots.txt spec)
+- minCrawlDelay=100 : delay in milliseconds between two requests sent to the website
+- maxDuration=2     : maximum duration of the extraction in minutes
+- maxPageCount=500  : maximum number of pages extracted from the website
+- minUniqueText=10  : minimum percentage of unique text blocks extracted
+- maxSizeOnDisk=0   : maximum size of the extracted text files on disk in Mb
+
+
+
+DataSource (remote or proxy)			=>							DataSourceRepo				=>					DatasetRepo
+
+= tree of files, 2 cases											= Git repo of NLPTextDoc						= table of document elements with metadata & annotation cols
+
+Remote : protocol + url + scope			ExtractionJob											RefinementJob
+- web									> ExtractionRun											> DocumentsRepo
+- S3																							> RefinementRun
+- NFS
+																								AnnotationJob			
+Proxy : ProjectVolume (no version)		ImportJob & ExtractionJob								> KnowledgeModel
+- upload								> ImportTask											> AnnotationTask
+- unzip									(followed by)
+- filter								> ExtractionRun
+
+= tree of files, 
+
+File formats							XxxTextExtractor
+- html									then: Anonymization
+- pdf
+- csv
+
+-- 
+
+RefinementJob
+> RefinementStep
+- doc selection
+- doc element selection
+- language filtering
+- metadata extraction
+- char normalization
+- tokenization (just for count, or to keep as annotation)
+- sentence splitting ?
+- token count by doc element / sentence
+- sentence selection
+- output formatting
+- custom Python step
+
+If annotations are at the Token level => spacy doc format
+
+---
+
+CLI
+- Prepare Kubernetes namespace
+- Inject Installer
+- Repair Installer
+
+Installer
+- Install GUI
+- Define Topology
+- Upgrade GUI
+
+PlatformManager
+- Topology (store)
+- Cluster management console
+- Resources management and quotasZones : Platform, Project, Workspaces, Services
+- Users and teams
+- Data scopes
+- Monitor
+- Backup
+- Platform logs
+- Promote ServiceReleases between envs
+
+ProjectsManager
+- Projects
+- Roles
+- Assets access
+- Tasks
+	- Data Import Task
+	- Data Extraction Task
+	- Data Refinement Task
+	- Business Modeling Task
+	- Data Annotation Task
+	- Development Task => user machine
+	- Deployment Task => service instance
+
+RepositoriesManager (all these repositories can be shared between installations -> GH organization can be a natural hub)
+- Data lineage & Model doc + perf tracking
+- DatasourceRepo
+- DatasetRepo 
+- ServiceRepo (foundation services & their relases installed by default)
+- BusinessModelRepo
+- PackagesRepo (pip, nuget)
+- ImagesRepo (docker)
+- ChartRepo (helm)
+
+ServicesManager
+- ServiceRelase (= container images + helm chart)
+- ExecEnvironment (= Kubernetes namespace)
+- ServiceInstanceVolume (= Kubernetes PV)
+- ServiceInstance (= running container with ServiceInstanceVolume mounted)
+
+WorkspacesManager
+- WorkEnvironement (= Kubernetes namespace)
+- OSRelease ???
+- UserOS (= personalized base container image)
+- UserVolume (= Kubernetes PV) : datasources/datasourcerepo/_extractionjobs | datasets/datasetrepo/[_refinementjobs|_annotationjobs] | services/servicerepo/[_trainingjobs|_buildjobs|_testjobs|_releasejobs] | businessmodels/businessmodelrepo/_modelingjob | servicelogs | dataimports/datasourceproxy/_importjobs
+- UserMachine (running container with temporary dedicated compute resources and UserVolume mounted at /uservolumename)
+
+SolutionsManager
+- Services Orchestration
+- Usage Stats
+- Logs Exploration
+
+
+UserVolume
+
+> localdata
+	> imports
+		> mydatasource
+			> date-myimportjob
+	> logs
+		> myservice
+			> date-myservicejob
+
+> myuser | myorganization
+	> myrepo
+		> datasources
+			> mydatasource
+				datasource.md (generated)
+				> importjobs (to localdata)
+					> date-myimportjob
+						importjob.md (generated)
+						> importruns
+							> date-runproperties
+				> extractionjobs (from localdata or remote source, to mycollection)
+					> myextractionjob
+						> extractionruns
+							> date-runproperties
+		> documents
+			> mycollection
+				> textdocs (nlptextdoc only)
+				> docbins (preprocessed .spacy)
+				> stats (chars, vocab, docelements ...)
+				> processingjobs
+					> myprocessingjob (from docbins, to mydataset)
+						> processingruns
+							> date-runproperties
+		> datasets
+			> mydataset (splits)
+				> dataframes (pandas)
+				> docbins (.spacy)
+				> conceptdiscoveryjobs
+					> myconceptdiscoveryjob (to myconceptdomain)
+						> conceptdiscoveryruns
+							> date-runproperties
+				> annotationjobs
+					> myannotationjob (with myconceptdomain, to docbins)
+						> annotationruns
+							> date-runproperties
+				> trainingjobs
+					> mytrainingjob (to mypipeline)
+						> trainingruns
+							> date-runproperties
+		> concepts
+			> myconceptdomain
+				> topics
+				> entities
+				> intents
+				> doctypes
+		> models
+			> mymodel
+		> pipelines
+			> mypipeline (using mymodel)
+		> services
+			> myservice (using mypipeline)
+			> deploymentjobs (to evironments)
+			> logssamplingjobs (to localdata)
+		> actionrules
+			> 
+		> answers
+			> 
+		> solutions
+			> mysolution (using myservice)
+				> 
+			> usageanalysisjobs ()
+
+
+-- LANGUAGE SERVICES --
+
+Organization/Repo
+
+> Datasets (& previous steps)
+
+> Concepts
+
+> Models
+
+> Pipelines
+
+> Services
+
+
+-- BUSINESS ASSISTANTS --
+
+Organization/BusinessDomain
+
+--- Knowledge, info, and actions are spread between the 3 sources below
+
+> People (voice, image, text)
+	> Requests
+	> Conversations
+	> Availability
+	> Context Services
+
+> Applications (structured data)
+	> Deep links
+	> Data access APIs
+	> In and Out Events
+	> Context services
+
+> Documents (text)
+	> Continuous indexing services
+	> Context Services
+
+--- We add communication assistants to the mix
+
+> Communication Assistants : Interactive : UI / API // Asynchronous: Event triggered / Batch (time)
+	> mysolution
+		> Integrations
+		> UserFacingUIs
+		> ManagementUIs
+		> ServiceInstances
+		> BusinessRules
+		> Logs
+		> Stats
+
+--- Communication occurs through these channels (with language)
+
+Types of channels :
+
+Phone / Voice recording (+video)
+Mail (paper) => Images of Documents
+Email / Social network posts & comments
+Chat / Instant messaging
+Digital Documents (uploaded or attached to another channel)
+Application UI (natural language can be an alternative)
+
+Many instances of these channels are linking specific groups of people / apps / docs 
+
+ex : a group of customers -> phone -> a group of advisors -> chat -> a group of experts -> UI -> documents repo
+
+--- We model everything as a conversation between these 3 actors, augmented by a conversation assistant
+
+Conversation is necessary because any kind of communication necessitates several turns to align the parties
+The initial message / request is often ambiguous and missing information
+A dialog will be necessary to collect the missing information (or all possible answers will be shown at once)
+
+We can progressively integrate a communication assistant in more and more channel instances
+So that conversations can span several channels
+
+A conversation assistant is scoped around a specific group of people, who initiate conversations on different channels
+Then we try to capture every direct exchange with this initiator
+If other conversations are happening in the background to fulfill the initiator request, but he is not part of it, this is the scope of another communication assistant
+The assistant role is to help this specific group achieve the goal of the conversation more easily / faster
+The assistant can also take cues from other people, apps, doc events, to proactively suggest conversation starts
+But if the conversation is started by someone else, then it is another assistant
+
+--- Patterns to augment conversations
+
+1. Help
+2.
+3.
+4.
+5. 
+
+---
+
+> Language (see repo above)
+	> Language Concepts
+	> Language Services
+
+> Business Rules
+	> Business Concepts
+	> Decisions
+	> Scenarios
+
+-- PRODUCTION --
+
+
+-- SOLUTION TYPES --
+
+Channels
+
+- voice
+
+Use cases
+
+> Conversation
+> Search
+> Natural Language commands
+
+> Speech to Text / Speech to Data
+> Image to Text / Image to Data
+> Text to Text / Text to Data
+
+Virtual Assistant
+- NL Request	>	BusinessRule / Dialog	> ConvsersationStep 
+
+
+Voice
+- Voice dictation
+- Voice transcription
+- Speaker recognition
+- Text to speech
+
+Document images
+- 
+
+Data masking
+- Personal info
+- Sensitive info
+- Offensive info
+
+Concept discovery
+- Topics modeling
+- Text clustering
+- New classes suggestions
+- Confusing classes detection
+- Entity / synonyms suggestions
+
+Training services
+- Word vectors pretraining
+- Language model pretraining
+- Annotation candidates ranking (active learning)
+- Continuous training
+
+Information extraction
+- Summarization
+- Entity extraction
+- Entity linking
+- Relation extraction
+- Document splitting
+- Document element classification
+- Text span classification
+
+Write assist
+- Spell checker
+- Request autocomplete
+- Message autocomplete
+- Document autocomplete
+- Tone & style guide
+- Compliance guide
+- Readability & simplicity guide (= align vocabulary with users)
+- Frequent questions on a topic (= FAQ generators to guide authors)
+- Answer template suggestion
+
+Search
+- 
+
+Commands
+- Natural Language Query
+- Natural Language Command
+- Frequent commands spotting

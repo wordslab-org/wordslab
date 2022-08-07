@@ -1,0 +1,13 @@
+CUDA Hardware
+https://youtu.be/kUqkOAU84bA
+
+Intro to CUDA (part 1): High Level Concepts
+https://youtu.be/4APkMJdiudU
+
+CUDA Programming
+https://youtu.be/xwbD6fL5qC8
+
+CUDA Concurrency 2020
+https://www.olcf.ornl.gov/wp-content/uploads/2020/07/07_Concurrency.pdf
+
+

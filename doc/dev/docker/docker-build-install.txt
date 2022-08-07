@@ -1,0 +1,16 @@
+﻿LINUX
+
+cd /mnt/c/Users/laure/OneDrive/Dev/C#/wordslab/wordslab/wordslab.installer/K3s
+
+docker build -t k3d-registry.localhost:5000/rancher/k3s .
+
+# Debug
+# DOCKER_BUILDKIT=0 docker build -t k3d-registry.localhost:5000/rancher/k3s .
+# docker run --rm -it <id_last_working_layer> bash -il
+
+docker run --rm -it a97da6658935 bash -il
+
+wget http://security.ubuntu.com/ubuntu/pool/main/a/apt/apt_2.0.6_amd64.deb -O apt.deb
+dpkg -i apt.deb
+
+docker push k3d-registry.localhost:5000/wordslab/wordslab

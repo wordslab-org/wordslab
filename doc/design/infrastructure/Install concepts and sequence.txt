@@ -1,0 +1,238 @@
+﻿# Concepts
+
+Clusters
+	Cluster types
+	Install experience (Admin)
+	Deployment mode (Admin)
+	Security & availability zone
+
+Tenants
+	Integration config
+	Install experience (other modules)
+	Deployment mode (other modules)
+
+Platform Modules
+	Server
+		Admin	
+		(Tenants)
+		Lifecycle
+		Stages : Dev, Train, PreProd, Prod, Explore
+	Client
+		Cli
+
+User space
+	- storage volumes specific to a tenant, user, stage
+
+# Three clusters types
+
+Personal Computer (unsecure and shared machine) with Docker Linux containers
+- Minimum footprint
+- Single node
+- [Test] High availability (but no real HA)
+
+Dedicated Linux VM
+- Minimum footprint
+- Single node
+
+Managed Kubernetes cluster 
+- Minimum footprint
+- Single node (>= 1 node)
+- High availability (>= 3 nodes)
+
+Storage / backup solution :
+- Personal Computer : local storage provider
+- Dedicated Linux VM or Managed Kubernetes Cluster : Longhorn
+
+Kubernetes solution :
+- Personal Computer : k3d
+- Dedicated Linux VM : k3s
+
++ client machines for remote management of the building blocks
+
+# Seven building blocks (one cluster can host one or more)
+
+Note : one building block = independent set of features + distinct storage space
+Note : each building block is installed on a hosting environment, any number of building blocks can be simultaneously hosted on the same environment
+Note : each entity "lives" (is updated) only in one building block, then read only snapshots of this entity are shipped to other building blocks
+Note : some building blocks represent stages
+
+Cli (Windows, Linux, MacOs)
+- used to check requirements and initialize hosting environments
+- used to execute the initial install of Admin on the hosting environments
+- then used to issue commands to all building blocks through their API
+- is also deployed on client machines, not only on hosting environments 
+
+Admin
+- repository of all tenants and all clusters managed by the same IT admin team
+- replicated on each hosting environment : there is one and only one Admin building block per hosting environment
+- initializes tenant configuration and installation through a web UI
+- identity provider : one realm per tenant
+- manage updates
+- monitor resources, backups ... from a single dashboard
+
+Note : 
+- all the other stages are defined for each tenant
+- separate storage and database 
+- synchronize with the central Lifecycle
+- push to the next environment
+- pul anonymized data from previous environment
+
+Note : 
+- each building block is characterized by a small set of metrics
+- which the user will have to input during the install process (min/max)
+- and which will be used to compute resources requirements (CPU, memory, storage)
+
+Lifecycle (for project managers)
+- one Gitea instance per tenant
+- database sync view of all stages for a tenant
+- perf stats for project managers
+
+Note : the Lifecycle module can communicate with all the stages, all stages can communicate with the Lifecycle, there is no direct route between two stages
+Note : this communication can flow through git clone/push/pull requests with Lifecycle
+Note : this communication is always asynchronous, through a message broker co-located with each module
+
+Dev (for developers)
+- for data science algorithms development
+- for services and pipelines definition
+- for datasets import and structure
+- for integrations development
+
+Train (for analysts)
+- for business model construction
+- for data annotation during projects
+- for model training and testing
+
+PreProd (for select end users)
+- for solution testing
+- is only a variant of Prod (same code base / different config and data)
+
+Prod (for end users)
+- for solution serving
+
+Explore
+- for end users restitution
+- for data vizualisation and exploration
+- for production logs annotation
+- perf stats for end users
+
+# Three deployment modes (for each building block)
+
+Minimum footprint
+- priority = speed of setup, ease of use, minimum resource requirements
+- 1 node / 1 replica
+- no redundancy
+
+Single node
+- priority = ease of setup, higher stability, low hardware cost 
+- 1 node / 2-3 replicas
+- software redundancy
+
+High availability
+- priority = entreprise-grade availability, manageability, security
+- at least 3 nodes
+- hardware redundancy
+
+Common features :
+- data protection
+- good backups
+
+Note : each of these two deployment modes has a variant "For platform dev"
+- for wordslab development itself
+- tools to quickly update the code assets of the platform
+- additional ports can be opened, logs & diagnostics set up, debugging facilities ...
+
+# Integrations configuration
+
+Note : integration configs are set up per tenant, and will impact all building blocks
+
+Default configs :
+
+Standalone
+- identity = Keycloak
+- git repo = Gitea
+- docker repo = private
+- conda/pip repo = public
+
+Github extension
+- identity = Github
+- git repo = Github
+- docker repo = Github Packages
+
+Entreprise
+- identity = Entreprise OIDC provider
+- git repo = Entreprise
+- docker repo = Entreprise
+
+Backup locations are part of this config
+- local folder with remote sync
+- onedrive, google drive, drop box, box
+- S3 compatible storage 
+
+# Install experiences
+
+0. Download Cli on your machine
+
+1a. Starting point = PC with Windows 10+
+- check prerequisites : os version, disk space, CPU, memory
+- activate & configure WSL 2
+- install Docker Desktop
+=> 2
+
+1b. Starting point = PC with Linux
+- check prerequisites : os version, disk space, CPU, memory
+- install Docker on Linux
+=> 2
+
+1c. Starting point = PC with Mac Os
+- check prerequisites : os version, disk space, CPU, memory
+- install Docker Desktop for Mac
+=> 2
+
+2. Starting point = PC with Docker Linux containers
+- check prerequisites 
+- choose ingress port and host filesystem location for storage
+- install k3d & create cluster
+- create wordslab namespace with quotas & dedicated user account
+- install and start Admin
+- set up credentials for Cli to talk to Admin
+=> 4
+
+1d. Starting point = Hypervisor ready to execute an on-premise Linux VM
+- instructions to setup a Linux VM (disk space, CPU, memory)
+- start packaged and secured VM image
+- personalize admin credentials
+- setup and connect Cli to Admin
+=> 4
+
+1e. Starting point = a Google/Amazon/Microsoft cloud subscription (or intent to subscribe)
+- instructions to setup a cloud subscription if needed
+- create the VM through the cloud provider SDK 
+- start packaged and secured VM image
+- personalize admin credentials
+- setup and connect Cli to Admin
+=> 4
+
+3. Starting point = Managed Kubernetes cluster with dedicated namespace & user account
+- check requirements
+- install and start Admin
+- set up credentials for Cli to talk to Admin
+
+4. Starting point = Isolated Admin instance ready
+- use web UI to create / connect Admin identity realm
+- connect to a previously initialized cluster (through its Admin module)
+=> 5
+
+5. Starting point = Set of connected clusters with Admin modules ready
+- connect to the admin UI (or through Cli)
+- create a tenant : select a cluster and a deployment mode for each module
+- define the integration configuration for this tenant
+- create realm and users
+- deploy the modules
+=> 6
+
+6. Starting point = tenant deployed
+- point Cli to any Admin
+- authenticate as an authorized user for a tenant
+- dowload configuration to execute operations on this tenants / launch web UI
+- use Cli or web UI to issue commands
+- initialize a default user space when the user logs in for the first time ("preparing your workspace")

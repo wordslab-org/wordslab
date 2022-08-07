@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "wordslab.manager": {
+      "commandName": "Project",
+      "commandLineArgs": "host vm list\r\n",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:3088",
+      "dotnetRunMessages": true
+    }
+  }
+}

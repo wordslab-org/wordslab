@@ -1,0 +1,2 @@
+Go to local file :
+> OneDrive\Documents\Informatique\Technologies\Kubernetes\Intro to Kubernetes v1.pptx

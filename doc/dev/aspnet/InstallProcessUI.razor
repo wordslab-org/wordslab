@@ -1,0 +1,263 @@
+﻿@using wordslab.installer.localstorage
+@using wordslab.installer.infrastructure
+@implements InstallationUI
+
+@page "/"
+@inject IDbContextFactory<ConfigStore> DbContextFactory
+
+<PageTitle>Windows - Local cluster manager</PageTitle>
+
+<h1>Local cluster manager</h1>
+
+@if(installInProgress == null || installInProgress.Status!=InstallStatus.InProgress) 
+{
+    @if(vmState == VMState.NotInstalled)
+    {
+        <div>Local cluster is not installed : <button @onclick="Install">Install</button></div>
+    }
+    @if(vmState == VMState.Stopped)
+    {
+        <div>Local cluster is stopped : <button @onclick="Start">Start</button></div>
+    }
+    @if(vmState == VMState.Started)
+    {
+        <div>Local cluster is running : <button @onclick="Stop">Stop</button></div>
+    }
+    @if(vmState == VMState.InstallFailed)
+    {
+        <div>Install or Uninstall operation failed : your local cluster is not in a consistent state, you should reset it by clicking on Uninstall below.</div>
+    }
+    @if (vmState == VMState.Stopped || vmState == VMState.InstallFailed)
+    {
+        <div><span>DANGEROUS - You can reset your local cluster, but all data will be lost : </span> <button @onclick="Uninstall">Uninstall</button></div>
+    }        
+}
+else
+{
+    <li>Operation in progress ...</li>
+}
+
+@if(installInProgress != null) 
+{
+<h2>@installInProgress.Description</h2>
+<div>Status: @installInProgress.Status</div>
+
+<ul>
+@foreach(var step in installSteps)
+{
+   <li>
+       <div>@step.Description</div>
+        @if(step.IsQuestion)
+        {
+            <div><button @onclick="() => StepButtonClick(step,true)">YES</button> <button @onclick="() => StepButtonClick(step,false)"n>NO</button></div>  
+        }
+        else
+        {
+            <div>Status: @step.Status</div>
+            if(step.MaxValue > 0)
+            {
+            <div>Progress: @step.CurrentValue / @step.MaxValue @step.Unit</div>
+            }
+        }
+        @if(!String.IsNullOrEmpty(step.ResultInfo))
+        {
+            <div>@step.ResultInfo</div>
+        }
+        @if(!String.IsNullOrEmpty(step.ErrorMessage))
+        {
+            <div class="text-danger">@step.ErrorMessage</div>
+        }
+   </li>          
+}
+</ul>
+
+}
+
+@code {
+
+    enum VMState
+    {
+        NotInstalled,
+        InstallFailed,
+        Stopped,
+        Started
+    }
+
+    VMState vmState = VMState.NotInstalled;
+
+    class InstallInfo
+    {
+        public InstallInfo(string description)
+        {
+            Description = description;
+            Status = InstallStatus.InProgress;
+        }
+
+        public string Description;
+        public InstallStatus Status;
+    }
+
+    enum InstallStatus
+    {
+        InProgress,
+        Success,
+        Failed
+    }
+
+    class InstallStep
+    {
+        public InstallStep(string description, bool isQuestion = false)
+        {
+            Description = description;
+            Status = InstallStatus.InProgress;
+            ResultInfo = null;
+            IsQuestion = isQuestion;
+            if (isQuestion)
+            {
+                SendAnswer = new TaskCompletionSource<bool>();
+            }
+            else
+            {
+                SendAnswer = null;
+            }
+        }
+
+        public string Description;
+        public InstallStatus Status;
+        public long CurrentValue;
+        public long MaxValue;
+        public string Unit;
+        public string ResultInfo;
+        public string ErrorMessage;
+
+        public bool IsQuestion;
+        public TaskCompletionSource<bool> SendAnswer;
+    }
+
+    InstallInfo installInProgress;
+    List<InstallStep> installSteps;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if(WindowsLocalVMClusterInstall.IsInstalled())
+        {
+            if(WindowsLocalVMClusterInstall.IsClusterRunning())
+            {
+                vmState = VMState.Started;
+            }
+            else
+            {
+                vmState = VMState.Stopped;
+            }
+        }
+    }
+
+    private async void Install()
+    {
+        if (installInProgress == null || installInProgress.Status!=InstallStatus.InProgress)
+        {
+            installInProgress = new InstallInfo("Installing wordslab cluster in local VM");
+            installSteps = new List<InstallStep>();
+            var installSuccess = await Task<bool>.Run(() => WindowsLocalVMClusterInstall.Install(this));
+            installInProgress.Status = installSuccess ? InstallStatus.Success : InstallStatus.Failed;
+            vmState = installSuccess ? VMState.Started : VMState.InstallFailed;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async void Uninstall()
+    {
+        if (installInProgress == null || installInProgress.Status!=InstallStatus.InProgress)
+        {
+            installInProgress = new InstallInfo("Deleting wordslab cluster and local VM");
+            installSteps = new List<InstallStep>();
+            var installSuccess = await Task<bool>.Run(() => WindowsLocalVMClusterInstall.Uninstall(this));
+            installInProgress.Status = installSuccess ? InstallStatus.Success : InstallStatus.Failed;
+            vmState = installSuccess ? VMState.NotInstalled : VMState.InstallFailed;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Start()
+    {
+        int vmIP;
+        string kubeconfigPath;
+        WindowsLocalVMClusterInstall.StartCluster(LocalStorageManager.Instance, out vmIP, out kubeconfigPath);
+        vmState = VMState.Started;
+    }
+
+    private void Stop()
+    {
+        WindowsLocalVMClusterInstall.StopCluster();
+        vmState = VMState.Stopped;
+    }
+
+    public int DisplayCommandLaunch(string commandDescription)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(commandDescription);
+        installSteps.Add(command);
+        InvokeAsync(StateHasChanged);
+        return commandId;
+    }
+
+    public int DisplayCommandLaunchWithProgress(string commandDescription, long maxValue, string unit)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(commandDescription);
+        command.MaxValue = maxValue;
+        command.Unit = unit;
+        installSteps.Add(command);
+        InvokeAsync(StateHasChanged);
+        return commandId;
+    }
+
+    public void DisplayCommandProgress(int commandId, long currentValue)
+    {
+        var command = installSteps[commandId];
+        command.CurrentValue = currentValue;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void DisplayCommandResult(int commandId, bool success, string? resultInfo = null, string? errorMessage= null)
+    {        
+        var command = installSteps[commandId];
+        command.Status = success ? InstallStatus.Success : InstallStatus.Failed;
+        command.ResultInfo = resultInfo;
+        command.ErrorMessage = errorMessage;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public Task<bool> DisplayQuestionAsync(string question)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(question, true);
+        installSteps.Add(command);
+        InvokeAsync(StateHasChanged);
+        return command.SendAnswer.Task;
+    }
+
+    public Task<bool> DisplayAdminScriptQuestionAsync(string scriptDescription, string scriptContent)
+    {
+        int commandId = installSteps.Count;
+        var command = new InstallStep(scriptDescription, true);
+        command.ResultInfo = scriptContent;
+        installSteps.Add(command);
+        InvokeAsync(StateHasChanged);
+        return command.SendAnswer.Task;
+    }
+
+    private void StepButtonClick(InstallStep step, bool choice)
+    {
+        step.SendAnswer.SetResult(choice);
+    }
+
+    public void DisplayCommandError(string errorMessage)
+    {
+        var command = installSteps.Last();
+        command.ErrorMessage = errorMessage;
+        InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,147 @@
+SSH Public Key Based Authentication on a Linux/Unix server
+
+https://www.cyberciti.biz/tips/ssh-public-key-based-authentication-how-to.html
+
+Sample scenario: you (Bob) want to connect to remote host (earth) as alice.
+
+SSH is a connection from someplace (a Unix, Windows, tablet, ...) to a user (alice) on a host (earth).
+
+When you (bob) connect without password, you use a private key (on Unix it is traditionally located in ~/.ssh, but you can put it anywhere).
+
+The remote host just has two facts:
+- you want to connect as alice,
+- you claim to have a private key (of which you provided the fingerprint)
+
+The remote host (earth), having public part of the key, issues a challenge that anyone having private part can answer. Once challenge is done, you simply connect.
+
+In this scenario, you proved you have private part of one of alice's authorized keys. 
+
+But the remote host (earth) has no way to know you are Bob, or Igor or anyone else.
+Remember you can connect from Windows or an Android device where user's scheme is completely different.
+
+The way a SSH key is mapped to user johndoe (and authorizes him to log in passwordlessly to the remote server) is that the public key part is included in the file
+~johndoe/.ssh/authorized_keys  
+on the remote server.
+
+you will need to upload your public key to the home directory of the user you would like to log in as. If you would like to log in to more than one user on the server using your key pair, you will need to add your public key to each of those users.
+
+To set up SSH key authentication for one of your server’s users, add your public key to a new line inside the user’s authorized_keys file. 
+This file is stored inside a directory named .ssh/ under the user’s home folder. 
+A user’s authorized_keys file can store more than one public key, and each public key is listed on its own line. 
+If your file contains more than one public key, then the owner of each key listed will be able to log in as that user.
+
+To create the cryptographic keys on your local system :
+
+> ssh-keygen -t rsa
+
+Assign the pass phrase (press [enter] key twice if you don’t want a passphrase).
+
+It will create 2 files in ~/.ssh directory as follows:
+~/.ssh/id_rsa : identification (private) key
+~/.ssh/id_rsa.pub : public key
+
+https://www.ssh.com/academy/ssh/keygen
+
+Copy the public key (~/.ssh/id_rsa.pub) to your server
+
+> scp ~/.ssh/id_rsa.pub vivek@rh9linux.nixcraft.org:~/.ssh/authorized_keys
+ou
+> ssh-copy-id -i ~/.ssh/id_rsa.pub vivek@rh9linux.nixcraft.org
+
+Login to your remote server using SSH keys from your local system :
+
+> ssh vivek@rh9linux.nixcraft.org
+
+# Top 20 OpenSSH Server Best Security Practices
+
+Last updated: June 14, 2021
+
+https://www.cyberciti.biz/tips/linux-unix-bsd-openssh-server-best-practices.html
+
+OpenSSH server supports various authentication. 
+It is recommended that you use public key based authentication. 
+
+1. First, create the key pair using following ssh-keygen command on your local desktop/laptop:
+
+DSA and RSA 1024 bit or lower ssh keys are considered weak. Avoid them.
+RSA keys are chosen over ECDSA keys when backward compatibility is a concern with ssh clients. 
+All ssh keys are either ED25519 or RSA. Do not use any other type.
+
+> ssh-keygen -t key_type -b bits -C "comment"
+> ssh-keygen -t ed25519 -C "Login to production cluster at xyz corp"
+> ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_aws_$(date +%Y-%m-%d) -C "AWS key for abc corp clients"
+
+2. Next, install the public key using ssh-copy-id command:
+
+> ssh-copy-id -i /path/to/public-key-file user@host
+> ssh-copy-id vivek@rhel7-aws-server
+
+3. Verify that ssh key based login working for you:
+
+> ssh vivek@rhel7-aws-server
+
+- Disable root user login
+- Disable password based login
+- Limit Users’ ssh access
+- Disable Empty Passwords
+- Use strong passwords and passphrase for ssh users/keys
+- Firewall SSH TCP port # 22
+- Change SSH Port and limit IP binding
+- Configure idle log out timeout interval
+
+# Windows 10 - Native SSH client / server
+
+SERVER
+
+Open Powershell as admin :
+
+> Get-WindowsCapability -Online | ? Name -like 'OpenSSH*'
+
+Name  : OpenSSH.Client~~~~0.0.1.0
+State : Installed
+
+Name  : OpenSSH.Server~~~~0.0.1.0
+State : NotPresent
+
+> Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+
+Get service status :
+
+> Get-Service sshd
+
+Start / Stop service :
+
+> Start-Service sshd
+> Stop-Service sshd
+
+Or automatic :
+
+> Set-Service -Name sshd -StartupType 'Automatic'
+
+CONFIGURING THE DEFAULT SHELL FOR OPENSSH IN WINDOWS 10
+
+https://www.hanselman.com/blog/the-easy-way-how-to-ssh-into-bash-and-wsl2-on-windows-10-from-an-external-machine
+
+> New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\WINDOWS\System32\bash.exe" -PropertyType String -Force
+
+CLIENT
+
+> ssh-keygen
+
+C:\Users\Utilisateur\.ssh\id_rsa
+
+> type %USERPROFILE%\.ssh\id_rsa.pub
+
+copy text
+connect to target machine
+edit  ~/.ssh/authorized_keys
+paste text & save
+
+To avoid passphrase :
+
+> ssh-add
+> ssh-agent
+
+ Then :
+
+> ssh <utilisateur>@<nom hôte>

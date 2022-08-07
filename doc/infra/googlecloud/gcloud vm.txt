@@ -1,0 +1,56 @@
+﻿gcloud compute instances create wordslab-vm --project=wide-plating-342518 --zone=europe-west4-a --machine-type=n1-standard-4 --network-interface=network-tier=PREMIUM,subnet=default --metadata=^,@^user-data=\#cloud-config$'\n'ssh_authorized_keys:$'\n'\ \ -\ SSH-KEY$'\n'device_aliases:$'\n'\ \ wordslab-cluster:\ /dev/sdb$'\n'\ \ wordslab-data:\ /dev/sdc$'\n'disk_setup:$'\n'\ \ wordslab-cluster:$'\n'\ \ \ \ table_type:\ gpt$'\n'\ \ \ \ layout:\ true$'\n'\ \ wordslab-data:$'\n'\ \ \ \ table_type:\ gpt$'\n'\ \ \ \ layout:\ true$'\n'fs_setup:$'\n'-\ label:\ wordslab-cluster$'\n'\ \ device:\ wordslab-cluster.1$'\n'\ \ filesystem:\ ext4$'\n'-\ label:\ wordslab-data$'\n'\ \ device:\ wordslab-data.1$'\n'\ \ filesystem:\ ext4$'\n'bootcmd:$'\n'-\ mkdir\ -p\ /mnt/wordslab-cluster$'\n'-\ mkdir\ -p\ /mnt/wordslab-data$'\n'-\ mkdir\ -p\ /etc/rancher$'\n'-\ mkdir\ -p\ /var/lib$'\n'-\ mkdir\ -p\ /var/log/rancher$'\n'-\ mkdir\ -p\ /var/volume/rancher$'\n'mounts:$'\n'-\ \[\"wordslab-cluster.1\",\ \"/mnt/wordslab-cluster\",\ \"ext4\",\ \"defaults\",\ \"0\",\ \"2\"\]$'\n'-\ \[\"wordslab-data.1\",\ \"/mnt/wordslab-data\",\ \"ext4\",\ \"defaults\",\ \"0\",\ \"2\"\]$'\n'packages:$'\n'-\ vim-tiny$'\n'runcmd:$'\n'-\ mkdir\ -p\ /mnt/wordslab-cluster/etc/rancher/k3s$'\n'-\ mkdir\ -p\ /mnt/wordslab-cluster/var/lib/rancher/k3s$'\n'-\ mkdir\ -p\ /mnt/wordslab-cluster/var/log/rancher/k3s$'\n'-\ mkdir\ -p\ /mnt/wordslab-data/var/volume/rancher/k3s --no-restart-on-failure --maintenance-policy=TERMINATE --preemptible --service-account=470967598967-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append --accelerator=count=1,type=nvidia-tesla-t4 --tags=http-server,https-server --create-disk=auto-delete=yes,boot=yes,device-name=wordslab-os,image=projects/ubuntu-os-cloud/global/images/ubuntu-minimal-2004-focal-v20220203,mode=rw,size=10,type=projects/wide-plating-342518/zones/europe-west4-a/diskTypes/pd-balanced --create-disk=device-name=wordslab-cluster,mode=rw,name=wordslab-cluster,size=10,type=projects/wide-plating-342518/zones/europe-west4-a/diskTypes/pd-balanced --create-disk=device-name=wordslab-data,mode=rw,name=wordslab-data,size=10,type=projects/wide-plating-342518/zones/europe-west4-a/diskTypes/pd-ssd --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring --reservation-affinity=any
+
+Created [https://www.googleapis.com/compute/v1/projects/wide-plating-342518/zones/europe-west4-a/instances/wordslab-vm].
+NAME: wordslab-vm
+ZONE: europe-west4-a
+MACHINE_TYPE: n1-standard-4
+PREEMPTIBLE: true
+INTERNAL_IP: 10.164.0.3
+EXTERNAL_IP: 34.90.180.242
+STATUS: RUNNING
+
+gcloud compute instances stop wordslab-vm
+gcloud compute instances start wordslab-vm
+
+ssh ubuntu@34.90.180.242
+
+---
+
+scp k3s ubuntu@34.90.180.242:~/k3s
+scp k3s-airgap-images-amd64.tar ubuntu@34.90.180.242:~/k3s-airgap-images-amd64.tar
+scp helm ubuntu@34.90.180.242:~/helm
+scp config.toml.tmpl ubuntu@34.90.180.242:~/config.toml.tmpl
+
+scp wordslab-k3s-install.sh ubuntu@34.90.180.242:~/wordslab-k3s-install.sh
+scp wordslab-k3s-start.sh ubuntu@34.90.180.242:~/wordslab-k3s-start.sh
+vi *.sh / set nobomb / set ff=unix / :wq
+
+---
+#!/bin/bash
+
+curl https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py
+python3 install_gpu_driver.py
+rm NVIDIA-Linux-x86_64-495.46.run
+rm install_gpu_driver.py
+
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+NVIDIA_CONTAINER_RUNTIME_VERSION=3.7.0-1
+curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+apt-get update && apt-get -y install nvidia-container-runtime=${NVIDIA_CONTAINER_RUNTIME_VERSION}
+
+mount -o bind /mnt/wsl/wordslab-cluster/var/lib /var/lib
+mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
+mv config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+umount /var/lib
+--- 
+sudo ./wordslab-gpu-init.sh
+
+ssh ubuntu@34.90.180.242 chmod a+x wordslab-k3s*.sh
+ssh ubuntu@34.90.180.242 sudo ./wordslab-k3s-install.sh
+
+ssh ubuntu@34.90.180.242 sudo ./wordslab-k3s-start.sh
+ssh ubuntu@34.90.180.242 k3s kubectl cluster-info
+mkdir -p ~/.kube
+scp ubuntu@34.90.180.242:/etc/rancher/k3s/k3s.yaml ~/.kube/wordslab-config
+

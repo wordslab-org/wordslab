@@ -1,0 +1,66 @@
+name: Create wordslab manager release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  DOTNET_VERSION: '6.0.200' # The .NET SDK version to use
+
+jobs:
+  publish:
+    name: Build and publish new wordslab manager release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out wordslab repository
+      uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install wordslab.manager dependencies
+      run: |
+        cd wordslab.manager
+        dotnet restore
+      
+    - name: Build wordslab.manager
+      run: |
+        cd wordslab.manager
+        dotnet build --no-restore -c Release
+              
+    - name: Publish wordslab manager executable for all operating systems
+      run: |
+        cd wordslab.manager
+        dotnet publish -c Release -p:PublishProfile=windows
+        dotnet publish -c Release -p:PublishProfile=linux
+        dotnet publish -c Release -p:PublishProfile=macos
+
+    - name: Create a zip archive for Windows
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        directory: wordslab.manager/bin/Release/net6.0/win-x64/publish/
+        filename: 'wordslab-win-x64.zip'
+
+    - name: Create a tar.gz archive for Linux
+      run: |
+        cd wordslab.manager/bin/Release/net6.0/linux-x64/publish/
+        tar -zcvf wordslab-linux-x64.tar.gz *
+
+    - name: Create a tar.gz archive for macOS
+      run: |
+        cd wordslab.manager/bin/Release/net6.0/osx-x64/publish/
+        tar -zcvf wordslab-osx-x64.tar.gz *
+
+    - name: Create new release
+      uses: marvinpinto/action-automatic-releases@v1.2.1      
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        files: |
+          wordslab.manager/bin/Release/net6.0/win-x64/publish/wordslab-win-x64.zip
+          wordslab.manager/bin/Release/net6.0/linux-x64/publish/wordslab-linux-x64.tar.gz
+          wordslab.manager/bin/Release/net6.0/osx-x64/publish/wordslab-osx-x64.tar.gz

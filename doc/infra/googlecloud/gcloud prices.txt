@@ -1,0 +1,38 @@
+europe-west4-b
+
+n1-highmem-8	8	52 Go	$0.5212	$0.10990
+NVIDIA® Tesla® T4	16 Go 	$0.35 	$0.11 
+
+0,77 Euro / heure
+
+Espace standard provisionné	$0.044 = 8,8$
+
+7,8 Euro / mois
+
+6 mois storage
+6*7,8 = 46,8
+
+36,5 Euro compute / mois = 47,5 heures
+
+export IMAGE_FAMILY="pytorch-latest-gpu"
+export ZONE="europe-west4-b"
+export INSTANCE_NAME="fastaiv2"
+export INSTANCE_TYPE="n1-highmem-8"
+
+gcloud compute instances create $INSTANCE_NAME \
+        --zone=$ZONE \
+        --image-family=$IMAGE_FAMILY \
+        --image-project=deeplearning-platform-release \
+        --maintenance-policy=TERMINATE \
+        --accelerator="type=nvidia-tesla-t4,count=1" \
+        --machine-type=$INSTANCE_TYPE \
+        --boot-disk-size=200GB \
+        --metadata="install-nvidia-driver=True" \
+        --preemptible
+
+---
+gloud.sh
+
+gcloud compute ssh --zone=europe-west4-b jupyter@fastaiv2 -- -L 8080:localhost:8080
+passphrase=fastaiv2VM
+jupyter notebook
