@@ -6,46 +6,40 @@ namespace wordslab.manager.test.os
     [TestClass]
     public class NvidiaTests
     {
-        [TestMethod]
-        public void TestGetDriverVersion()
+        [TestMethodOnWindowsOrLinux]
+        public void T01_TestGetDriverVersion()
         {
+            // Windows : 60 ms
             var driverVersion = Nvidia.GetDriverVersion();
             Assert.IsTrue(driverVersion.Major > 0);
             Assert.IsTrue(driverVersion.Minor > 0);
             Assert.IsTrue(driverVersion.Revision == -1);
             Assert.IsTrue(driverVersion.Build == -1); ;
-
-            if (OS.IsWindows)
-            {
-                Assert.IsTrue(Nvidia.IsNvidiaDriverForWindows20Sep21OrLater(driverVersion));
-                Assert.IsTrue(Nvidia.IsNvidiaDriverForWindows16Nov21OrLater(driverVersion));
-            }
-            if(OS.IsLinux)
-            {
-                Assert.IsTrue(Nvidia.IsNvidiaDriverForLinux13Dec21OrLater(driverVersion));
-            }
         }
 
-        [TestMethod]
-        public void TestIsNvidiaDriverForWindows20Sep21OrLater()
+        [TestMethodOnWindows]
+        public void T02_TestIsNvidiaDriverForWindows20Sep21OrLater()
         {
-            Assert.IsTrue(true);
+            var driverVersion = Nvidia.GetDriverVersion();
+            Assert.IsTrue(Nvidia.IsNvidiaDriverForWindows20Sep21OrLater(driverVersion));
         }
 
-        [TestMethod]
-        public void TestIsNvidiaDriverForWindows16Nov21OrLater()
+        [TestMethodOnWindows]
+        public void T03_TestIsNvidiaDriverForWindows16Nov21OrLater()
         {
-            Assert.IsTrue(true);
+            var driverVersion = Nvidia.GetDriverVersion();
+            Assert.IsTrue(Nvidia.IsNvidiaDriverForWindows16Nov21OrLater(driverVersion));
         }
 
-        [TestMethod]
-        public void TestIsNvidiaDriverForLinux13Dec21OrLater()
+        [TestMethodOnLinux]
+        public void T04_TestIsNvidiaDriverForLinux13Dec21OrLater()
         {
-            Assert.IsTrue(true);
+            var driverVersion = Nvidia.GetDriverVersion();
+            Assert.IsTrue(Nvidia.IsNvidiaDriverForLinux13Dec21OrLater(driverVersion));
         }
 
-        [TestMethod]
-        public void TestTryOpenNvidiaUpdateOnWindows()
+        [TestMethodOnWindows]
+        public void T05_TestTryOpenNvidiaUpdateOnWindows()
         {
             Nvidia.TryOpenNvidiaUpdateOnWindows();
         }

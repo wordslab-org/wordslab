@@ -6,26 +6,26 @@ namespace wordslab.manager.test.os
     [TestClass]
     public class LinuxTests
     {
-        [TestMethod]
+        [TestMethodOnLinux]
         public void TestGetOSDistribution()
         {
             Assert.IsTrue(true);
         }
 
-        [TestMethod]
+        [TestMethodOnLinux]
         public void TestIsLinuxVersionUbuntu1804OrHigher()
         {
             Assert.IsTrue(true);
         }
 
-        [TestMethod]
+        [TestMethodOnLinux]
         public void TestIsAptPackageManagerAvailable()
         {
             Assert.IsTrue(true);
         }
 
         // This command requires admin privileges and user interaction to enter password
-        [TestMethod]
+        [TestMethodOnLinux]
         public void TestGetAptInstallCommand()
         {
             Assert.IsTrue(true);

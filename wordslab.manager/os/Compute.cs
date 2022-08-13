@@ -60,14 +60,14 @@ namespace wordslab.manager.os
                 CPUInfo cpu = new CPUInfo();
 
                 // https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/win32-processor
-                string powerShellQuery = "Get-WmiObject -Class Win32_Processor | Select-Object -Property Manufacturer,Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed,L3CacheSize";
+                string powerShellQuery = "Get-WmiObject -Class Win32_Processor | Select-Object -Property Manufacturer,Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed,L3CacheSize | Write-Host";
 
-                var outputParser = Command.Output.GetValue(@"Manufacturer\s*:\s+(.*)\s*$", value => cpu.Manufacturer = value)
-                                                 .GetValue(@"Name\s*:\s+(.*)\s*$", value => cpu.ModelName = value)
-                                                 .GetValue(@"NumberOfCores\s*:\s+(.*)\s*$", value => cpu.NumberOfCores = uint.Parse(value))
-                                                 .GetValue(@"NumberOfLogicalProcessors\s*:\s+(.*)\s*$", value => cpu.NumberOfLogicalProcessors = uint.Parse(value))
-                                                 .GetValue(@"MaxClockSpeed\s*:\s+(.*)\s*$", value => cpu.MaxClockSpeedMhz = uint.Parse(value))
-                                                 .GetValue(@"L3CacheSize\s*:\s+(.*)\s*$", value => cpu.L3CacheSizeKB = uint.Parse(value));
+                var outputParser = Command.Output.GetValue(@"Manufacturer=([^;]*);", value => cpu.Manufacturer = value)
+                                                 .GetValue(@"Name=([^;]*);", value => cpu.ModelName = value)
+                                                 .GetValue(@"NumberOfCores=(\d+)", value => cpu.NumberOfCores = uint.Parse(value))
+                                                 .GetValue(@"NumberOfLogicalProcessors=(\d+)", value => cpu.NumberOfLogicalProcessors = uint.Parse(value))
+                                                 .GetValue(@"MaxClockSpeed=(\d+)", value => cpu.MaxClockSpeedMhz = uint.Parse(value))
+                                                 .GetValue(@"L3CacheSize=(\d+)", value => cpu.L3CacheSizeKB = uint.Parse(value));
 
                 Command.Run("powershell.exe", powerShellQuery, outputHandler:outputParser.Run);
 
@@ -357,21 +357,25 @@ namespace wordslab.manager.os
             {
                 get
                 {
-                    if (ModelName.Contains("GeForce GTX 10") || ModelName.Contains("TITAN X"))
+                    if (ModelName.Contains("GeForce GTX 10") || ModelName.Contains("TITAN X") || ModelName.Contains("GeForce MX150") || ModelName.Contains("GeForce MX2") || ModelName.Contains("GeForce MX3") || ModelName.Contains("Quadro P") || ModelName.Contains("Quadro GP") || ModelName.Contains("P4") || ModelName.Contains("P6") || ModelName.Contains("P100"))
                     {
                         return GPUArchitectureInfo.Pascal;
                     }
-                    else if (ModelName.Contains("TITAN V"))
+                    else if (ModelName.Contains("TITAN V") || ModelName.Contains("Quadro GV") || ModelName.Contains("V100"))
                     {
                         return GPUArchitectureInfo.Volta;
                     }
-                    else if (ModelName.Contains("GeForce GTX 16") || ModelName.Contains("GeForce RTX 20") || ModelName.Contains("TITAN RTX"))
+                    else if (ModelName.Contains("GeForce GTX 16") || ModelName.Contains("GeForce RTX 20") || ModelName.Contains("TITAN RTX") || ModelName.Contains("GeForce MX4") || ModelName.Contains("GeForce MX550") || ModelName.Contains("Quadro T") || ModelName.Contains("Quadro RTX") || ModelName.Contains("T4"))
                     {
                         return GPUArchitectureInfo.Turing;
                     }
-                    else if (ModelName.Contains("GeForce GTX 30"))
+                    else if (ModelName.Contains("GeForce RTX 30") || ModelName.Contains("GeForce MX570") || ModelName.Contains("RTX A") || ModelName.Contains("A1") || ModelName.Contains("A2") || ModelName.Contains("A3") || ModelName.Contains("A4"))
                     {
                         return GPUArchitectureInfo.Ampere;
+                    }
+                    else if (ModelName.Contains("H100"))
+                    {
+                        return GPUArchitectureInfo.Hopper;
                     }
                     else
                     {
@@ -381,17 +385,19 @@ namespace wordslab.manager.os
             }
         }
 
-        // Pascal: GeForce GTX 10xx | TITAN X
-        // Volta: TITAN V
-        // Turing: GeForce GTX 16xx | GeForce RTX 20xx | TITAN RTX
-        // Ampere: GeForce RTX 30xx
+        // Pascal: GeForce GTX 10xx | TITAN X | P4
+        // Volta: V100 | TITAN V
+        // Turing: GeForce GTX 16xx | GeForce RTX 20xx | TITAN RTX | T4
+        // Ampere: GeForce RTX 30xx | A100
+        // Hopper : H100
         public enum GPUArchitectureInfo
         {
             Unknown,
             Pascal,
             Volta,
             Turing,
-            Ampere
+            Ampere,
+            Hopper
         }
 
         // nvidia-smi --query-gpu=index,gpu_name,memory.total --format=csv,noheader

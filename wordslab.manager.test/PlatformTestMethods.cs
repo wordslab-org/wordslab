@@ -55,6 +55,13 @@ namespace wordslab.manager.test
             return OS.IsMacOS;
         }
     }
+    public class TestMethodOnWindowsOrLinux : TestMethodOnPlatform
+    {
+        protected override bool CheckPlatform()
+        {
+            return OS.IsWindows|| OS.IsLinux;
+        }
+    }
 
     public class TestMethodOnLinuxOrMacOS : TestMethodOnPlatform
     {

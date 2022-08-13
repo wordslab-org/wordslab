@@ -74,7 +74,7 @@ namespace wordslab.manager.os
 
         public static int GetNextAvailablePort(int defaultPort, HashSet<int> portsInUse)
         {
-            for(int port=defaultPort+1; port<defaultPort+1000; port++)
+            for(int port=defaultPort; port<defaultPort+1000; port++)
             {
                 if(!portsInUse.Contains(port))
                 {

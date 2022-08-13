@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 using System.Runtime.InteropServices;
 using wordslab.manager.os;
 
@@ -8,40 +9,59 @@ namespace wordslab.manager.test.os
     public class NetworkTests
     {
         [TestMethod]
-        public void TestGetIPAddressesAvailable()
+        public void T01_TestGetIPAddressesAvailable()
         {
+            // Windows : 45 ms
             var ipAdressesStatus = Network.GetIPAddressesAvailable();
-            if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            Assert.IsTrue(ipAdressesStatus.Count > 0);
+            foreach(var status in ipAdressesStatus.Values)
             {
-                var status = ipAdressesStatus["192.168.1.22"];
-                Assert.IsTrue(status.Address == "192.168.1.22");
-                Assert.IsFalse(status.IsLoopback);
-                Assert.IsTrue(status.NetworkInterfaceName == "Wi-Fi");
-                Assert.IsTrue(status.IsWireless);
+                Assert.IsTrue(status.Address.Split('.').Length == 4);
+                Assert.IsTrue(status.NetworkInterfaceName.Length > 0);
+                if (status.Address.StartsWith("192."))
+                {
+                    Assert.IsFalse(status.IsLoopback);
+                    Assert.IsTrue(status.IsWireless);
+                }
+                else if (status.Address.StartsWith("127."))
+                {
+                    Assert.IsTrue(status.IsLoopback);
+                    Assert.IsFalse(status.IsWireless);
+                }
+                else if (status.Address.StartsWith("172."))
+                {
+                    Assert.IsFalse(status.IsLoopback);
+                    Assert.IsFalse(status.IsWireless);
+                }
             }
         }
 
         [TestMethod]
-        public void TestGetTcpPortsInUsePerIPAddress()
+        public void T02_TestGetTcpPortsInUsePerIPAddress()
         {
+            // Windows : 6 ms
             var portsInUse = Network.GetTcpPortsInUsePerIPAddress();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                Assert.IsTrue(portsInUse.Keys.Count == 3);
-                Assert.IsTrue(portsInUse["0.0.0.0"].Count == 11);
-            }
+            Assert.IsTrue(portsInUse.Keys.Count > 0);
+            Assert.IsTrue(portsInUse["0.0.0.0"].Count > 0);
         }
 
         [TestMethod]
-        public void TestGetAllTcpPortsInUse()
+        public void T03_TestGetAllTcpPortsInUse()
         {
-            Assert.IsTrue(true);
+            // Windows : 6 ms
+            var ports = Network.GetAllTcpPortsInUse();
+            Assert.IsTrue(ports.Count >= 5);
         }
 
         [TestMethod]
-        public void TestGetNextAvailablePort()
+        public void T04_TestGetNextAvailablePort()
         {
-            Assert.IsTrue(true);
+            var ports = Network.GetAllTcpPortsInUse();
+            var defport = ports.First();
+            var next = Network.GetNextAvailablePort(defport, ports);
+            Assert.IsTrue(next > defport);
+            var next2 = Network.GetNextAvailablePort(next, ports);
+            Assert.IsTrue(next2 == next);
         }
     }
 }
