@@ -96,7 +96,7 @@ namespace wordslab.manager.os
             {
                 proc.StartInfo.FileName = command;
                 proc.StartInfo.Arguments = arguments;
-                proc.StartInfo.UseShellExecute = true;
+                proc.StartInfo.UseShellExecute = showWindow;
                 proc.StartInfo.CreateNoWindow = !showWindow;
                 try
                 {
@@ -129,7 +129,7 @@ namespace wordslab.manager.os
         }
 
         public static int ExecuteShellScript(string scriptsDirectory, string scriptName, string scriptArguments, string logsDirectory,
-                                             int timeoutSec = 10, bool runAsAdmin = false, bool usePowershell = false, string shellLauncher = null,
+                                             int timeoutSec = 10, bool runAsAdmin = false, string unixShellLauncher = null,
                                              Action<string> outputHandler = null, Action<int> exitCodeHandler = null)
         {
             var scriptFile = GetScriptFile(scriptsDirectory, scriptName);
@@ -149,27 +149,16 @@ namespace wordslab.manager.os
             string logFilePrefix = scriptFile.Name + $".{DateTime.Now.ToString("s").Replace(':','-')}";
             string outputLogFile = Path.Combine(logDir.FullName, logFilePrefix + ".output.txt");
 
+            string shellLauncher = null;
             string redirectOutputSyntax;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                if (shellLauncher == null)
-                {
-                    if(usePowershell) { shellLauncher = "powershell.exe"; }
-                    else              { shellLauncher = "cmd.exe";        }
-                    
-                }
-                if (String.Equals(shellLauncher, "powershell.exe", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    redirectOutputSyntax = $"| Tee-Object -FilePath \"{outputLogFile}\"";
-                } 
-                else
-                {
-                    redirectOutputSyntax = $"> \"{outputLogFile}\" 2>&1";
-                }
+                shellLauncher = "powershell.exe"; 
+                redirectOutputSyntax = $"2>&1 | Tee-Object -FilePath \"{outputLogFile}\"";
             }
             else
             {
-                if (shellLauncher == null) shellLauncher = "bash";
+                if (unixShellLauncher == null) { shellLauncher = "bash"; } else { shellLauncher = unixShellLauncher; }
                 redirectOutputSyntax = $"2>&1 | tee \"{outputLogFile}\"";
             }
 
@@ -178,15 +167,16 @@ namespace wordslab.manager.os
                 proc.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
                 proc.StartInfo.FileName = shellLauncher;
                 proc.StartInfo.Arguments = $"\"{scriptFile.FullName}\" {scriptArguments} {redirectOutputSyntax}";
-                if(shellLauncher == "cmd.exe")
+                if(shellLauncher == "powershell.exe")
                 {
-                    proc.StartInfo.Arguments = "/C " + proc.StartInfo.Arguments;
+                    proc.StartInfo.Arguments = "-ExecutionPolicy Bypass " + proc.StartInfo.Arguments + "; exit $LASTEXITCODE";
                 }
                 if (runAsAdmin)
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
                         proc.StartInfo.UseShellExecute = true;
+                        proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                         proc.StartInfo.Verb = "runas";
                     }
                     else
@@ -227,14 +217,25 @@ namespace wordslab.manager.os
                 }
 
                 string output = "";
-                using(StreamReader srOut = new StreamReader(outputLogFile))
+                if (File.Exists(outputLogFile))
                 {
-                    output = srOut.ReadToEnd();
+                    using (StreamReader srOut = new StreamReader(outputLogFile))
+                    {
+                        output = srOut.ReadToEnd();
+                    }
+                }
+                if (shellLauncher == "powershell.exe" && !String.IsNullOrEmpty(output))
+                {
+                    if (output.Contains("FullyQualifiedErrorId"))
+                    {
+                        throw new InvalidOperationException(output);
+                    }
                 }
 
                 if (outputHandler != null) { try { outputHandler(output); } catch (Exception e) { throw new ArgumentException($"Exception occured in output handler of script {scriptName}", e); } }
                 
-                int exitCode = proc.ExitCode;
+                int exitCode = proc.ExitCode;                
+
                 if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of script {scriptName}", e); } }
                 else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing script {scriptName} {scriptArguments} : exitcode {exitCode} different of 0"); } }
 
@@ -292,36 +293,54 @@ namespace wordslab.manager.os
                 }
                 if (listExtractors.Count > 0)
                 {
-                    int activeHeaderIndex = -1;
+                    Regex lineRegex = null;
+                    Func<Dictionary<string, string>, object> createObjectFromMatches = null;
+                    IList<object> resultList = null;
+
+                    // Default extractor
+                    foreach (var listExtractor in listExtractors)
+                    {
+                        var headerRegex = listExtractor.Item1;
+                        if (headerRegex == null)
+                        {
+                            lineRegex = listExtractor.Item2;
+                            createObjectFromMatches = listExtractor.Item3;
+                            resultList = listExtractor.Item4;
+                            break;
+                        }
+                    }
+
+                    // Scan all lines
                     var lines = output.Split(new char[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
                     foreach (var line in lines) 
                     {
-                        for (var i = 0; i < listExtractors.Count; i++)
+                        var isHeaderLine = false;
+                        foreach (var listExtractor in listExtractors)
                         {
-                            var listExtractor = listExtractors[i];
-                            var headerRegex = listExtractor.Item1;
-                            var lineRegex = listExtractor.Item2;
-                            var createObjectFromMatches = listExtractor.Item3;
-                            var resultList = listExtractor.Item4;
+                            var headerRegex = listExtractor.Item1;   
                             if (headerRegex != null && headerRegex.IsMatch(line))
                             {
-                                activeHeaderIndex = i;
+                                lineRegex = listExtractor.Item2;
+                                createObjectFromMatches = listExtractor.Item3;
+                                resultList = listExtractor.Item4;
+                                isHeaderLine = true;
+                                break;
                             }
-                            else if (headerRegex == null || i == activeHeaderIndex)
-                            {
-                                var match = lineRegex.Match(line);
-                                if(match.Success)
-                                {
-                                    var values = new Dictionary<string,string>();
-                                    foreach(Group group in match.Groups)
-                                    {
-                                        values.Add(group.Name, group.Value);
-                                    }
-                                    var obj = createObjectFromMatches(values);
-                                    resultList.Add(obj);
-                                }
-                            } 
                         }
+                        if (!isHeaderLine && lineRegex != null)
+                        {
+                            var match = lineRegex.Match(line);
+                            if(match.Success)
+                            {
+                                var values = new Dictionary<string,string>();
+                                foreach(Group group in match.Groups)
+                                {
+                                    values.Add(group.Name, group.Value);
+                                }
+                                var obj = createObjectFromMatches(values);
+                                resultList.Add(obj);
+                            }
+                        } 
                     }
                 }
             }

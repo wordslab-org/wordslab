@@ -1,0 +1,6 @@
+﻿NAME                                             READY     STATUS    RESTARTS   AGE       COMPONENT
+panama-dev-amqp-68fbd99f9c-4w2ph                 1/1       Running   0          42d       amqp
+panama-dev-apidoc-6bc7c87c9d-s4t7x               2/2       Running   0          31d       apidoc
+panama-dev-artemis-56c786b6c8-bgn5f              1/1       Running   0          31d       artemis
+panama-dev-artemis-56c786b6c8-p6hfv              1/1       Running   0          31d       artemis
+panama-dev-asteria-56cfdbf769-rjclt              2/2       Running   0          31d       asteria

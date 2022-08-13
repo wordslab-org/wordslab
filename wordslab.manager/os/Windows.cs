@@ -57,7 +57,7 @@ namespace wordslab.manager.os
         public static bool IsWindowsSubsystemForLinuxEnabled(string scriptsDirectory, string logsDirectory)
         {
             bool isEnabled = true;
-            Command.ExecuteShellScript(scriptsDirectory, "check-wsl.ps1", "", logsDirectory, usePowershell: true, runAsAdmin: true, exitCodeHandler: c => isEnabled = (c == 0));
+            Command.ExecuteShellScript(scriptsDirectory, "check-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => isEnabled = (c == 0));
             return isEnabled;
         }
 
@@ -69,7 +69,7 @@ namespace wordslab.manager.os
         public static bool EnableWindowsSubsystemForLinux(string scriptsDirectory, string logsDirectory)
         {
             int exitCode = -1;
-            Command.ExecuteShellScript(scriptsDirectory, "enable-wsl.ps1", "", logsDirectory, usePowershell: true, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript(scriptsDirectory, "enable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if(exitCode == 0)       { restartNeeded = false; }
@@ -86,7 +86,7 @@ namespace wordslab.manager.os
         public static bool DisableWindowsSubsystemForLinux(string scriptsDirectory, string logsDirectory)
         {
             int exitCode = -1;
-            Command.ExecuteShellScript(scriptsDirectory, "disable-wsl.ps1", "", logsDirectory, usePowershell: true, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript(scriptsDirectory, "disable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if (exitCode == 0) { restartNeeded = false; }

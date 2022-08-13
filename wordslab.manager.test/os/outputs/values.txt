@@ -1,0 +1,7 @@
+﻿coredns-7bcbfc4774-7sxg2
+ Req. RAM: 70Mi
+ Lim. RAM: 170Mi
+ Req. CPU: 100m
+ Lim. CPU:
+ Req. Eph. DISK: 100Mi
+ Lim. Eph. DISK: 768Mi
