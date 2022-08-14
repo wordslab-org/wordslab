@@ -9,6 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="scripts\os\Windows\install-openssh.ps1" />
+    <None Remove="scripts\os\Windows\uninstall-openssh.ps1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="scripts\os\Windows\uninstall-openssh.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\os\Windows\install-openssh.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="scripts\vm\qemu\meta-data.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

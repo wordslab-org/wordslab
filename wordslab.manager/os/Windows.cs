@@ -51,25 +51,25 @@ namespace wordslab.manager.os
 
         public static string IsWindowsSubsystemForLinuxEnabled_script(string scriptsDirectory)
         {
-            return Command.GetScriptContent(scriptsDirectory, "check-wsl.ps1");
+            return Command.GetScriptContent(Path.Combine(scriptsDirectory, "os", "Windows"), "check-wsl.ps1");
         }
 
         public static bool IsWindowsSubsystemForLinuxEnabled(string scriptsDirectory, string logsDirectory)
         {
             bool isEnabled = true;
-            Command.ExecuteShellScript(scriptsDirectory, "check-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => isEnabled = (c == 0));
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "check-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => isEnabled = (c == 0));
             return isEnabled;
         }
 
         public static string EnableWindowsSubsystemForLinux_script(string scriptsDirectory)
         {
-            return Command.GetScriptContent(scriptsDirectory, "enable-wsl.ps1");
+            return Command.GetScriptContent(Path.Combine(scriptsDirectory, "os", "Windows"), "enable-wsl.ps1");
         }
 
         public static bool EnableWindowsSubsystemForLinux(string scriptsDirectory, string logsDirectory)
         {
             int exitCode = -1;
-            Command.ExecuteShellScript(scriptsDirectory, "enable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "enable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if(exitCode == 0)       { restartNeeded = false; }
@@ -80,13 +80,13 @@ namespace wordslab.manager.os
 
         public static string DisableWindowsSubsystemForLinux_script(string scriptsDirectory)
         {
-            return Command.GetScriptContent(scriptsDirectory, "disable-wsl.ps1");
+            return Command.GetScriptContent(Path.Combine(scriptsDirectory, "os", "Windows"), "disable-wsl.ps1");
         }
 
         public static bool DisableWindowsSubsystemForLinux(string scriptsDirectory, string logsDirectory)
         {
             int exitCode = -1;
-            Command.ExecuteShellScript(scriptsDirectory, "disable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "disable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if (exitCode == 0) { restartNeeded = false; }

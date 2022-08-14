@@ -46,8 +46,8 @@ namespace wordslab.manager.os
                 try
                 {
                     // To be able to use a timeout, we need to read the standard output and error streams asynchronously
-                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) => { output += e.Data; });
-                    proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => { error += e.Data; });
+                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) => { if (output == null) { output = e.Data; } else { output += Environment.NewLine + e.Data; } });
+                    proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => { if (error == null) { error = e.Data; } else { error += Environment.NewLine + e.Data; } });
                     proc.Start();
                     proc.BeginOutputReadLine();
                     proc.BeginErrorReadLine();

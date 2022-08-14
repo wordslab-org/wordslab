@@ -56,7 +56,7 @@ namespace wordslab.manager.vm.qemu
 
         public static void InstallK3sOnVirtualMachine(VirtualMachineEndpoint vmEndpoint, HostStorage storage)
         {
-            SshClient.ImportKnownHostOnLinuxClient(vmEndpoint.IPAddress, vmEndpoint.SSHPort);
+            SshClient.ImportKnownHostOnClient(vmEndpoint.IPAddress, vmEndpoint.SSHPort);
 
             SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{VirtualMachine.k3sExecutableFileName}");
             SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{VirtualMachine.k3sImagesFileName}");

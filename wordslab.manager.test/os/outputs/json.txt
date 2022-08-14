@@ -1,0 +1,19 @@
+﻿{
+  "ad.datadoghq.com/envoy.check_names": [
+    "envoy"
+  ],
+  "ad.datadoghq.com/envoy.init_configs": [
+    {}
+  ],
+  "ad.datadoghq.com/envoy.instances": [
+    {
+      "stats_url": "http://%%host%%:8002/stats"
+    }
+  ],
+  "ad.datadoghq.com/envoy.logs": [
+    {
+      "source": "envoy",
+      "service": "ingress"
+    }
+  ]
+}
