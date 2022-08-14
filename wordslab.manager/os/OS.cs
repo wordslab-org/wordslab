@@ -98,13 +98,13 @@ namespace wordslab.manager.os
                 string? hyperVRequirementSecondLevelAddressTranslation = null;
                 string? hyperVRequirementVirtualizationFirmwareEnabled = null;
                 string? hyperVRequirementVMMonitorModeExtensions = null;
-                var outputParser = Command.Output.GetValue(@"HyperVisorPresent\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVisorPresent = s).
-                                                    GetValue(@"HyperVRequirementDataExecutionPreventionAvailable\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementDataExecutionPreventionAvailable = s).
-                                                    GetValue(@"HyperVRequirementSecondLevelAddressTranslation\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementSecondLevelAddressTranslation = s).
-                                                    GetValue(@"HyperVRequirementVirtualizationFirmwareEnabled\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementVirtualizationFirmwareEnabled = s).
-                                                    GetValue(@"HyperVRequirementVMMonitorModeExtensions\s+:\s+(?<isenabled>[a-zA-Z]+)\s*$", s => hyperVRequirementVMMonitorModeExtensions = s);
+                var outputParser = Command.Output.GetValue(@"HyperVisorPresent=(?<isenabled>[a-zA-Z]+)", s => hyperVisorPresent = s).
+                                                    GetValue(@"HyperVRequirementDataExecutionPreventionAvailable=(?<isenabled>[a-zA-Z]+)", s => hyperVRequirementDataExecutionPreventionAvailable = s).
+                                                    GetValue(@"HyperVRequirementSecondLevelAddressTranslation=(?<isenabled>[a-zA-Z]+)", s => hyperVRequirementSecondLevelAddressTranslation = s).
+                                                    GetValue(@"HyperVRequirementVirtualizationFirmwareEnabled=(?<isenabled>[a-zA-Z]+)", s => hyperVRequirementVirtualizationFirmwareEnabled = s).
+                                                    GetValue(@"HyperVRequirementVMMonitorModeExtensions=(?<isenabled>[a-zA-Z]+)", s => hyperVRequirementVMMonitorModeExtensions = s);
 
-                Command.Run("powershell.exe", "Get-ComputerInfo -Property \"HyperV*\"", outputHandler: outputParser.Run);
+                Command.Run("powershell.exe", "Get-ComputerInfo -Property \"HyperV*\" | Write-Host", outputHandler: outputParser.Run);
 
                 bool isEnabled = String.Equals(hyperVisorPresent, "true", StringComparison.InvariantCultureIgnoreCase);
                 if (!isEnabled)

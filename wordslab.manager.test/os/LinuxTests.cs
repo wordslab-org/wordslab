@@ -7,28 +7,32 @@ namespace wordslab.manager.test.os
     public class LinuxTests
     {
         [TestMethodOnLinux]
-        public void TestGetOSDistribution()
+        public void T01_TestGetOSDistribution()
         {
-            Assert.IsTrue(true);
+            var distrib = Linux.GetOSDistribution();
+            Assert.IsTrue(distrib.Length >= 5);
         }
 
         [TestMethodOnLinux]
-        public void TestIsLinuxVersionUbuntu1804OrHigher()
+        public void T02_TestIsLinuxVersionUbuntu1804OrHigher()
         {
-            Assert.IsTrue(true);
+            var versionok = Linux.IsLinuxVersionUbuntu1804OrHigher();
+            Assert.IsTrue(versionok);
         }
 
         [TestMethodOnLinux]
-        public void TestIsAptPackageManagerAvailable()
+        public void T03_TestIsAptPackageManagerAvailable()
         {
-            Assert.IsTrue(true);
+            var aptok = Linux.IsAptPackageManagerAvailable();
+            Assert.IsTrue(aptok);
         }
 
         // This command requires admin privileges and user interaction to enter password
         [TestMethodOnLinux]
-        public void TestGetAptInstallCommand()
+        public void T04_TestGetAptInstallCommand()
         {
-            Assert.IsTrue(true);
+            var aptcommand = Linux.GetAptInstallCommand();
+            Assert.IsTrue(aptcommand.Length > 10);
         }
     }
 }

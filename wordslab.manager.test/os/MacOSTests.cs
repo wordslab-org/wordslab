@@ -7,24 +7,27 @@ namespace wordslab.manager.test.os
     public class MacOSTests
     {
         [TestMethodOnMacOS]
-        public void TestIsMacOSVersionCatalinaOrHigher()
+        public void T01_TestIsMacOSVersionCatalinaOrHigher()
         {
-            Assert.IsTrue(true);
+            var versionok = MacOS.IsMacOSVersionCatalinaOrHigher();
+            Assert.IsTrue(versionok);
         }
 
         [TestMethodOnMacOS]
-        public void TestIsHomebrewPackageManagerAvailable()
+        public void T02_TestIsHomebrewPackageManagerAvailable()
         {
-            Assert.IsTrue(true);
+            var homebrewok = MacOS.IsHomebrewPackageManagerAvailable();
+            Assert.IsTrue(homebrewok);
         }
 
         // This script requires admin privileges and user interaction
         // - interaction 1 : type sudo password
         // - interaction 2 : press Enter to validate the list of changes which will be applied
         [TestMethodOnMacOS]
-        public void TestGetHomebrewInstallCommand()
+        public void T03_TestGetHomebrewInstallCommand()
         {
-            Assert.IsTrue(true);
+            var installcommand = MacOS.GetHomebrewInstallCommand();
+            Assert.IsTrue(installcommand.Length > 10);
         }
     }
 }
