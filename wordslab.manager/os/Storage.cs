@@ -13,11 +13,11 @@ namespace wordslab.manager.os
                 drivesInfo = new Dictionary<string, DriveInfo>();
                 if (OS.IsWindows)
                 {
-                    var wmiDisksRequest = "Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = \"ASSOCIATORS OF {Win32_DiskDrive.DeviceID='$($disk.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition\"; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = \"ASSOCIATORS OF  {Win32_DiskPartition.DeviceID='$($partition.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition\"; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ DiskId = $disk.DeviceID; DiskSN = $disk.SerialNumber; DiskSize = $disk.Size; DiskModel = $disk.Model; PartitionId = $partition.Name; PartitionSize = $partition.Size; DrivePath = $_.DeviceID; VolumeName = $_.VolumeName; TotalSize = $_.Size; FreeSpace = $_.FreeSpace; } } } }";
+                    var wmiDisksRequest = "Get-WmiObject Win32_DiskDrive | ForEach-Object { $disk = $_; $partitions = \"ASSOCIATORS OF {Win32_DiskDrive.DeviceID='$($disk.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition\"; Get-WmiObject -Query $partitions | ForEach-Object { $partition = $_; $drives = \"ASSOCIATORS OF  {Win32_DiskPartition.DeviceID='$($partition.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition\"; Get-WmiObject -Query $drives | ForEach-Object { New-Object -Type PSCustomObject -Property @{ DiskId = $disk.DeviceID; DiskSN = $disk.SerialNumber; DiskSize = $disk.Size; DiskModel = $disk.Model; PartitionId = $partition.Name; PartitionSize = $partition.Size; DrivePath = $_.DeviceID; VolumeName = $_.VolumeName; TotalSize = $_.Size; FreeSpace = $_.FreeSpace; } } } } | Out-String | Write-Host";
 
                     var disksProperties = new List<object>();
                     var outputParser = Command.Output.GetList(null, @"(?<name>\w+)\s+:\s+(?<value>.+)\s*$", dict => new KeyValuePair<string, string>(dict["name"], dict["value"]), disksProperties);
-                    Command.Run("powershell", $"-EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(wmiDisksRequest))}", outputHandler: outputParser.Run, errorHandler: _ => { });
+                    Command.Run("powershell.exe", $"-EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(wmiDisksRequest))}", outputHandler: outputParser.Run, errorHandler: _ => { });
 
                     var disksPropEnum = disksProperties.Cast<KeyValuePair<string, string>>().GetEnumerator();
                     while (disksPropEnum.MoveNext())
@@ -64,7 +64,7 @@ namespace wordslab.manager.os
                         }
 
                         var wmiMediaTypeRequest = $"Get-WmiObject -Class MSFT_PhysicalDisk -Namespace root\\Microsoft\\Windows\\Storage | Where-Object {{$_.SerialNumber -eq \"{serialNumber}\"}} | Select -ExpandProperty MediaType";
-                        Command.Run("powershell", $"-EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(wmiMediaTypeRequest))}",
+                        Command.Run("powershell.exe", $"-EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(wmiMediaTypeRequest))}",
                            outputHandler: o => driveInfo.IsSSD = o.Trim() == "4", errorHandler: _ => { });
 
                         drivesInfo.Add(driveInfo.DrivePath, driveInfo);
@@ -182,27 +182,47 @@ namespace wordslab.manager.os
             return drivesInfo;
         }
 
-        public static int GetDirectorySizeMB(DirectoryInfo parentDirectory)
+        public static int GetDirectorySizeMB(string path)
         {
-            var directorySize = parentDirectory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(file => file.Length);
-            return (int)(directorySize / MEGA);
+            DirectoryInfo parentDirectory = new DirectoryInfo(path);
+            if (parentDirectory.Exists)
+            {
+                var options = new EnumerationOptions() { RecurseSubdirectories = true, IgnoreInaccessible = true };
+                var directorySize = parentDirectory.EnumerateFiles("*", options).Sum(file => file.Length);
+                return (int)(directorySize / MEGA);
+            }
+            else
+            {
+                throw new FileNotFoundException($"Directory {path} not found");
+            }
         }
 
         public static DriveInfo GetDriveInfoFromPath(string path)
         {
-            var parentDirectory = new FileInfo(path).Directory;
-            var realDirectory = parentDirectory.ResolveLinkTarget(true);
+            FileSystemInfo fileinfo = new FileInfo(path);
+            try
+            {
+                var realfileinfo = fileinfo.ResolveLinkTarget(true);
+                if (realfileinfo != null) fileinfo = realfileinfo;
+            }
+            catch(Exception) { }
+
+            var comparison = StringComparison.InvariantCulture;
+            if(OS.IsWindows)
+            {
+                comparison = StringComparison.InvariantCultureIgnoreCase;
+            }
 
             var sortedMountPoints = GetDrivesInfo().Keys.OrderByDescending(path => path.Length);
             foreach(var mountPoint in sortedMountPoints)
             {
-                if(realDirectory.FullName.StartsWith(mountPoint))
+                if(fileinfo.FullName.StartsWith(mountPoint, comparison))
                 {
                     var driveInfo = GetDrivesInfo()[mountPoint];
                     return driveInfo;
                 }
             }
-            return null;
+            throw new FileNotFoundException($"Could not find on which mount point the path {path} is located");
         }
 
         public static DriveInfo GetDriveInfoForUserProfile()
@@ -225,9 +245,9 @@ namespace wordslab.manager.os
 
         private const uint MEGA = 1024 * 1024;
 
-        public static DirectoryInfo GetApplicationDirectory()
+        public static string GetApplicationDirectory()
         {
-            return new DirectoryInfo(AppContext.BaseDirectory);
+            return AppContext.BaseDirectory;
         }
     }
 

@@ -107,7 +107,7 @@ namespace wordslab.manager.test.os
             exitcode = -1;
             SshClient.ExecuteRemoteCommand(sshuser, sshserver, sshport, "date", "--iso-8601 --utc", timeoutSec: 2, outputHandler: o => output = o, errorHandler: e => error = e, exitCodeHandler: c => exitcode = c);
             Assert.IsTrue(exitcode == 0);
-            Assert.IsTrue(output.Length == 12);
+            Assert.IsTrue(output.Length == 10);
             Assert.IsTrue(String.IsNullOrEmpty(error));
 
             // Bad user
