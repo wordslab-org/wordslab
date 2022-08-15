@@ -1,0 +1,1 @@
+wsl --update $args[0]

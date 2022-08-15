@@ -69,7 +69,7 @@ namespace wordslab.manager.os
         public static bool EnableWindowsSubsystemForLinux(string scriptsDirectory, string logsDirectory)
         {
             int exitCode = -1;
-            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "enable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "enable-wsl.ps1", "", logsDirectory, timeoutSec: 300, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if(exitCode == 0)       { restartNeeded = false; }
@@ -86,7 +86,7 @@ namespace wordslab.manager.os
         public static bool DisableWindowsSubsystemForLinux(string scriptsDirectory, string logsDirectory)
         {
             int exitCode = -1;
-            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "disable-wsl.ps1", "", logsDirectory, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Windows"), "disable-wsl.ps1", "", logsDirectory, timeoutSec: 300, runAsAdmin: true, exitCodeHandler: c => exitCode = c);
 
             bool restartNeeded = false;
             if (exitCode == 0) { restartNeeded = false; }

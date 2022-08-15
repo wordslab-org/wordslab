@@ -1,85 +1,96 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using wordslab.manager.os;
+using wordslab.manager.storage;
 
 namespace wordslab.manager.test.os
 {
     [TestClass]
     public class WindowsTests
     {
-        [TestMethod]
-        public void TestIsWindows10Version1903OrHigher()
+        [TestMethodOnWindows]
+        public void T01_TestIsWindows10Version1903OrHigher()
         {
             var result = Windows.IsWindows10Version1903OrHigher();
             Assert.IsTrue(result);
         }
 
-        [TestMethod]
-        public void TestIsWindows10Version21H2OrHigher()
+        [TestMethodOnWindows]
+        public void T02_TestIsWindows10Version21H2OrHigher()
         {
             var result = Windows.IsWindows10Version21H2OrHigher();
             Assert.IsTrue(result);
         }
 
-        [TestMethod]
-        public void TestIsWindows11Version21HOrHigher()
+        [TestMethodOnWindows]
+        public void T03_TestIsWindows11Version21HOrHigher()
         {
             var result = Windows.IsWindows11Version21HOrHigher();
             Assert.IsFalse(result);
         }
 
-        [TestMethod]
-        public void TestOpenWindowsUpdate()
+        [TestMethodOnWindows]
+        public void T04_TestOpenWindowsUpdate()
         {
             Windows.OpenWindowsUpdate();
         }
                 
-        [TestMethod]
-        public void TestIsWindowsSubsystemForLinuxEnabled_script()
+        [TestMethodOnWindows]
+        public void T05_TestIsWindowsSubsystemForLinuxEnabled_script()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var script = Windows.IsWindowsSubsystemForLinuxEnabled_script(storage.ScriptsDirectory);
+            Assert.IsTrue(script.Length > 10);
         }
 
-        [TestMethod]
-        public void TestIsWindowsSubsystemForLinuxEnabled()
+        [TestMethodOnWindows]
+        public void T06_TestIsWindowsSubsystemForLinuxEnabled()
         {
-            /*var result = Windows.IsWindowsSubsystemForLinuxEnabled();
-            Assert.IsTrue(result);*/
-
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var enabled = Windows.IsWindowsSubsystemForLinuxEnabled(storage.ScriptsDirectory, storage.LogsDirectory);
+            Assert.IsTrue(enabled);
         }
 
-        [TestMethod]
-        public void TestEnableWindowsSubsystemForLinux_script()
+        [TestMethodOnWindows]
+        public void T07_TestDisableWindowsSubsystemForLinux_script()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var script = Windows.DisableWindowsSubsystemForLinux_script(storage.ScriptsDirectory);
+            Assert.IsTrue(script.Length > 10);
         }
 
-        [TestMethod]
-        public void TestEnableWindowsSubsystemForLinux()
+        [TestMethodOnWindows]
+        public void T08_TestDisableWindowsSubsystemForLinux()
         {
-            /*var needsRestart = Windows.EnableWindowsSubsystemForLinux();
-            Assert.IsTrue(needsRestart);*/
+            var storage = new HostStorage();
+            var needsRestart = Windows.DisableWindowsSubsystemForLinux(storage.ScriptsDirectory, storage.LogsDirectory);
+            Assert.IsTrue(needsRestart);
 
-            Assert.IsTrue(true);
+            var enabled = Windows.IsWindowsSubsystemForLinuxEnabled(storage.ScriptsDirectory, storage.LogsDirectory);
+            Assert.IsFalse(enabled);
         }
 
-        [TestMethod]
-        public void TestDisableWindowsSubsystemForLinux_script()
+        [TestMethodOnWindows]
+        public void T09_TestEnableWindowsSubsystemForLinux_script()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var script = Windows.EnableWindowsSubsystemForLinux_script(storage.ScriptsDirectory);
+            Assert.IsTrue(script.Length > 10);
         }
 
-        [TestMethod]
-        public void TestDisableWindowsSubsystemForLinux()
+        [TestMethodOnWindows]
+        public void T10_TestEnableWindowsSubsystemForLinux()
         {
-            /*var needsRestart = Windows.DisableWindowsSubsystemForLinux();
-            Assert.IsTrue(needsRestart);*/
+            var storage = new HostStorage();
+            var needsRestart = Windows.EnableWindowsSubsystemForLinux(storage.ScriptsDirectory, storage.LogsDirectory);
+            Assert.IsTrue(needsRestart);
 
-            Assert.IsTrue(true);
+            var enabled = Windows.IsWindowsSubsystemForLinuxEnabled(storage.ScriptsDirectory, storage.LogsDirectory);
+            Assert.IsTrue(enabled);
         }
 
-        [TestMethod]
-        public void TestShutdownAndRestart()
+        [TestMethodOnWindows]
+        [Ignore]
+        public void T11_TestShutdownAndRestart()
         {
             Windows.ShutdownAndRestart();
         }

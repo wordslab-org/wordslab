@@ -128,11 +128,14 @@ namespace wordslab.manager.os
             Command.Run("msiexec.exe", "/i " + kernelUpdate.FullName, timeoutSec: 60);
         }
         
-        public static void UpdateLinuxKernelVersion(bool rollback = false)
+        /// <summary>
+        /// A complete WSL restart will then be needed with wsl --shutdown
+        /// </summary>
+        public static void UpdateLinuxKernelVersion(string scriptsDirectory, string logsDirectory, bool rollback = false)
         {
             string options = "";
             if (rollback) options += "--rollback ";
-            Command.Run(WSLEXE, $"--update {options}", timeoutSec: 30, unicodeEncoding: true);
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory,"os","Wsl"), "update-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 300);
         }
 
         // WSL 2 commands
@@ -184,8 +187,8 @@ namespace wordslab.manager.os
             int exitcode = -1;
             try
             {
-                var outputParser = Command.Output.GetValue(@"DISTRIB_ID=\s*(?<distrib>.*)\s*$", s => ldistribution = s).
-                                                  GetValue(@"DISTRIB_RELEASE=\s*(?<distrib>.*)\s*$", s => lversion = s);
+                var outputParser = Command.Output.GetValue(@"DISTRIB_ID=\s*(?<distrib>[^\s]*)\s*$", s => ldistribution = s).
+                                                  GetValue(@"DISTRIB_RELEASE=\s*(?<distrib>[^\s]*)\s*$", s => lversion = s);
 
                 Wsl.execShell("cat /etc/*-release", wslDistribution, outputHandler: outputParser.Run, exitCodeHandler: c => exitcode = c);
             }
@@ -560,13 +563,17 @@ namespace wordslab.manager.os
         }
 
         public static void setDefaultDistribution(string distribution)
-        {
+        {            
             Command.Run(WSLEXE, $"--set-default {distribution}", unicodeEncoding: true);
         }
 
-        public static void setVersion(string distribution, int version)
+        public static bool setVersion(string distribution, int version)
         {
-            Command.Run(WSLEXE, $"--set-version {distribution} {version}", unicodeEncoding: true);
+            int exitCode = 0;
+            string output = null;
+            Command.Run(WSLEXE, $"--set-version {distribution} {version}", unicodeEncoding: true, outputHandler: o => output = o, exitCodeHandler: c => exitCode = c);
+            bool conversionInProgress = exitCode != -1;
+            return conversionInProgress;
         }
 
         public static void terminate(string distribution)

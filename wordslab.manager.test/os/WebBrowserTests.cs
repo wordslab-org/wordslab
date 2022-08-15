@@ -7,7 +7,7 @@ namespace wordslab.manager.test.os
     public class WebBrowserTests
     {
         [TestMethod]
-        public void TestOpen()
+        public void T01_TestOpen()
         {
             WebBrowser.Open("www.cognitivefactory.fr");
         }

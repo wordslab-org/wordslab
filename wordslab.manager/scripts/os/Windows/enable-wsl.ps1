@@ -34,6 +34,11 @@ else
    }
 }
 
+if ($exitcode -eq 2)
+{
+    exit $exitcode
+}
+
 echo "Checking if Windows Subsystem for Linux is enabled ..."
 $feature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
 
@@ -53,7 +58,10 @@ else
       if($image.RestartNeeded)
       {
          echo "Please restart your computer to enable Windows Subsystem for Linux"
-         $exitcode = $exitcode + 4
+         if ($exitcode -eq 0)
+         {
+            $exitcode = 1
+         }
       }
       else
       {
@@ -64,7 +72,7 @@ else
    catch
    {
       echo "Failed to enable Windows Subsystem for Linux"
-      $exitcode = $exitcode + 8
+      $exitcode = 2
    }
 }
 

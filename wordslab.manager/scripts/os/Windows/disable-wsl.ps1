@@ -33,6 +33,11 @@ else
    }
 }
 
+if ($exitcode -eq 2)
+{
+    exit $exitcode
+}
+
 echo "Checking if Windows Virtual Machine Platform is disabled ..."
 $feature = Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
 
@@ -52,7 +57,10 @@ else
       if($image.RestartNeeded)
       {
          echo "Please restart your computer to disable Windows Virtual Machine Platform"
-         $exitcode = $exitcode + 4
+         if ($exitcode -eq 0)
+         {
+            $exitcode = 1
+         }
       }
       else
       {
@@ -62,8 +70,8 @@ else
    }
    catch
    {
-      echo "Failed to disale Windows Virtual Machine Platform"
-      $exitcode = $exitcode + 8
+      echo "Failed to disable Windows Virtual Machine Platform"
+      $exitcode = 2
    }
 }
 

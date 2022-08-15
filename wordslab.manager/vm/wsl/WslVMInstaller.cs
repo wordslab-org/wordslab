@@ -171,7 +171,7 @@ namespace wordslab.manager.vm.wsl
                     if (!linuxKernelVersionOK)
                     {
                         var c15 = ui.DisplayCommandLaunch("Updating Windows Subsystem for Linux kernel to the latest version");
-                        Wsl.UpdateLinuxKernelVersion();
+                        Wsl.UpdateLinuxKernelVersion(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
                         ui.DisplayCommandResult(c15, true);
 
                         var c16 = ui.DisplayCommandLaunch("Checking Windows Subsystem for Linux kernel version (after update)");
