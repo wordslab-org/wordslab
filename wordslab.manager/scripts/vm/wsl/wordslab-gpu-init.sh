@@ -1,5 +1,5 @@
 #!/bin/bash
-downloadpath=$(wslpath "$1")
+scriptspath=$(wslpath "$1")
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 
 NVIDIA_CONTAINER_RUNTIME_VERSION=$2
@@ -11,7 +11,7 @@ apt-get update && apt-get -y install nvidia-container-runtime=${NVIDIA_CONTAINER
 mount -o bind /mnt/wsl/wordslab-cluster/var/lib /var/lib
 
 mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
-cp $downloadpath/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+cp $scriptspath/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
 
 # Device plugin not yet supported in WSL2 :
 # > 2022/01/16 13:58:52 Loading NVML
@@ -26,3 +26,5 @@ cp $downloadpath/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/conf
 
 #mkdir -p /var/lib/rancher/k3s/server/manifests
 #cp $downloadpath/device-plugin-daemonset.yaml /var/lib/rancher/k3s/server/manifests/nvidia-device-plugin-daemonset.yaml
+
+echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" > /etc/wsl.conf

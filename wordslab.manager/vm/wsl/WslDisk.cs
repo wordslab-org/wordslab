@@ -9,12 +9,12 @@ namespace wordslab.manager.vm.wsl
         public static List<string> ListVMNamesFromOsDisks(HostStorage storage)
         {
             var vmNames = new List<string>();
-            var storagePathTemplate = GetLocalStoragePath("*", VirtualDiskFunction.OS, storage);
-            var filenames = Directory.GetFiles(Path.GetDirectoryName(storagePathTemplate), Path.GetFileName(storagePathTemplate));
+            var storagePathTemplate = GetHostStorageDirectory("*", VirtualDiskFunction.OS, storage);
+            var servicenames = Directory.GetFileSystemEntries(Path.GetDirectoryName(storagePathTemplate), Path.GetFileName(storagePathTemplate));
             var vmNameRegex = new Regex(storagePathTemplate.Replace("\\","\\\\").Replace("*", "(.+)"));
-            foreach(var filename in filenames)
+            foreach(var servicename in servicenames)
             {
-                vmNames.Add(vmNameRegex.Match(filename).Groups[1].Value);
+                vmNames.Add(vmNameRegex.Match(servicename).Groups[1].Value);
             }
             return vmNames;
         }
@@ -25,7 +25,7 @@ namespace wordslab.manager.vm.wsl
             var wslDistribs = Wsl.list();
             if (wslDistribs.Any(d => d.Distribution == serviceName))
             {
-                var storagePath = GetLocalStoragePath(vmName, function, storage);
+                var storagePath = GetHostStorageFile(vmName, function, storage);
                 if (File.Exists(storagePath))
                 {
                     return new WslDisk(vmName, function, storagePath, Storage.IsPathOnSSD(storagePath), storage);
@@ -34,9 +34,9 @@ namespace wordslab.manager.vm.wsl
             return null;
         }
 
-        private static string GetLocalStoragePath(string vmName, VirtualDiskFunction function, HostStorage storage)
+        private static string GetHostStorageFile(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
-            return VirtualDisk.GetHostStoragePathWithoutExtension(vmName, function, storage) + ".vhdx";
+            return Path.Combine(VirtualDisk.GetHostStorageDirectory(vmName, function, storage), "ext4.vhdx");
         }
                 
         public static VirtualDisk CreateFromOSImage(string vmName, string osImagePath, /*int maxSizeGB,*/ HostStorage storage)
@@ -48,27 +48,51 @@ namespace wordslab.manager.vm.wsl
             if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual OS disk already exists for virtual machine {vmName}");
 
             var serviceName = GetServiceName(vmName, VirtualDiskFunction.OS);
-            var storageDirectory = GeHostStorageDirectory(VirtualDiskFunction.OS, storage);
+            var storageDirectory = GetHostStorageDirectory(vmName, VirtualDiskFunction.OS, storage);
 
             string cacheDirectory = storage.DownloadCacheDirectory;
-            string diskInitScript = GetDiskInitScript(VirtualDiskFunction.OS);
+            string scriptsDirectory = GetScriptsDirectory(storage);
+            var diskInitAndStartScripts = GetDiskInitAndStartScripts(VirtualDiskFunction.OS);
 
             Wsl.import(serviceName, storageDirectory, osImagePath, 2);
-            Wsl.execShell($"cp $(wslpath '{cacheDirectory}')/{diskInitScript} /root/{diskInitScript}", serviceName);
-            Wsl.execShell($"chmod a+x /root/{diskInitScript}", serviceName);
-            Wsl.execShell($"/root/{diskInitScript} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.helmFileName}'", serviceName, ignoreError: "perl: warning");
+            foreach (var diskScript in diskInitAndStartScripts)
+            {
+                Wsl.execShell($"cp $(wslpath '{scriptsDirectory}')/{diskScript} /root/{diskScript}", serviceName);
+                Wsl.execShell($"chmod a+x /root/{diskScript}", serviceName);
+            }
+            Wsl.execShell($"/root/{diskInitAndStartScripts[0]} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.helmFileName}'", serviceName, timeoutSec: 60, ignoreError: "perl: warning");
             Wsl.terminate(serviceName);
 
             return TryFindByName(vmName, VirtualDiskFunction.OS, storage);
         }
 
-        public bool InstallNvidiaContainerRuntimeOnOSImage(VirtualDisk clusterDisk)
+        public bool InstallNvidiaContainerRuntimeOnOSImage(HostStorage storage)
         {
+            var clusterDisk = WslDisk.TryFindByName(VMName, VirtualDiskFunction.Cluster, storage);
+            if(clusterDisk == null)
+            {
+                throw new FileNotFoundException($"Could not find cluster disk for vm {VMName}");
+            }
+
             if (Function == VirtualDiskFunction.OS)
             {
+                string scriptsDirectory = GetScriptsDirectory(storage);
+
                 clusterDisk.StartService();
-                Wsl.execShell("nvidia-smi -L", ServiceName);
-                Wsl.execShell($"/root/{vmGPUInitScript} '{hostStorage.DownloadCacheDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, ignoreError: "perl: warning");
+                try
+                {
+                    Wsl.execShell("nvidia-smi -L", ServiceName);
+                }
+                catch(Exception e)
+                {
+                    throw new InvalidOperationException($"Could not find a Nvidia GPU inside the virtual machine {VMName}, or nvidia-smi is not available");
+                }
+                
+                // Temporary reopening of the Windows host interop to get the GPU config file for k3s
+                Wsl.execShell("echo -e \"[automount]\\nenabled=true\\n[interop]\\nenabled=true\\nappendWindowsPath=true\" > /etc/wsl.conf", ServiceName);
+                Wsl.terminate(ServiceName);
+
+                Wsl.execShell($"/root/{vmGPUInitScript} '{scriptsDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, timeoutSec: 60, ignoreError: "perl: warning");
                 Wsl.terminate(ServiceName);
                 clusterDisk.StopService();
                 return true;
@@ -88,15 +112,19 @@ namespace wordslab.manager.vm.wsl
             if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual {function} disk already exists for virtual machine {vmName}");
 
             var serviceName = GetServiceName(vmName, function);
-            var storageDirectory = GeHostStorageDirectory(function, storage);
+            var storageDirectory = GetHostStorageDirectory(vmName, function, storage);
 
             string cacheDirectory = storage.DownloadCacheDirectory;
-            string diskInitScript = GetDiskInitScript(function);
+            string scriptsDirectory = GetScriptsDirectory(storage);
+            var diskInitAndStartScripts = GetDiskInitAndStartScripts(function);
 
             Wsl.import(serviceName, storageDirectory, Path.Combine(cacheDirectory, alpineFileName), 2);
-            Wsl.execShell($"cp $(wslpath '{cacheDirectory}')/{diskInitScript} /root/{diskInitScript}", serviceName);
-            Wsl.execShell($"chmod a+x /root/{diskInitScript}", serviceName);
-            Wsl.execShell($"/root/{diskInitScript} '{cacheDirectory}'" + (function==VirtualDiskFunction.Cluster?$" '{VirtualMachine.k3sImagesFileName}'":""), serviceName);
+            foreach (var diskScript in diskInitAndStartScripts)
+            {
+                Wsl.execShell($"cp $(wslpath '{scriptsDirectory}')/{diskScript} /root/{diskScript}", serviceName);
+                Wsl.execShell($"chmod a+x /root/{diskScript}", serviceName);
+            }
+            Wsl.execShell($"/root/{diskInitAndStartScripts[0]}" + (function==VirtualDiskFunction.Cluster?$" '{cacheDirectory}' '{VirtualMachine.k3sImagesFileName}'":""), serviceName, timeoutSec: 120);
             Wsl.terminate(serviceName);
 
             return TryFindByName(vmName, function, storage);
@@ -124,11 +152,13 @@ namespace wordslab.manager.vm.wsl
 
         public override void Delete()
         {
+            var dir = new FileInfo(StoragePath).Directory;
             if (IsServiceRunnig())
             {
                 StopService();
             }
             Wsl.unregister(ServiceName);
+            dir.Delete();
         }
 
         public override bool IsServiceRequired()
@@ -174,44 +204,46 @@ namespace wordslab.manager.vm.wsl
 
         // --- wordslab virtual machine software ---
 
-        // Versions last updated : January 9 2022
+        // Versions last updated : August 16 2022
 
         // Alpine mini root filesystem: https://alpinelinux.org/downloads/
-        internal static readonly string alpineVersion   = "3.15.0";
+        internal static readonly string alpineVersion   = "3.16.0";
         internal static readonly string alpineImageURL  = $"https://dl-cdn.alpinelinux.org/alpine/v{alpineVersion.Substring(0, 4)}/releases/x86_64/alpine-minirootfs-{alpineVersion}-x86_64.tar.gz";
-        internal static readonly int    alpineImageDownloadSize = 2731445;
-        internal static readonly int    alpineImageDiskSize = 5867520;
+        internal static readonly int    alpineImageDownloadSize = 2712602;
+        internal static readonly int    alpineImageDiskSize = 5816320;
         internal static readonly string alpineFileName  = $"alpine-{alpineVersion}.tar";
 
         // Ubuntu minimum images: https://partner-images.canonical.com/oci/
         internal static readonly string ubuntuRelease   = "focal";
-        internal static readonly string ubuntuVersion   = "20220105";
+        internal static readonly string ubuntuVersion   = "20220815";
         internal static readonly string ubuntuImageURL  = $"https://partner-images.canonical.com/oci/{ubuntuRelease}/{ubuntuVersion}/ubuntu-{ubuntuRelease}-oci-amd64-root.tar.gz";
-        internal static readonly int    ubuntuImageDownloadSize = 27746207;
+        internal static readonly int    ubuntuImageDownloadSize = 27761025;
         internal static readonly int    ubuntuImageDiskSize = 78499840;
         internal static readonly string ubuntuFileName  = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}.tar";
 
         // --- wordslab virtual machine scripts ---
 
+        internal static string GetScriptsDirectory(HostStorage storage) { return Path.Combine(storage.ScriptsDirectory, "vm", "wsl"); }
+
         internal static readonly string vmDiskInitScript      = "wordslab-vm-init.sh";
         internal static readonly string vmGPUInitScript       = "wordslab-gpu-init.sh";
         internal static readonly string clusterDiskInitScript = "wordslab-cluster-init.sh";
-        internal static readonly string dataDiskInitScript    = "wordslab-data-init.shh";
+        internal static readonly string dataDiskInitScript    = "wordslab-data-init.sh";
 
         internal static readonly string vmStartupScript          = "wordslab-vm-start.sh";
         internal static readonly string clusterDiskStartupScript = "wordslab-cluster-start.sh";
         internal static readonly string dataDiskStartupScript    = "wordslab-data-start.sh";
 
-        private static string GetDiskInitScript(VirtualDiskFunction function)
+        private static string[] GetDiskInitAndStartScripts(VirtualDiskFunction function)
         {
             switch (function)
             {
                 case VirtualDiskFunction.OS:
-                    return vmDiskInitScript;
+                    return new string[] { vmDiskInitScript, vmGPUInitScript, vmStartupScript };
                 case VirtualDiskFunction.Cluster:
-                    return clusterDiskInitScript;
+                    return new string[] { clusterDiskInitScript, clusterDiskStartupScript };
                 case VirtualDiskFunction.Data:
-                    return dataDiskInitScript;
+                    return new string[] { dataDiskInitScript, dataDiskStartupScript };
             }
             return null;
         }

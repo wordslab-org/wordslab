@@ -1,81 +1,216 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using wordslab.manager.storage;
+using wordslab.manager.vm;
+using wordslab.manager.vm.wsl;
 
 namespace wordslab.manager.test.vm.wsl
 {
     [TestClass]
     public class WslDiskTests
     {
-        [TestMethod]
-        public void TestListVMNamesFromOsDisks()
+        [TestMethodOnWindows]
+        public void T00_DownloadWslImages()
         {
-            Assert.IsTrue(true);
+            HostStorage storage = new HostStorage();
+            var dt1 = storage.DownloadFileWithCache(WslDisk.alpineImageURL, WslDisk.alpineFileName, gunzip: true);
+            var dt2 = storage.DownloadFileWithCache(WslDisk.ubuntuImageURL, WslDisk.ubuntuFileName, gunzip: true);
+            var dt3 = storage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName);
+            var dt4 = storage.DownloadFileWithCache(VirtualMachine.k3sImagesURL, VirtualMachine.k3sImagesFileName, gunzip: true);
+            var dt5 = storage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true);
+            Task.WaitAll(dt1, dt2, dt3, dt4, dt5);
+
+            // Extract helm executable from the downloaded tar file
+            var helmExecutablePath = Path.Combine(storage.DownloadCacheDirectory, "helm");
+            if (!File.Exists(helmExecutablePath))
+            {
+                var helmTarFile = Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName);
+                var helmTmpDir = Path.Combine(storage.DownloadCacheDirectory, "helm-temp");
+                Directory.CreateDirectory(helmTmpDir);
+                HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
+                File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
+                Directory.Delete(helmTmpDir, true);
+            }
         }
 
-        [TestMethod]
-        public void TestTryFindByName()
+        [TestMethodOnWindows]
+        public void T01_TestCreateBlank()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var disk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Cluster, storage);
+            Assert.IsNotNull(disk);
+            Assert.IsTrue(disk.VMName == "test-blank");
+            Assert.IsTrue(disk.Function == VirtualDiskFunction.Cluster);
+            Assert.IsTrue(disk.MaxSizeGB == 256);
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-cluster-disk");
+            Assert.IsTrue(disk.IsSSD);
+            Assert.IsTrue(disk.IsServiceRequired());
+            Assert.IsFalse(disk.IsServiceRunnig());
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-cluster-disk\ext4.vhdx"));
+
+            Exception expectedEx = null;
+            try
+            {
+                WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Cluster, storage);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is ArgumentException);
+            Assert.IsTrue(expectedEx.Message.Contains("already exists"));
+
+            disk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+            Assert.IsNotNull(disk);
+            Assert.IsTrue(disk.VMName == "test-blank");
+            Assert.IsTrue(disk.Function == VirtualDiskFunction.Data);
+            Assert.IsTrue(disk.MaxSizeGB == 256);
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-data-disk");
+            Assert.IsTrue(disk.IsSSD);
+            Assert.IsTrue(disk.IsServiceRequired());
+            Assert.IsFalse(disk.IsServiceRunnig());
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-data-disk\ext4.vhdx"));
         }
 
-        [TestMethod]
-        public void TestGetLocalStoragePath()
+        [TestMethodOnWindows]
+        public void T02_TestTryFindByName()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var disk = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
+            Assert.IsNotNull(disk);
+            Assert.IsTrue(disk.VMName == "test-blank");
+            Assert.IsTrue(disk.Function == VirtualDiskFunction.Data);
+            Assert.IsTrue(disk.MaxSizeGB == 256);
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-data-disk");
+            Assert.IsTrue(disk.IsSSD);
+            Assert.IsTrue(disk.IsServiceRequired());
+            Assert.IsFalse(disk.IsServiceRunnig());
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-data-disk\ext4.vhdx"));
+
+            disk = WslDisk.TryFindByName("toto", VirtualDiskFunction.Cluster, storage);
+            Assert.IsNull(disk);
         }
 
-        [TestMethod]
-        public void TestCreateFromOSImage()
+        [TestMethodOnWindows]
+        public void T03_TestStartStopService()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var disk = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
+
+            if(disk.IsServiceRunnig())
+            {
+                disk.StopService();
+            }
+            Assert.IsFalse(disk.IsServiceRunnig());
+
+            disk.StartService();
+            Assert.IsTrue(disk.IsServiceRunnig());
+
+            disk.StopService();
+            Assert.IsFalse(disk.IsServiceRunnig());
         }
 
-        [TestMethod]
-        public void TestInstallNvidiaContainerRuntimeOnOSImage()
+        [TestMethodOnWindows]
+        public void T04_TestCreateFromOSImage()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var osImagePath = Path.Combine(storage.DownloadCacheDirectory, WslDisk.ubuntuFileName);
+
+            var disk = WslDisk.CreateFromOSImage("test-blank", osImagePath, storage);
+            Assert.IsNotNull(disk);
+            Assert.IsTrue(disk.VMName == "test-blank");
+            Assert.IsTrue(disk.Function == VirtualDiskFunction.OS);
+            Assert.IsTrue(disk.MaxSizeGB == 256);
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-vm");
+            Assert.IsTrue(disk.IsSSD);
+            Assert.IsFalse(disk.IsServiceRequired());
+            Assert.IsFalse(disk.IsServiceRunnig());
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-vm\ext4.vhdx"));
+
+            Exception expectedEx = null;
+            try
+            {
+                WslDisk.CreateFromOSImage("test-blank", osImagePath, storage);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is ArgumentException);
+            Assert.IsTrue(expectedEx.Message.Contains("already exists"));
         }
 
-        [TestMethod]
-        public void TestCreateBlank()
+        [TestMethodOnWindows]
+        public void T05_TestInstallNvidiaContainerRuntimeOnOSImage()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+
+            var osDisk = (WslDisk)WslDisk.TryFindByName("test-blank", VirtualDiskFunction.OS, storage);
+            var installOK = osDisk.InstallNvidiaContainerRuntimeOnOSImage(storage);
+            Assert.IsTrue(installOK);
         }
 
-        [TestMethod]
-        public void TestResize()
+        [TestMethodOnWindows]
+        public void T06_TestListVMNamesFromOsDisks()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var osImagePath = Path.Combine(storage.DownloadCacheDirectory, WslDisk.ubuntuFileName);
+            WslDisk.CreateFromOSImage("test-blank2", osImagePath, storage);
+
+            var vms = WslDisk.ListVMNamesFromOsDisks(storage);
+            Assert.IsTrue(vms.Count == 2);
+            Assert.IsTrue(vms[0] == "test-blank");
+            Assert.IsTrue(vms[1] == "test-blank2");
         }
 
-        [TestMethod]
-        public void TestDelete()
+        [TestMethodOnWindows]
+        [Ignore]
+        public void T07_TestResize()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var disk = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
+
+            // Not yet implemented
+            disk.Resize(5);
+            Assert.IsTrue(disk.MaxSizeGB == 5);
         }
 
-        [TestMethod]
-        public void TestIsServiceRequired()
+        [TestMethodOnWindows]
+        public void T08_TestDelete()
         {
-            Assert.IsTrue(true);
-        }
+            var storage = new HostStorage();
 
-        [TestMethod]
-        public void TestStartService()
-        {
-            Assert.IsTrue(true);
-        }
+            var os1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.OS, storage);
+            var os2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.OS, storage);
+            var cluster = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            var data = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
 
-        [TestMethod]
-        public void TestIsServiceRunnig()
-        {
-            Assert.IsTrue(true);
-        }
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineOSDirectory).Length == 4);
+            Assert.IsNotNull(os1);
+            Assert.IsNotNull(os2);
+            Assert.IsNotNull(cluster);
+            Assert.IsNotNull(data);
 
-        [TestMethod]
-        public void TestStopService()
-        {
-            Assert.IsTrue(true);
+            os1.Delete();
+            os2.Delete();
+            cluster.Delete();
+            data.Delete();
+
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineOSDirectory).Length == 0);
+
+            os1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.OS, storage);
+            os2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.OS, storage);
+            cluster = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            data = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
+
+            Assert.IsNull(os1);
+            Assert.IsNull(os2);
+            Assert.IsNull(cluster);
+            Assert.IsNull(data);
         }
     }
 }

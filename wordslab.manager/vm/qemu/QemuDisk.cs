@@ -9,7 +9,7 @@ namespace wordslab.manager.vm.qemu
         public static List<string> ListVMNamesFromOsDisks(HostStorage storage)
         {
             var vmNames = new List<string>();
-            var storagePathTemplate = GetLocalStoragePath("*", VirtualDiskFunction.OS, storage);
+            var storagePathTemplate = GetHostStorageFile("*", VirtualDiskFunction.OS, storage);
             var filenames = Directory.GetFiles(Path.GetDirectoryName(storagePathTemplate), Path.GetFileName(storagePathTemplate));
             var vmNameRegex = new Regex(storagePathTemplate.Replace("\\", "\\\\").Replace("*", "(.+)"));
             foreach (var filename in filenames)
@@ -21,7 +21,7 @@ namespace wordslab.manager.vm.qemu
 
         public static VirtualDisk TryFindByName(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
-            var diskStoragePath = GetLocalStoragePath(vmName, function, storage);
+            var diskStoragePath = GetHostStorageFile(vmName, function, storage);
             if (File.Exists(diskStoragePath))
             {
                 return new QemuDisk(vmName, function, diskStoragePath, Qemu.GetVirtualDiskSizeGB(diskStoragePath), Storage.IsPathOnSSD(diskStoragePath));
@@ -32,9 +32,9 @@ namespace wordslab.manager.vm.qemu
             }
         }
 
-        private static string GetLocalStoragePath(string vmName, VirtualDiskFunction function, HostStorage storage)
+        private static string GetHostStorageFile(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
-            return VirtualDisk.GetHostStoragePathWithoutExtension(vmName, function, storage) + ".img";
+            return VirtualDisk.GetHostStorageDirectory(vmName, function, storage) + ".img";
         }
 
         public static VirtualDisk CreateFromOSImage(string vmName, string osImagePath, int totalSizeGB, HostStorage storage)
@@ -42,7 +42,7 @@ namespace wordslab.manager.vm.qemu
             var alreadyExistingDisk = TryFindByName(vmName, VirtualDiskFunction.OS, storage);
             if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual OS disk already exists for virtual machine {vmName}");
 
-            var diskStoragePath = GetLocalStoragePath(vmName, VirtualDiskFunction.OS, storage);
+            var diskStoragePath = GetHostStorageFile(vmName, VirtualDiskFunction.OS, storage);
             var scriptsPath = GetLinuxScriptsPath(storage);
             Qemu.CreateVirtualDiskFromOsImageWithCloudInit(diskStoragePath, osImagePath, Path.Combine(scriptsPath, metadataFile), Path.Combine(scriptsPath, userdataFile));
 
@@ -76,7 +76,7 @@ namespace wordslab.manager.vm.qemu
             var alreadyExistingDisk = TryFindByName(vmName, function, storage);
             if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual {function} disk already exists for virtual machine {vmName}");
 
-            var diskStoragePath = GetLocalStoragePath(vmName, VirtualDiskFunction.OS, storage);
+            var diskStoragePath = GetHostStorageFile(vmName, VirtualDiskFunction.OS, storage);
             Qemu.CreateVirtualDisk(diskStoragePath, totalSizeGB);
 
             return TryFindByName(vmName, function, storage);
@@ -119,14 +119,14 @@ namespace wordslab.manager.vm.qemu
 
         // --- wordslab virtual machine software ---
 
-        // Versions last updated : January 9 2022
+        // Versions last updated : August 16 2022
 
         // Ubuntu cloud images: https://cloud-images.ubuntu.com/minimal/releases/
         internal static readonly string ubuntuRelease = "focal";
         internal static readonly string ubuntuReleaseNum = "20.04";
-        internal static readonly string ubuntuVersion = "20220201";
+        internal static readonly string ubuntuVersion = "20220810";
         internal static readonly string ubuntuImageURL = $"https://cloud-images.ubuntu.com/minimal/releases/{ubuntuRelease}/release-{ubuntuVersion}/ubuntu-{ubuntuReleaseNum}-minimal-cloudimg-amd64.img";
-        internal static readonly int ubuntuImageSize = 258473984;
+        internal static readonly int ubuntuImageSize = 264962048;
         internal static readonly string ubuntuFileName = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}-cloud.img";
 
         // --- wordslab virtual machine scripts ---

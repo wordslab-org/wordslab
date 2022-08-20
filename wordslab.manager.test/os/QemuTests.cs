@@ -1,8 +1,10 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using wordslab.manager.os;
 using wordslab.manager.storage;
+using wordslab.manager.vm;
 using wordslab.manager.vm.qemu;
 
 namespace wordslab.manager.test.os
@@ -10,14 +12,30 @@ namespace wordslab.manager.test.os
     [TestClass]
     public class QemuTests
     {
-        [TestInitialize]
-        public void DownloadQemuImages()
+        [TestMethodOnLinuxOrMacOS]
+        public void T00_DownloadQemuImages()
         {
             HostStorage storage = new HostStorage();
-            storage.DownloadFileWithCache(QemuDisk.ubuntuImageURL, QemuDisk.ubuntuFileName);
+            var dt1 = storage.DownloadFileWithCache(QemuDisk.ubuntuImageURL, QemuDisk.ubuntuFileName);
+            var dt2 = storage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName);
+            var dt3 = storage.DownloadFileWithCache(VirtualMachine.k3sImagesURL, VirtualMachine.k3sImagesFileName, gunzip: true);
+            var dt4 = storage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true);
+            Task.WaitAll(dt1, dt2, dt3, dt4);
+
+            // Extract helm executable from the downloaded tar file
+            var helmExecutablePath = Path.Combine(storage.DownloadCacheDirectory, "helm");
+            if (!File.Exists(helmExecutablePath))
+            {
+                var helmTarFile = Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName);
+                var helmTmpDir = Path.Combine(storage.DownloadCacheDirectory, "helm-temp");
+                Directory.CreateDirectory(helmTmpDir);
+                HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
+                File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
+                Directory.Delete(helmTmpDir, true);
+            }
         }
 
-            [TestMethodOnLinuxOrMacOS]
+        [TestMethodOnLinuxOrMacOS]
         public void T01_TestIsInstalled()
         {
             var qemuok = Qemu.IsInstalled();

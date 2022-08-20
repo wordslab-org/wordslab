@@ -18,24 +18,23 @@ namespace wordslab.manager.vm
             return null;
         }
 
-        protected static string GeHostStorageDirectory(VirtualDiskFunction function, HostStorage storage)
+        protected static string GetHostStorageDirectory(string vmName, VirtualDiskFunction function, HostStorage storage)
         {
+            string hostStorageDirectory = null;
             switch (function)
             {
                 case VirtualDiskFunction.OS:
-                    return storage.VirtualMachineOSDirectory;
+                    hostStorageDirectory = storage.VirtualMachineOSDirectory;
+                    break;
                 case VirtualDiskFunction.Cluster:
-                    return storage.VirtualMachineClusterDirectory;
+                    hostStorageDirectory = storage.VirtualMachineClusterDirectory;
+                    break;
                 case VirtualDiskFunction.Data:
-                    return storage.VirtualMachineDataDirectory;
+                    hostStorageDirectory = storage.VirtualMachineDataDirectory;
+                    break;
             }
-            return null;
-        }
 
-        protected static string GetHostStoragePathWithoutExtension(string vmName, VirtualDiskFunction function, HostStorage storage)
-        {
             var serviceName = GetServiceName(vmName, function);
-            var hostStorageDirectory = GeHostStorageDirectory(function, storage);
             return Path.Combine(hostStorageDirectory, serviceName);
         }
 
