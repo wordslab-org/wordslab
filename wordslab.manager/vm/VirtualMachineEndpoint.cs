@@ -30,7 +30,9 @@ namespace wordslab.manager.vm
 
         public void Save(HostStorage storage)
         {
-            using (StreamWriter sw = new StreamWriter(GetFilePath(storage, VMName)))
+            var endpointPath = GetFilePath(storage, VMName);
+            Directory.CreateDirectory(Path.GetDirectoryName(endpointPath));
+            using (StreamWriter sw = new StreamWriter(endpointPath))
             {
                 sw.WriteLine(IPAddress);
                 sw.WriteLine(SSHPort);

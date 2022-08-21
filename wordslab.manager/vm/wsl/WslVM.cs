@@ -9,27 +9,34 @@ namespace wordslab.manager.vm.wsl
         public static List<VirtualMachine> ListLocalVMs(HostStorage storage)
         {
             var vms = new List<VirtualMachine>();
-            try
+            
+            var vmNames = WslDisk.ListVMNamesFromOsDisks(storage);            
+            var wslDistribs = Wsl.list();
+            foreach(var vmName in wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.OS), (d,n) => n).OrderBy(s => s))
             {
-                var vmNames = WslDisk.ListVMNamesFromOsDisks(storage);            
-                var wslDistribs = Wsl.list();
-                foreach(var vmName in wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.OS), (d,n) => n))
+                try
                 {
-                    vms.Add(TryFindByName(vmName, storage));
+                    var vm = TryFindByName(vmName, storage);
+                    vms.Add(vm);
                 }
+                catch { }
             }
-            catch { }
             return vms;
         }
 
         public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
         {
             var osDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.OS, storage);
+            if(osDisk == null)
+            {
+                return null;
+            }
+
             var clusterDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
             var dataDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Data, storage);
-            if (osDisk == null || clusterDisk == null || dataDisk == null)
+            if (clusterDisk == null || dataDisk == null)
             {
-                throw new Exception($"Could not find virtual disks for a local virtual machine named {vmName}");
+                throw new FileNotFoundException($"Could not find virtual disks for a local virtual machine named {vmName}");
             }
 
             var wslConfig = Wsl.Read_wslconfig();
@@ -64,7 +71,7 @@ namespace wordslab.manager.vm.wsl
             string ip = null;
             Wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", OsDisk.ServiceName, outputHandler: output => ip = output);
             var kubeconfig = Wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", OsDisk.ServiceName);
-            Directory.CreateDirectory(KubeconfigPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(KubeconfigPath));
             using (StreamWriter sw = new StreamWriter(KubeconfigPath))
             {
                 sw.Write(kubeconfig);

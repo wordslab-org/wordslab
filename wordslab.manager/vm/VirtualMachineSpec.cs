@@ -17,7 +17,7 @@ namespace wordslab.manager.vm
             Name = vmName;
         }
 
-        public bool   WithGPU { get { return GPUModel != "None"; } }
+        public bool   WithGPU { get { return GPUModel != null; } }
 
         // Recommended Virtual Machine specs
 
@@ -73,7 +73,7 @@ namespace wordslab.manager.vm
             }
             else
             {
-                memoryErrorMessage = $"Not enough physical memory: {MIN_HOST_MEMORY_GB + MemoryGB} GBs are required, {memInfo.TotalPhysicalMB/1024} GB are available.";
+                memoryErrorMessage = $"Not enough physical memory: {MIN_HOST_MEMORY_GB + MemoryGB} GBs are required, {memInfo.TotalPhysicalMB/1024f:F1} GB are available.";
             }
             return memorySpecOK;
         }
@@ -265,6 +265,13 @@ namespace wordslab.manager.vm
             maxVMSpec.VmDiskIsSSD = vmOSDrive.IsSSD;            
             maxVMSpec.ClusterDiskIsSSD = vmClusterDrive.IsSSD;
             maxVMSpec.DataDiskIsSSD = vmDataDrive.IsSSD;
+
+            foreach(var vmSpec in new VirtualMachineSpec[] { minVMSpec, recVMSpec, maxVMSpec })
+            {
+                vmSpec.HostSSHPort = DEFAULT_HOST_SSH_PORT;
+                vmSpec.HostKubernetesPort = DEFAULT_HOST_Kubernetes_PORT;
+                vmSpec.HostHttpIngressPort = DEFAULT_HOST_HttpIngress_PORT;
+            }
 
             return minRequirementsOK;
         }
