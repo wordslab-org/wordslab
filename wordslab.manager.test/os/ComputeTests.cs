@@ -61,8 +61,8 @@ namespace wordslab.manager.test.os
             Assert.IsTrue(gpusload.Count > 0);
             foreach (var gpuload in gpusload)
             {
-                Assert.IsTrue(gpuload.PercentGPUTime > 0 && gpuload.PercentGPUTime <=100);
-                Assert.IsTrue(gpuload.PercentMemoryTime > 0 && gpuload.PercentMemoryTime <= 100);
+                Assert.IsTrue(gpuload.PercentGPUTime >= 0 && gpuload.PercentGPUTime <=100);
+                Assert.IsTrue(gpuload.PercentMemoryTime >= 0 && gpuload.PercentMemoryTime <= 100);
                 Assert.IsTrue(gpuload.MemoryFreeMB > 0);
             }
         }

@@ -15,20 +15,21 @@ namespace wordslab.manager.os
     // - ArgumentException          : exception occured in output handler, error handler, exit code handler
     public static class Command
     {
-        public static int Run(string command, string arguments="", int timeoutSec=10, bool unicodeEncoding = false, string workingDirectory="", bool mustRunAsAdmin=false,
+        public static int Run(string command, string arguments="", int timeoutSec=10, bool killAfterTimeout=false, bool unicodeEncoding = false, string workingDirectory="", bool mustRunAsAdmin=false,
                               Action<string> outputHandler=null, Action<string> errorHandler=null, Action<int> exitCodeHandler=null)
         {
-            using (Process proc = new Process())
+            using (Process process = new Process())
             {
-                proc.StartInfo.FileName = command;
-                proc.StartInfo.Arguments = arguments;
-                proc.StartInfo.UseShellExecute = false;
-                proc.StartInfo.CreateNoWindow = true;
-                if (unicodeEncoding) proc.StartInfo.StandardOutputEncoding = Encoding.Unicode;
-                proc.StartInfo.RedirectStandardOutput = true;
-                if (unicodeEncoding) proc.StartInfo.StandardErrorEncoding = Encoding.Unicode;
-                proc.StartInfo.RedirectStandardError = true;
-                proc.StartInfo.WorkingDirectory = workingDirectory;
+                // Set process start info
+                process.StartInfo.FileName = command;
+                process.StartInfo.Arguments = arguments;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
+                if (unicodeEncoding) process.StartInfo.StandardOutputEncoding = Encoding.Unicode;
+                process.StartInfo.RedirectStandardOutput = true;
+                if (unicodeEncoding) process.StartInfo.StandardErrorEncoding = Encoding.Unicode;
+                process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.WorkingDirectory = workingDirectory;
                 if (mustRunAsAdmin && !OS.IsRunningAsAdministrator())
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -41,16 +42,28 @@ namespace wordslab.manager.os
                     }
                 }
 
+                // Start process in an asynchronous way
+                bool isStarted = true;
                 string output = null;
+                var outputCloseEvent = new TaskCompletionSource<bool>();
                 string error = null;
+                var errorCloseEvent = new TaskCompletionSource<bool>();
                 try
                 {
                     // To be able to use a timeout, we need to read the standard output and error streams asynchronously
-                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) => { if (output == null) { output = e.Data; } else { if (!String.IsNullOrEmpty(e.Data)) { output += Environment.NewLine + e.Data; } } });
-                    proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => { if (error == null) { error = e.Data; } else { if (!String.IsNullOrEmpty(e.Data)) { error += Environment.NewLine + e.Data; } } });
-                    proc.Start();
-                    proc.BeginOutputReadLine();
-                    proc.BeginErrorReadLine();
+                    process.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
+                    {
+                        if (e.Data == null) { outputCloseEvent.SetResult(true); }
+                        else { if (output == null) { output = e.Data; } else { if (!String.IsNullOrEmpty(e.Data)) { output += Environment.NewLine + e.Data; } } }
+                    });
+                    process.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => 
+                    {
+                        if (e.Data == null) { errorCloseEvent.SetResult(true); }
+                        else { if (error == null) { error = e.Data; } else { if (!String.IsNullOrEmpty(e.Data)) { error += Environment.NewLine + e.Data; } } }
+                    });
+                    isStarted = process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
                 } 
                 catch(System.ComponentModel.Win32Exception e)
                 {
@@ -64,25 +77,49 @@ namespace wordslab.manager.os
                     }
                 }
 
-                bool exitBeforeTimeout = true;
-                try
+                // Wait for command exit and standard streams closing - until timeout
+                if (isStarted)
                 {
-                    exitBeforeTimeout = proc.WaitForExit(timeoutSec * 1000);
-                }
-                catch (Exception e)
-                {
-                    throw new InvalidOperationException($"Failed to execute command {command} {arguments}", e);
-                }
-                if (!exitBeforeTimeout)
-                {
-                    throw new TimeoutException($"Command {command} {arguments} did not exit before the timeout of {timeoutSec} sec");
+                    // Creat subtask to wait for process exit
+                    Task<bool> waitForExitTask = Task.Run(() => process.WaitForExit(timeoutSec * 1000));
+                    
+                    // Create master task to wait for process exit AND closing all output streams
+                    var processTask = Task.WhenAll(waitForExitTask, outputCloseEvent.Task, errorCloseEvent.Task);
+
+                    // Execute all tasks
+                    bool exitBeforeTimeout = true;
+                    try
+                    {
+                        exitBeforeTimeout = Task.WhenAny(Task.Delay(timeoutSec * 1000), processTask).Result == processTask && waitForExitTask.Result;
+                    }
+                    catch (AggregateException ae)
+                    {
+                        throw new InvalidOperationException($"Failed to execute command {command} {arguments}", ae.Flatten().InnerExceptions.FirstOrDefault());
+                    }
+
+                    // Handle timeout
+                    if (!exitBeforeTimeout)
+                    {
+                        if (killAfterTimeout)
+                        {
+                            try
+                            {
+                                // Kill hung process
+                                process.Kill();
+                            }
+                            catch { /* ignored */ }
+                        }
+                        throw new TimeoutException($"Command {command} {arguments} did not exit before the timeout of {timeoutSec} sec");
+                    }
                 }
                                 
+                // Handle return value and standard streams output
+
                 if(outputHandler != null) { try { outputHandler(output); } catch (Exception e) { throw new ArgumentException($"Exception occured in output handler of command {command}", e); } }
                 if(errorHandler != null) { try { errorHandler(error); } catch (Exception e) { throw new ArgumentException($"Exception occured in error handler of command {command}", e); } }
                 else { if(!String.IsNullOrEmpty(error)) { throw new InvalidOperationException($"Error while executing command {command} {arguments} : \"{error}\""); } }
 
-                int exitCode = proc.ExitCode;
+                int exitCode = process.ExitCode;
                 if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of command {command}", e); } }
                 else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing command {command} {arguments} : exitcode {exitCode} different of 0 (output=\"{output}\") (error=\"{error}\")"); } }
                 

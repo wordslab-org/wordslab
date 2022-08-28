@@ -90,7 +90,7 @@ namespace wordslab.manager.vm
         internal static readonly string helmVersion = "3.9.3";
         internal static readonly string helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
         internal static readonly int    helmExecutableDownloadSize = 14025325;
-        internal static readonly int    helmExecutableDiskSize = 46397440;
+        internal static readonly int    helmExecutableDiskSize = 46374912;
         internal static readonly string helmFileName = $"heml-{helmVersion}.tar";
 
         // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases

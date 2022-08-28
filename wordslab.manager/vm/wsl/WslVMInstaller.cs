@@ -353,7 +353,7 @@ namespace wordslab.manager.vm.wsl
                     localVMEndpoint = localVM.Endpoint;
                 }
 
-                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, SSH port = {localVMEndpoint.SSHPort}");
+                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, SSH port = {localVMEndpoint.KubernetesPort}");
 
                 return localVM;
             }

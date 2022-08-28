@@ -42,7 +42,7 @@ namespace wordslab.manager.test.os
                 Assert.IsTrue(rc == 0);
                 Assert.IsTrue(exitcode == 0);
                 Assert.IsTrue(output != null && output.Length > 10);
-                Assert.IsTrue(error == String.Empty);
+                Assert.IsTrue(error == null); ;
 
                 // Parameters
                 int previousLength = output.Length;

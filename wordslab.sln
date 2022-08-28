@@ -249,6 +249,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wpf", "wpf", "{6EA1B509-4B7
 		doc\dev\wpf\TrayHelper.cs = doc\dev\wpf\TrayHelper.cs
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python", "python", "{7886EA2A-E25F-416D-BBC6-07B8C1A8B831}"
+	ProjectSection(SolutionItems) = preProject
+		doc\dev\python\test-stablediffusion.ipynb = doc\dev\python\test-stablediffusion.ipynb
+		doc\dev\python\ubuntu-deeplearning-setup.sh = doc\dev\python\ubuntu-deeplearning-setup.sh
+		doc\dev\python\ubuntu-python-setup.sh = doc\dev\python\ubuntu-python-setup.sh
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -304,6 +311,7 @@ Global
 		{B4FA454F-186D-4C59-99C0-E86CA2ED2C3E} = {CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}
 		{1A02D8A2-BBF2-4F67-A93E-82EF77214562} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
 		{6EA1B509-4B79-4C83-AE4B-8110CBBA6110} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{7886EA2A-E25F-416D-BBC6-07B8C1A8B831} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1E574D49-0F7D-4070-9AE4-088FCA10348B}
