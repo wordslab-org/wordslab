@@ -35,16 +35,25 @@
     <None Update="os\scripts\admin.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="os\scripts\admin.sh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="os\scripts\error.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="os\scripts\error.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="os\scripts\nooutput.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="os\scripts\timeout.sh">
+    <None Update="os\scripts\nooutput.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="os\scripts\timeout.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="os\scripts\timeout.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

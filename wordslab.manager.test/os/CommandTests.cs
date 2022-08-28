@@ -13,153 +13,172 @@ namespace wordslab.manager.test.os
         [TestMethod]
         public void T01_TestRun()
         {
-            if (OS.IsWindows)
+            // Program does not exists
+            Exception expectedEx = null;
+            try
             {
-                // Program does not exists
-                Exception expectedEx = null;
-                try
-                {
-                    Command.Run("toto");
-                }
-                catch(Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is FileNotFoundException);
-                Assert.IsTrue(expectedEx.Message.Contains("Command"));
+                Command.Run("toto");
+            }
+            catch(Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is FileNotFoundException);
+            Assert.IsTrue(expectedEx.Message.Contains("Command"));
 
-                // Return code
-                var rc = Command.Run("ipconfig");
-                Assert.IsTrue(rc == 0);
+            var command1 = OS.IsWindows ? "ipconfig" : "date";
+            var params1ok = OS.IsWindows ? "/all" : "--help";
+            var params1ko = OS.IsWindows ? "/toto" : "--toto";
 
-                string output = null;
-                string error = null;
-                int exitcode = -1;
-                
-                // Handlers
-                rc = Command.Run("ipconfig", outputHandler:o => output=o, errorHandler:e => error=e, exitCodeHandler:c => exitcode=c);
-                Assert.IsTrue(rc == 0);
-                Assert.IsTrue(exitcode == 0);
-                Assert.IsTrue(output != null && output.Length > 10);
-                Assert.IsTrue(error == null); ;
+            // Return code
+            var rc = Command.Run(command1);
+            Assert.IsTrue(rc == 0);
 
-                // Parameters
-                int previousLength = output.Length;
-                Command.Run("ipconfig", "/all", outputHandler: o => output = o);
-                Assert.IsTrue(output.Length > previousLength);
+            string output = null;
+            string error = null;
+            int exitcode = -1;
+            
+            // Handlers
+            rc = Command.Run(command1, outputHandler:o => output=o, errorHandler:e => error=e, exitCodeHandler:c => exitcode=c);
+            Assert.IsTrue(rc == 0);
+            Assert.IsTrue(exitcode == 0);
+            Assert.IsTrue(output != null && output.Length > 10);
+            Assert.IsTrue(error == null);
 
-                // Parameter does not exist
-                expectedEx = null;
-                try
-                {
-                    Command.Run("ipconfig", "/toto");
-                }
-                catch(Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is InvalidOperationException);
+            // Parameters
+            int previousLength = output.Length;
+            Command.Run(command1, params1ok, outputHandler: o => output = o);
+            Assert.IsTrue(output.Length > previousLength);
 
-                exitcode = -1;
-                rc = Command.Run("ipconfig", "/toto", exitCodeHandler:c => exitcode = c);
-                Assert.IsTrue(rc == 1);
-                Assert.IsTrue(exitcode == 1);
+            // Parameter does not exist
+            expectedEx = null;
+            try
+            {
+                Command.Run(command1, params1ko);
+            }
+            catch(Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is InvalidOperationException);
 
-                // Working directory
-                string outputDir1 = null;
-                Command.Run("cmd", "/C dir", outputHandler: o => outputDir1 = o);
-                Assert.IsTrue(!string.IsNullOrEmpty(outputDir1));
-                
-                string outputDir2 = null;
-                Command.Run("cmd", "/C dir c:\\Users", outputHandler: o => outputDir2 = o);
-                Assert.IsTrue(!string.IsNullOrEmpty(outputDir2));
+            exitcode = -1;
+            error = null;
+            rc = Command.Run(command1, params1ko, errorHandler: e => error = e,  exitCodeHandler: c => exitcode = c);
+            Assert.IsTrue(rc > 0);
+            Assert.IsTrue(exitcode > 0);
 
-                string outputDir3 = null;
-                Command.Run("cmd", "/C dir", workingDirectory:"c:\\Users", outputHandler: o => outputDir3 = o);
-                Assert.IsTrue(!string.IsNullOrEmpty(outputDir3));
+            var command2 = OS.IsWindows ? "cmd" : "ls";
+            var params2_1 = OS.IsWindows ? "/C dir" : ".";
+            var params2_2 = OS.IsWindows ? "/C dir c:\\Users" : "/usr";
+            var workdirok = OS.IsWindows ? "c:\\Users" : "/usr";
+            var workdirko = OS.IsWindows ? "c:\\toto" : "/toto";
 
-                Assert.IsTrue(outputDir1 != outputDir2);
-                Assert.IsTrue(outputDir2.Substring(0,outputDir2.Length-30) == outputDir3.Substring(0,outputDir3.Length-30));
+            // Working directory
+            string outputDir1 = null;
+            Command.Run(command2, params2_1, outputHandler: o => outputDir1 = o);
+            Assert.IsTrue(!string.IsNullOrEmpty(outputDir1));
+            
+            string outputDir2 = null;
+            Command.Run(command2, params2_2, outputHandler: o => outputDir2 = o);
+            Assert.IsTrue(!string.IsNullOrEmpty(outputDir2));
 
-                // Working directory does not exist
-                expectedEx = null;
-                try
-                {
-                    Command.Run("cmd", "/C dir", workingDirectory: "c:\\toto");
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is FileNotFoundException);
-                Assert.IsTrue(expectedEx.Message.Contains("directory"));
+            string outputDir3 = null;
+            Command.Run(command2, params2_1, workingDirectory: workdirok, outputHandler: o => outputDir3 = o);
+            Assert.IsTrue(!string.IsNullOrEmpty(outputDir3));
 
-                // Timeout
-                Command.Run("timeout", "2", timeoutSec: 3);
+            Assert.IsTrue(outputDir1 != outputDir2);
+            Assert.IsTrue(outputDir2.Substring(0,outputDir2.Length-30) == outputDir3.Substring(0,outputDir3.Length-30));
 
-                expectedEx = null;
-                try
-                {
-                    Command.Run("timeout", "2", timeoutSec: 1);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is TimeoutException);
+            // Working directory does not exist
+            expectedEx = null;
+            try
+            {
+                Command.Run(command2, params2_1, workingDirectory: workdirko);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is FileNotFoundException);
+            Assert.IsTrue(expectedEx.Message.Contains("directory"));
 
-                // Must run as admin
-                expectedEx = null;
-                try
-                {
-                    Command.Run("cmd", "/C dir c:\\Users\\julie", mustRunAsAdmin:true);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is InvalidOperationException);
-                Assert.IsTrue(expectedEx.Message.Contains("privileges"));
+            var command3 = OS.IsWindows ? "timeout" : "sleep";
 
-                // Unicode output decoding
-                output = null;
-                Command.Run("cmd", "/C echo énâtü😀", outputHandler: o => output = o);
+            // Timeout
+            Command.Run(command3, "2", timeoutSec: 3);
+
+            expectedEx = null;
+            try
+            {
+                Command.Run(command3, "2", timeoutSec: 1);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is TimeoutException);
+
+            var params2_admin = OS.IsWindows ? "/C dir c:\\Users\\julie" : "/root";
+
+            // Must run as admin
+            expectedEx = null;
+            try
+            {
+                Command.Run(command2, params2_admin, mustRunAsAdmin:true);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is InvalidOperationException);
+            Assert.IsTrue(expectedEx.Message.Contains("privileges"));
+
+            var command4 = OS.IsWindows ? "cmd" : "echo";
+            var params4 = OS.IsWindows ? "/C echo énâtü😀" : "énâtü😀";
+
+            // Unicode output decoding
+            output = null;
+            Command.Run(command4, params4, outputHandler: o => output = o);
+            if(OS.IsWindows)
+            {
                 Assert.IsTrue(output == "énâtü??");
+            } 
+            else
+            {
+                Assert.IsTrue(output == params4);
+            }
+
+            if(OS.IsWindows)
+            {
+                var command5 = "wsl";
+                var params5 = "--status";
 
                 output = null;
-                Command.Run("wsl", "--status", outputHandler: o => output = o);
+                Command.Run(command5, params5, outputHandler: o => output = o);
                 Assert.IsTrue(output.IndexOf('\0') == 1);
 
                 output = null;
-                Command.Run("wsl", "--status", unicodeEncoding:true, outputHandler: o => output = o);
+                Command.Run(command5, params5, unicodeEncoding:true, outputHandler: o => output = o);
                 Assert.IsTrue(output.IndexOf('\0') == -1);
-            }
-            else
-            {
-                throw new NotImplementedException();
             }
         }
 
         [TestMethod]
         public void T02_TestLaunchAndForget()
         {
-            if (OS.IsWindows)
-            {
-                Stopwatch watch = new Stopwatch();
-                watch.Start();
-                Command.LaunchAndForget("timeout", "2", showWindow: false);
-                watch.Stop();
-                Assert.IsTrue(watch.ElapsedMilliseconds < 1000);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            var command = OS.IsWindows ? "timeout" : "sleep";
+
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+            Command.LaunchAndForget(command, "2", showWindow: false);
+            watch.Stop();
+            Assert.IsTrue(watch.ElapsedMilliseconds < 1000);
         }
               
         [TestMethod]
@@ -189,99 +208,117 @@ namespace wordslab.manager.test.os
         {
             var scriptsDir = Path.Combine(AppContext.BaseDirectory, "os", "scripts");
             var logsDir = Path.Combine(AppContext.BaseDirectory, "test-logs");
+            
+            var timeoutScript = OS.IsWindows ? "timeout.ps1" : "timeout.sh";
+            var noutputScript = OS.IsWindows ? "nooutput.ps1" : "nooutput.sh";
+            var totoScript = OS.IsWindows ? "toto.ps1" : "toto.sh";
+            var errorScript = OS.IsWindows ? "error.ps1" : "error.sh";
+            var adminScript = OS.IsWindows ? "admin.ps1" : "admin.sh";
 
-            // Powershell
-            if (OS.IsWindows)
+            // Exit code 0 & output
+            string output = null;
+            var exitCode = Command.ExecuteShellScript(scriptsDir, timeoutScript, "1 0", logsDir, outputHandler: o => output = o);
+            Assert.IsTrue(exitCode == 0);
+            Assert.IsTrue(!String.IsNullOrEmpty(output) && output.Length>20);
+
+            // Exit code 2 & output
+            Command.ExecuteShellScript(scriptsDir, timeoutScript, "1 2", logsDir,outputHandler: o => output = o, exitCodeHandler: c => exitCode = c);
+            Assert.IsTrue(exitCode == 2);
+            Assert.IsTrue(!String.IsNullOrEmpty(output) && output.Length > 20);
+
+            // Timeout
+            Exception expectedEx = null;
+            try
             {
-                // Exit code 0 & output
-                string output = null;
-                var exitCode = Command.ExecuteShellScript(scriptsDir, "timeout.ps1", "1 0", logsDir, outputHandler: o => output = o);
-                Assert.IsTrue(exitCode == 0);
-                Assert.IsTrue(!String.IsNullOrEmpty(output) && output.Length>20);
-
-                // Exit code 2 & output
-                Command.ExecuteShellScript(scriptsDir, "timeout.ps1", "1 2", logsDir,outputHandler: o => output = o, exitCodeHandler: c => exitCode = c);
-                Assert.IsTrue(exitCode == 2);
-                Assert.IsTrue(!String.IsNullOrEmpty(output) && output.Length > 20);
-
-                // Timeout
-                Exception expectedEx = null;
-                try
-                {
-                    Command.ExecuteShellScript(scriptsDir, "timeout.ps1", "2 0", logsDir, timeoutSec: 1);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is TimeoutException);
-
-                // No output
-                Command.ExecuteShellScript(scriptsDir, "nooutput.ps1", "0", logsDir, outputHandler: o => output = o);
-                Assert.IsTrue(output == String.Empty);
-
-                // Script name error
-                expectedEx = null;
-                try
-                {
-                    Command.ExecuteShellScript(scriptsDir, "toto.ps1", null, logsDir);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is FileNotFoundException);
-
-                // Script execution error
-                expectedEx = null;
-                try
-                {
-                    Command.ExecuteShellScript(scriptsDir, "error.ps1", null, logsDir);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is InvalidOperationException);
-
-                // Script missing parameter
-                expectedEx = null;
-                try
-                {
-                    Command.ExecuteShellScript(scriptsDir, "timeout.ps1", null, logsDir);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is InvalidOperationException);
-
-                // Not admin
-                expectedEx = null;
-                try
-                {
-                    Command.ExecuteShellScript(scriptsDir, "admin.ps1", null, logsDir);
-                }
-                catch (Exception ex)
-                {
-                    expectedEx = ex;
-                }
-                Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is InvalidOperationException);
-                Assert.IsTrue(expectedEx.Message.StartsWith("Get-WindowsOptionalFeature"));
-
-                // Run as admin
-                Command.ExecuteShellScript(scriptsDir, "admin.ps1", null, logsDir, runAsAdmin: true, outputHandler: o => output=o);
-                Assert.IsTrue(output.Contains("Microsoft-Windows-Subsystem-Linux"));
+                Command.ExecuteShellScript(scriptsDir, timeoutScript, "2 0", logsDir, timeoutSec: 1);
             }
-            // Bash
-            else
+            catch (Exception ex)
             {
-                throw new NotImplementedException();
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is TimeoutException);
+
+            // No output
+            Command.ExecuteShellScript(scriptsDir, noutputScript, "0", logsDir, outputHandler: o => output = o);
+            Assert.IsTrue(output == String.Empty);
+
+            // Script name error
+            expectedEx = null;
+            try
+            {
+                Command.ExecuteShellScript(scriptsDir, totoScript, null, logsDir);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is FileNotFoundException);
+
+            // Script execution error
+            expectedEx = null;
+            try
+            {
+                Command.ExecuteShellScript(scriptsDir, errorScript, null, logsDir);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is InvalidOperationException);
+
+            // Script missing parameter
+            expectedEx = null;
+            try
+            {
+                Command.ExecuteShellScript(scriptsDir, timeoutScript, null, logsDir);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is InvalidOperationException);
+
+            // Not admin
+            expectedEx = null;
+            try
+            {
+                Command.ExecuteShellScript(scriptsDir, adminScript, null, logsDir);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is InvalidOperationException);
+            if(OS.IsWindows)
+            {
+                Assert.IsTrue(expectedEx.Message.StartsWith("Get-WindowsOptionalFeature"));
+            }
+            else 
+            {
+                Assert.IsTrue(expectedEx.Message.StartsWith("are you root"));
+            }
+
+            // Run as admin
+            try 
+            {                
+                Command.ExecuteShellScript(scriptsDir, adminScript, null, logsDir, runAsAdmin: true, outputHandler: o => output=o);
+                if(OS.IsWindows) 
+                {
+                    Assert.IsTrue(output.Contains("Microsoft-Windows-Subsystem-Linux"));
+                }
+            }
+            catch(Exception e)
+            {
+                if(OS.IsWindows) { throw e; }
+                else
+                {
+                    Assert.IsTrue(e is InvalidOperationException);
+                }
             }
 
             Directory.Delete(logsDir, true);

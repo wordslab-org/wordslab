@@ -30,6 +30,10 @@ namespace wordslab.manager.os
                 if (unicodeEncoding) process.StartInfo.StandardErrorEncoding = Encoding.Unicode;
                 process.StartInfo.RedirectStandardError = true;
                 process.StartInfo.WorkingDirectory = workingDirectory;
+                if(!String.IsNullOrEmpty(workingDirectory) && !Directory.Exists(workingDirectory))
+                {
+                    throw new FileNotFoundException($"Working directory {workingDirectory} not found", workingDirectory);
+                }
                 if (mustRunAsAdmin && !OS.IsRunningAsAdministrator())
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -166,7 +170,7 @@ namespace wordslab.manager.os
         }
 
         public static int ExecuteShellScript(string scriptsDirectory, string scriptName, string scriptArguments, string logsDirectory,
-                                             int timeoutSec = 10, bool runAsAdmin = false, string unixShellLauncher = null,
+                                             int timeoutSec = 10, bool runAsAdmin = false,
                                              Action<string> outputHandler = null, Action<int> exitCodeHandler = null)
         {
             var scriptFile = GetScriptFile(scriptsDirectory, scriptName);
@@ -185,36 +189,37 @@ namespace wordslab.manager.os
             }
             string logFilePrefix = scriptFile.Name + $".{DateTime.Now.ToString("s").Replace(':','-')}";
             string outputLogFile = Path.Combine(logDir.FullName, logFilePrefix + ".output.txt");
-
-            string shellLauncher = null;
-            string redirectOutputSyntax;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            
+            using (Process process = new Process())
             {
-                shellLauncher = "powershell.exe"; 
-                redirectOutputSyntax = $"2>&1 | Tee-Object -FilePath \"{outputLogFile}\"";
-            }
-            else
-            {
-                if (unixShellLauncher == null) { shellLauncher = "bash"; } else { shellLauncher = unixShellLauncher; }
-                redirectOutputSyntax = $"2>&1 | tee \"{outputLogFile}\"";
-            }
-
-            using (Process proc = new Process())
-            {
-                proc.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
-                proc.StartInfo.FileName = shellLauncher;
-                proc.StartInfo.Arguments = $"\"{scriptFile.FullName}\" {scriptArguments} {redirectOutputSyntax}";
-                if(shellLauncher == "powershell.exe")
+                process.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    proc.StartInfo.Arguments = "-ExecutionPolicy Bypass " + proc.StartInfo.Arguments + "; exit $LASTEXITCODE";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = true;
+
+                    process.StartInfo.FileName = "powershell.exe"; 
+                    var scriptCommand = $"\"{scriptFile.FullName}\" {scriptArguments}";
+                    var redirectOutputSyntax = $"2>&1 | Tee-Object -FilePath \"{outputLogFile}\"";
+                    process.StartInfo.Arguments = $"-ExecutionPolicy Bypass {scriptCommand} {redirectOutputSyntax}; exit $LASTEXITCODE";
                 }
+                else
+                {
+                    process.StartInfo.UseShellExecute = true;
+                    process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    process.StartInfo.FileName = "/bin/bash";
+                    var scriptCommand = $"\"{scriptFile.FullName}\" {scriptArguments}";
+                    var redirectOutputSyntax = $"2>&1 | tee \"{outputLogFile}\"";
+                    process.StartInfo.Arguments = $"-c '{scriptCommand} {redirectOutputSyntax}'";                
+                }                
                 if (runAsAdmin)
                 {
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
-                        proc.StartInfo.UseShellExecute = true;
-                        proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                        proc.StartInfo.Verb = "runas";
+                        process.StartInfo.UseShellExecute = true;
+                        process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                        process.StartInfo.Verb = "runas";
                     }
                     else
                     {
@@ -224,15 +229,10 @@ namespace wordslab.manager.os
                         }
                     }
                 }
-                else
-                {
-                    proc.StartInfo.UseShellExecute = false;
-                    proc.StartInfo.CreateNoWindow = true;
-                }
 
                 try
                 {
-                    proc.Start();
+                    process.Start();
                 }
                 catch (System.ComponentModel.Win32Exception e)
                 {
@@ -242,7 +242,7 @@ namespace wordslab.manager.os
                 bool exitBeforeTimeout = true;
                 try
                 {
-                    exitBeforeTimeout = proc.WaitForExit(timeoutSec * 1000);
+                    exitBeforeTimeout = process.WaitForExit(timeoutSec * 1000);
                 }
                 catch (Exception e)
                 {
@@ -261,7 +261,7 @@ namespace wordslab.manager.os
                         output = srOut.ReadToEnd();
                     }
                 }
-                if (shellLauncher == "powershell.exe" && !String.IsNullOrEmpty(output))
+                if (OS.IsWindows && !String.IsNullOrEmpty(output))
                 {
                     if (output.Contains("FullyQualifiedErrorId"))
                     {
@@ -271,7 +271,7 @@ namespace wordslab.manager.os
 
                 if (outputHandler != null) { try { outputHandler(output); } catch (Exception e) { throw new ArgumentException($"Exception occured in output handler of script {scriptName}", e); } }
                 
-                int exitCode = proc.ExitCode;                
+                int exitCode = process.ExitCode;                
 
                 if (exitCodeHandler != null) { try { exitCodeHandler(exitCode); } catch (Exception e) { throw new ArgumentException($"Exception occured in exit code handler of script {scriptName}", e); } }
                 else { if (exitCode != 0) { throw new InvalidOperationException($"Error while executing script {scriptName} {scriptArguments} : exitcode {exitCode} different of 0"); } }
