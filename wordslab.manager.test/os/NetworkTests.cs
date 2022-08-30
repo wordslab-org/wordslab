@@ -50,7 +50,7 @@ namespace wordslab.manager.test.os
         {
             // Windows : 6 ms
             var ports = Network.GetAllTcpPortsInUse();
-            Assert.IsTrue(ports.Count >= 5);
+            Assert.IsTrue(ports.Count >= 4);
         }
 
         [TestMethod]

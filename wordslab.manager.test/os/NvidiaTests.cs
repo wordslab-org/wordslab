@@ -14,7 +14,6 @@ namespace wordslab.manager.test.os
             Assert.IsTrue(driverVersion.Major > 0);
             Assert.IsTrue(driverVersion.Minor > 0);
             Assert.IsTrue(driverVersion.Revision == -1);
-            Assert.IsTrue(driverVersion.Build == -1); ;
         }
 
         [TestMethodOnWindows]

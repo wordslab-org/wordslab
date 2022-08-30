@@ -57,7 +57,8 @@ namespace wordslab.manager.os
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {                
                 var targetVersion = new Version(18,04);
-                return OS.IsOSArchitectureX64() && GetOSDistribution() == "ubuntu" && OS.GetOSVersion() >= targetVersion;
+                var distribInfo = OS.GetLinuxDistributionInfo();
+                return OS.IsOSArchitectureX64() && GetOSDistribution() == "ubuntu" && distribInfo.Version >= targetVersion;
             }
             else { return false; }
         }

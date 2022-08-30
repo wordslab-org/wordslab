@@ -9,7 +9,7 @@ namespace wordslab.manager.test.os
         [TestMethod]
         public void T01_TestOpen()
         {
-            WebBrowser.Open("www.cognitivefactory.fr");
+            WebBrowser.Open("https://www.cognitivefactory.fr");
         }
     }
 }

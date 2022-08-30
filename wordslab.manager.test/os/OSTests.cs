@@ -68,7 +68,14 @@ namespace wordslab.manager.test.os
             var version = OS.GetOSVersion();
             Assert.IsNotNull(version);
             Assert.IsTrue(version.Major > 1);
-            Assert.IsTrue(version.Build > 1);
+            if(OS.IsWindows) 
+            {
+                Assert.IsTrue(version.Build > 1);
+            }
+            else
+            {
+                Assert.IsTrue(version.Minor > 1);
+            }
         }
 
         [TestMethodOnLinux]
@@ -76,7 +83,7 @@ namespace wordslab.manager.test.os
         {
             var distrib = OS.GetLinuxDistributionInfo();
             Assert.IsTrue(!String.IsNullOrEmpty(distrib.Name) && distrib.Name.Length >= 5);
-            Assert.IsTrue(distrib.Version != null && distrib.Version.Major > 1 && distrib.Version.Build > 1);
+            Assert.IsTrue(distrib.Version != null && distrib.Version.Major > 1 && distrib.Version.Minor > 1);
         }
 
         [TestMethod]

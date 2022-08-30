@@ -88,7 +88,7 @@ namespace wordslab.manager.os
                         {
                             diskId = dict["path"];
                             diskModel = dict["model"];
-                            isSSD = dict["rota"] == "true";
+                            isSSD = dict["rota"] == "false";
                             diskSizeMB = (uint)(long.Parse(dict["size"]) / MEGA);
                         }
                         else if (dict["type"] == "part" && dict["mount"] != "null")

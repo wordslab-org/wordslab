@@ -22,7 +22,7 @@ namespace wordslab.manager.os
 
         /// <summary>
         /// Returns OS version on Windows and MacOS.
-        /// Returns kernel version on Linux -> call OS.GetLinuxDistribution() if needed.
+        /// Returns kernel version on Linux -> call OS.GetLinuxDistributionInfo() if needed.
         /// </summary>
         public static Version GetOSVersion()
         {

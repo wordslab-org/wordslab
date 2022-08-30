@@ -7,18 +7,15 @@ namespace wordslab.manager.os
     {
         public static void Open(string url)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); // Works ok on windows
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                Process.Start("xdg-open", url);  // Works ok on linux
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                Process.Start("open", url); // Not tested
-            }
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+            // Tested OK on Windows
+
+            // Error message on Linux while launching web browser : 
+            // [GFX1-]: glxtest: VA-API test failed: missing or old libva-drm library.
+            // ExceptionHandler::GenerateDump cloned child 27580
+            // ExceptionHandler::SendContinueSignalToChild sent continue signal to child
+            // ExceptionHandler::WaitForContinueSignal waiting for continue signal...
         }
     }
 }
