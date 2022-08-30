@@ -193,11 +193,10 @@ namespace wordslab.manager.os
             using (Process process = new Process())
             {
                 process.StartInfo.WorkingDirectory = scriptFile.Directory.FullName;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.CreateNoWindow = true;
-
                     process.StartInfo.FileName = "powershell.exe"; 
                     var scriptCommand = $"\"{scriptFile.FullName}\" {scriptArguments}";
                     var redirectOutputSyntax = $"2>&1 | Tee-Object -FilePath \"{outputLogFile}\"";
@@ -205,13 +204,11 @@ namespace wordslab.manager.os
                 }
                 else
                 {
-                    process.StartInfo.UseShellExecute = true;
-                    process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-
                     process.StartInfo.FileName = "/bin/bash";
                     var scriptCommand = $"\"{scriptFile.FullName}\" {scriptArguments}";
                     var redirectOutputSyntax = $"2>&1 | tee \"{outputLogFile}\"";
-                    process.StartInfo.Arguments = $"-c '{scriptCommand} {redirectOutputSyntax}'";                
+                    process.StartInfo.ArgumentList.Add("-c");
+                    process.StartInfo.ArgumentList.Add($"{scriptCommand} {redirectOutputSyntax}");                
                 }                
                 if (runAsAdmin)
                 {
