@@ -208,7 +208,7 @@ namespace wordslab.manager.os
                     var scriptCommand = $"\"{scriptFile.FullName}\" {scriptArguments}";
                     var redirectOutputSyntax = $"2>&1 | tee \"{outputLogFile}\"";
                     process.StartInfo.ArgumentList.Add("-c");
-                    process.StartInfo.ArgumentList.Add($"{scriptCommand} {redirectOutputSyntax}");                
+                    process.StartInfo.ArgumentList.Add($"set -o pipefail; {scriptCommand} {redirectOutputSyntax}");                
                 }                
                 if (runAsAdmin)
                 {

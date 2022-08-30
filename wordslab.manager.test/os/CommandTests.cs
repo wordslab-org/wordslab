@@ -298,10 +298,6 @@ namespace wordslab.manager.test.os
             {
                 Assert.IsTrue(expectedEx.Message.StartsWith("Get-WindowsOptionalFeature"));
             }
-            else 
-            {
-                Assert.IsTrue(expectedEx.Message.StartsWith("are you root"));
-            }
 
             // Run as admin
             try 
@@ -318,6 +314,7 @@ namespace wordslab.manager.test.os
                 else
                 {
                     Assert.IsTrue(e is InvalidOperationException);
+                    Assert.IsTrue(e.Message.Contains("sudo"));
                 }
             }
 
