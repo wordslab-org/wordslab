@@ -43,13 +43,18 @@ namespace wordslab.manager.vm
 
         public VirtualDisk DataDisk { get; internal set; }
 
-        public int RequestedSSHPort { get; internal set; }
-        public int RequestedKubernetesPort { get; internal set; }
-        public int RequestedHttpIngressPort { get; internal set; }
+        public int HostSSHPort { get; internal set; }
+        public int HostKubernetesPort { get; internal set; }
+        public int HostHttpIngressPort { get; internal set; }
 
         public abstract bool IsRunning();
 
-        public abstract VirtualMachineEndpoint Start(VirtualMachineConfig vmSpec);
+        public abstract VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null);
+
+        public VirtualMachineEndpoint Start(VirtualMachineConfig vmConfig)
+        {
+            return Start(vmConfig.Processors, vmConfig.MemoryGB, vmConfig.HostSSHPort, vmConfig.HostKubernetesPort, vmConfig.HostHttpIngressPort);
+        }
 
         protected VirtualMachineEndpoint endpoint;
 
@@ -67,8 +72,6 @@ namespace wordslab.manager.vm
                 return endpoint;
             }
         }
-
-        public string KubeconfigPath => Path.Combine(storage.ConfigDirectory, ".kube", $"{Name}.config");
 
         public abstract void Stop();
 

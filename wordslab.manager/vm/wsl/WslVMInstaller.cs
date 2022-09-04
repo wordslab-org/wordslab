@@ -7,6 +7,7 @@ namespace wordslab.manager.vm.wsl
     {
         public static async Task<VirtualMachine> Install(VirtualMachineSpec vmSpec, HostStorage hostStorage, InstallProcessUI ui)
         {
+            VirtualMachine localVM = null;
             try
             {
                 // 1. Check Hardware requirements
@@ -313,34 +314,25 @@ namespace wordslab.manager.vm.wsl
                 ui.DisplayInstallStep(6, 6, "Configure and start wordslab Virtual Machine");
                                 
                 var wslConfig = Wsl.Read_wslconfig();
-                var needToUpdateWslConfig = 
-                    (!wslConfig.processors.HasValue || wslConfig.processors.Value != vmSpec.Processors)      ||
-                    (!wslConfig.memoryMB.HasValue   || wslConfig.memoryMB.Value   != vmSpec.MemoryGB * 1024) ||
-                    (wslConfig.localhostForwarding.HasValue && wslConfig.localhostForwarding.Value != true)  ||
-                    (wslConfig.pageReporting.HasValue       && wslConfig.pageReporting.Value       != true);
+                var needToUpdateWslConfig = wslConfig.NeedsToBeUpdatedForVmSpec(vmSpec.Processors, vmSpec.MemoryGB);
 
                 var updateWslConfig = false;
                 if (needToUpdateWslConfig)
                 {
                     updateWslConfig = await ui.DisplayQuestionAsync($"Do you confirm you want to update the Windows Subsystem for Linux configuration to match with your VM specification: {vmSpec.Processors} processors, {vmSpec.MemoryGB} GB memory ? This will affect all WSL distributions launched from your Windows account, not only wordslab.");
                 }
-                if (updateWslConfig && Wsl.list().Any(d => d.IsRunning))
+                if (updateWslConfig && Wsl.IsRunning())
                 {
                     updateWslConfig = await ui.DisplayQuestionAsync("All WSL distributions currently running will be stopped: please make sure you take all the necessary measures for a graceful shutdown before continuing. Are you ready now ?");
                 }               
                 if (updateWslConfig)
                 {
                     var c26 = ui.DisplayCommandLaunch($"Updating Windows Subsystem for Linux configuration to match your VM specification: {vmSpec.Processors} processors, {vmSpec.MemoryGB} GB memory");
-                    Wsl.shutdown();
-                    wslConfig.processors = vmSpec.Processors;
-                    wslConfig.memoryMB = vmSpec.MemoryGB*1024;
-                    wslConfig.localhostForwarding = true;
-                    wslConfig.pageReporting = true;
-                    Wsl.Write_wslconfig(wslConfig);
+                    wslConfig.UpdateToVMSpec(vmSpec.Processors, vmSpec.MemoryGB, restartIfNeeded: true);
                     ui.DisplayCommandResult(c26, true);
                 }
 
-                var localVM = WslVM.TryFindByName(vmSpec.Name, hostStorage);
+                localVM = WslVM.TryFindByName(vmSpec.Name, hostStorage);
 
                 var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
                 VirtualMachineEndpoint localVMEndpoint = null;
@@ -353,15 +345,14 @@ namespace wordslab.manager.vm.wsl
                     localVMEndpoint = localVM.Endpoint;
                 }
 
-                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, SSH port = {localVMEndpoint.KubernetesPort}");
-
-                return localVM;
+                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, HTTP port = {localVMEndpoint.HttpIngressPort}");
             }
             catch (Exception ex)
             {
                 ui.DisplayCommandError(ex.Message);
-                return null;
             }
+
+            return localVM;
         }
 
         public static async Task<bool> Uninstall(string vmName, HostStorage hostStorage, InstallProcessUI ui)

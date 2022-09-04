@@ -1,5 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.IO;
 using wordslab.manager.storage;
+using wordslab.manager.vm;
 
 namespace wordslab.manager.test.vm
 {
@@ -7,27 +9,57 @@ namespace wordslab.manager.test.vm
     public class VirtualMachineEndpointTests
     {
         [TestMethod]
-        public void TestGetFilePath()
+        public void T01_TestGetFilePath()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var path = VirtualMachineEndpoint.GetEndpointFilePath(storage, "toto");
+            
+            Assert.IsTrue(path.StartsWith(storage.ConfigDirectory));
+            Assert.IsTrue(path.EndsWith("toto.endpoint"));
         }
 
         [TestMethod]
-        public void TestSave()
+        public void T02_TestSave()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var path = VirtualMachineEndpoint.GetEndpointFilePath(storage, "toto");
+
+            var endpoint = new VirtualMachineEndpoint("toto", "127.0.0.1", 22, 4233, 81, "kubernetes\nconfig");
+            endpoint.Save(storage);
+
+            Assert.IsTrue(File.Exists(path));
+            Assert.IsTrue(File.ReadAllLines(path).Length == 4);
+            Assert.IsTrue(File.Exists(endpoint.KubeconfigPath));
+            Assert.IsTrue(File.ReadAllLines(endpoint.KubeconfigPath).Length == 2);
         }
 
         [TestMethod]
-        public void TestLoad()
+        public void T03_TestLoad()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var endpoint = VirtualMachineEndpoint.Load(storage, "toto");
+
+            Assert.IsTrue(endpoint.VMName == "toto");
+            Assert.IsTrue(endpoint.IPAddress == "127.0.0.1");
+            Assert.IsTrue(endpoint.SSHPort == 22);
+            Assert.IsTrue(endpoint.KubernetesPort == 4233);
+            Assert.IsTrue(endpoint.HttpIngressPort == 81);
+            Assert.IsTrue(endpoint.Kubeconfig == "kubernetes\nconfig");
+            Assert.IsTrue(File.Exists(endpoint.KubeconfigPath));
         }
 
         [TestMethod]
-        public void TestDelete()
+        public void T04_TestDelete()
         {
-            Assert.IsTrue(true);
+            var storage = new HostStorage();
+            var path = VirtualMachineEndpoint.GetEndpointFilePath(storage, "toto");
+            var endpoint = VirtualMachineEndpoint.Load(storage, "toto");
+
+            Assert.IsTrue(File.Exists(path));
+            Assert.IsTrue(File.Exists(endpoint.KubeconfigPath));
+            endpoint.Delete(storage);
+            Assert.IsFalse(File.Exists(path));
+            Assert.IsFalse(File.Exists(endpoint.KubeconfigPath));
         }
     }
 }

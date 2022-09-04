@@ -16,7 +16,7 @@ namespace wordslab.manager.vm.googlecloud
             throw new NotImplementedException();
         }
 
-        public override VirtualMachineEndpoint Start(VirtualMachineConfig vmConfig)
+        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null)
         {
             throw new NotImplementedException();
         }

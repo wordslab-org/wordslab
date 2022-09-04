@@ -4,13 +4,14 @@ namespace wordslab.manager.vm
 {
     public class VirtualMachineEndpoint
     {
-        public VirtualMachineEndpoint(string vmName, string ipAddress, int sshPort, int kubernetesPort, int httpIngressPort)
+        public VirtualMachineEndpoint(string vmName, string ipAddress, int sshPort, int kubernetesPort, int httpIngressPort, string kubeconfig)
         {
             VMName = vmName;
             IPAddress = ipAddress;
             SSHPort = sshPort;
             KubernetesPort = kubernetesPort;
             HttpIngressPort = httpIngressPort;
+            Kubeconfig = kubeconfig;
         }
 
         public string VMName { get; private set; }
@@ -23,14 +24,23 @@ namespace wordslab.manager.vm
 
         public int HttpIngressPort { get; private set; }
 
-        public static string GetFilePath(HostStorage storage, string name)
+        public string Kubeconfig { get; private set; }
+
+        public string KubeconfigPath { get; private set; }
+
+        public static string GetEndpointFilePath(HostStorage storage, string name)
         {
             return Path.Combine(storage.ConfigDirectory, "vm", $"{name}.endpoint");
         }
 
+        public static string GetKubeconfigFilePath(HostStorage storage, string name)
+        {
+            return Path.Combine(storage.ConfigDirectory, "vm", $"{name}.kubeconfig");
+        }
+
         public void Save(HostStorage storage)
         {
-            var endpointPath = GetFilePath(storage, VMName);
+            var endpointPath = GetEndpointFilePath(storage, VMName);
             Directory.CreateDirectory(Path.GetDirectoryName(endpointPath));
             using (StreamWriter sw = new StreamWriter(endpointPath))
             {
@@ -39,34 +49,55 @@ namespace wordslab.manager.vm
                 sw.WriteLine(KubernetesPort);
                 sw.WriteLine(HttpIngressPort);
             }
+
+            KubeconfigPath = GetKubeconfigFilePath(storage, VMName);
+            Directory.CreateDirectory(Path.GetDirectoryName(KubeconfigPath));
+            File.WriteAllText(KubeconfigPath, Kubeconfig);
         }
 
         public static VirtualMachineEndpoint Load(HostStorage storage, string name)
         {
-            var filepath = GetFilePath(storage, name);
-            if (File.Exists(filepath))
+            string ipAddress = null;
+            int sshPort, kubernetesPort, httpIngressPort;
+            var endpointPath = GetEndpointFilePath(storage, name);
+            if (File.Exists(endpointPath))
             {
-                using (StreamReader sr = new StreamReader(filepath))
+                using (StreamReader sr = new StreamReader(endpointPath))
                 {
-                    var ipAddress = sr.ReadLine();
-                    var sshPort = Int32.Parse(sr.ReadLine());
-                    var kubernetesPort = Int32.Parse(sr.ReadLine());
-                    var httpIngressPort = Int32.Parse(sr.ReadLine());
-                    return new VirtualMachineEndpoint(name, ipAddress, sshPort, kubernetesPort, httpIngressPort);
+                    ipAddress = sr.ReadLine();
+                    sshPort = Int32.Parse(sr.ReadLine());
+                    kubernetesPort = Int32.Parse(sr.ReadLine());
+                    httpIngressPort = Int32.Parse(sr.ReadLine());
                 }
             }
             else
             {
-                return null;
+                throw new FileNotFoundException($"Could not find a VM endpoint file for {name} at path {endpointPath}");
             }
+
+            string kubeconfig = null;
+            var kubeconfigPath = GetKubeconfigFilePath(storage, name);
+            if (File.Exists(kubeconfigPath))
+            {
+                kubeconfig = File.ReadAllText(kubeconfigPath);                
+            }
+
+            var endpoint = new VirtualMachineEndpoint(name, ipAddress, sshPort, kubernetesPort, httpIngressPort, kubeconfig);
+            endpoint.KubeconfigPath = kubeconfigPath;
+            return endpoint;
         }
 
-        public static void Delete(HostStorage storage, string name)
+        public void Delete(HostStorage storage)
         {
-            var filepath = GetFilePath(storage, name);
-            if (File.Exists(filepath))
+            if(File.Exists(KubeconfigPath))
             {
-                File.Delete(filepath);
+                File.Delete(KubeconfigPath);
+            }
+
+            var endpointPath = GetEndpointFilePath(storage, VMName);
+            if (File.Exists(endpointPath))
+            {
+                File.Delete(endpointPath);
             }
         }
     }

@@ -330,6 +330,37 @@ namespace wordslab.manager.os
             {
                 return (WslConfig)this.MemberwiseClone();
             }
+
+            public bool NeedsToBeUpdatedForVmSpec(int specProcessors, int specMemoryGB)
+            {
+                return (!processors.HasValue || processors.Value != specProcessors) ||
+                       (!memoryMB.HasValue || memoryMB.Value != specMemoryGB * 1024) ||
+                       (localhostForwarding.HasValue && localhostForwarding.Value != true) ||
+                       (pageReporting.HasValue && pageReporting.Value != true);
+            }
+
+            public void UpdateToVMSpec(int specProcessors, int specMemoryGB, bool restartIfNeeded = false)
+            {
+                if (NeedsToBeUpdatedForVmSpec(specProcessors, specMemoryGB))
+                {
+                    if (Wsl.IsRunning())
+                    {
+                        if (restartIfNeeded)
+                        {
+                            Wsl.shutdown();
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Impossible to update the Wsl configuration without restarting");
+                        }
+                    }
+                    processors = specProcessors;
+                    memoryMB = specMemoryGB * 1024;
+                    localhostForwarding = true;
+                    pageReporting = true;
+                    Wsl.Write_wslconfig(this);
+                }
+            }
         }
 
         private static readonly string wslconfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wslconfig");
@@ -404,6 +435,11 @@ namespace wordslab.manager.os
             // If it didn't work, return the default values
             config.SetDefaultValues();
             return config;
+        }
+
+        public static bool IsRunning()
+        {
+            return Wsl.list().Any(d => d.IsRunning);
         }
 
         private static bool ParseBoolean(string value)

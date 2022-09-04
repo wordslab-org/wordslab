@@ -89,15 +89,15 @@ namespace wordslab.manager.vm
                     vmConfig.HostSSHPort = vm.Endpoint.SSHPort;
                     vmConfig.HostKubernetesPort = vm.Endpoint.KubernetesPort;
                     vmConfig.HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
-                    vm.RequestedSSHPort = vm.Endpoint.SSHPort;
-                    vm.RequestedKubernetesPort = vm.Endpoint.KubernetesPort;
-                    vm.RequestedHttpIngressPort = vm.Endpoint.HttpIngressPort;
+                    vm.HostSSHPort = vm.Endpoint.SSHPort;
+                    vm.HostKubernetesPort = vm.Endpoint.KubernetesPort;
+                    vm.HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
                 }
                 else
                 {
-                    vm.RequestedSSHPort = vmConfig.HostSSHPort;
-                    vm.RequestedKubernetesPort = vmConfig.HostKubernetesPort;
-                    vm.RequestedHttpIngressPort = vmConfig.HostHttpIngressPort;
+                    vm.HostSSHPort = vmConfig.HostSSHPort;
+                    vm.HostKubernetesPort = vmConfig.HostKubernetesPort;
+                    vm.HostHttpIngressPort = vmConfig.HostHttpIngressPort;
                 }
             }
 

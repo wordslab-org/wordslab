@@ -63,40 +63,48 @@ namespace wordslab.manager.vm.qemu
 
         private int processId = -1;
 
-        public override VirtualMachineEndpoint Start(VirtualMachineConfig vmSpec)
+        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null)
         {
-            // Start qemu process
-            processId = Qemu.StartVirtualMachine(vmSpec.Processors, vmSpec.MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, vmSpec.HostSSHPort, vmSpec.HostHttpIngressPort, vmSpec.HostKubernetesPort);
-            Processors = vmSpec.Processors;
-            MemoryGB = vmSpec.MemoryGB;
+            if (processors.HasValue) Processors = processors.Value;
+            if (memoryGB.HasValue) MemoryGB = memoryGB.Value;
+            if (hostSSHPort.HasValue) HostSSHPort = hostSSHPort.Value;
+            if (hostKubernetesPort.HasValue) HostKubernetesPort = hostKubernetesPort.Value;
+            if (hostHttpIngressPort.HasValue) HostHttpIngressPort = hostHttpIngressPort.Value;
 
-            // Start k3s inside virtual machine
-            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", vmSpec.HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
+            if (!IsRunning())
+            {
+                // Start qemu process
+                processId = Qemu.StartVirtualMachine(Processors, MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, HostSSHPort, HostHttpIngressPort, HostKubernetesPort);
+               
+                // Start k3s inside virtual machine
+                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
+            } 
 
             // Get virtual machine IP and kubeconfig file
             string ip = null;
-            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", vmSpec.HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
+            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
             string kubeconfig = null;
-            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", vmSpec.HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
-            Directory.CreateDirectory(KubeconfigPath);
-            using (StreamWriter sw = new StreamWriter(KubeconfigPath))
-            {
-                sw.Write(kubeconfig);
-            }
+            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
 
-            endpoint = new VirtualMachineEndpoint(Name, ip, vmSpec.HostSSHPort, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
+            endpoint = new VirtualMachineEndpoint(Name, ip, HostSSHPort, HostKubernetesPort, HostHttpIngressPort, kubeconfig);
             endpoint.Save(storage);
+
             return endpoint;
         }
 
         public override void Stop()
         {
+            if (endpoint != null)
+            {
+                endpoint.Delete(storage);
+                endpoint = null;
+            }
+
             if (IsRunning())
             {
                 Qemu.StopVirtualMachine(processId);
             }
             processId = -1;
-            endpoint = null;
         }
     }
 }

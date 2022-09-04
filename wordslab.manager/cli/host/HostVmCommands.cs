@@ -64,32 +64,30 @@ namespace wordslab.manager.cli.host
             // Step 2 : override compute values with min, rec or max specs 
             if (vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
             {
-                VirtualMachineSpec minSpec, recSpec, maxSpec;
-                string minErrMsg, recErrMsg;
-                VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage, out minSpec, out recSpec, out maxSpec, out minErrMsg, out recErrMsg);
+                var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage);
 
                 VirtualMachineSpec targetSpec = null;
                 if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
                 {
-                    if (minErrMsg != null)
+                    if (!vmSpecs.MinimumVMSpecIsSupportedOnThisMachine)
                     {
-                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the minimum config: {minErrMsg}";
+                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the minimum config: {vmSpecs.MinimunVMSpecErrorMessage}";
                         return errorMessage;
                     }
-                    targetSpec = minSpec;
+                    targetSpec = vmSpecs.MinimumVMSpec;
                 }
                 if (vmSettings.UseRecommendedSpecs.HasValue && vmSettings.UseRecommendedSpecs.Value)
                 {
-                    if (recErrMsg != null)
+                    if (!vmSpecs.RecommendedVMSpecIsSupportedOnThisMachine)
                     {
-                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the recommended config: {recErrMsg}";
+                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the recommended config: {vmSpecs.RecommendedVMSpecErrorMessage}";
                         return errorMessage;
                     }
-                    targetSpec = recSpec;
+                    targetSpec = vmSpecs.RecommendedVMSpec;
                 }
                 if (vmSettings.UseMaximumSpecs.HasValue && vmSettings.UseMaximumSpecs.Value)
                 {
-                    targetSpec = maxSpec;
+                    targetSpec = vmSpecs.MaximumVMSpecOnThisMachine;
                 }
 
                 vmConfig.Processors = targetSpec.Processors;
@@ -100,8 +98,8 @@ namespace wordslab.manager.cli.host
                 }
                 else if (string.IsNullOrEmpty(vmConfig.GPUModel))
                 {
-                    vmConfig.GPUModel = maxSpec.GPUModel;
-                    vmConfig.GPUMemoryGB = maxSpec.GPUMemoryGB;
+                    vmConfig.GPUModel = vmSpecs.MaximumVMSpecOnThisMachine.GPUModel;
+                    vmConfig.GPUMemoryGB = vmSpecs.MaximumVMSpecOnThisMachine.GPUMemoryGB;
                 }
             }
 
@@ -341,15 +339,13 @@ namespace wordslab.manager.cli.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            VirtualMachineSpec minSpec, recSpec, maxSpec;
-            string minErrMsg, recErrMsg;
-            VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage, out minSpec, out recSpec, out maxSpec, out minErrMsg, out recErrMsg);
+            var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage);
             
-            DisplayRecommendedSpec("Minimum", minSpec, minErrMsg);
-            DisplayRecommendedSpec("Recommended", recSpec, recErrMsg);
-            if (String.IsNullOrEmpty(minErrMsg))
+            DisplayRecommendedSpec("Minimum", vmSpecs.MinimumVMSpec, vmSpecs.MinimunVMSpecErrorMessage);
+            DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage);
+            if (vmSpecs.MinimumVMSpecIsSupportedOnThisMachine)
             {
-                DisplayRecommendedSpec("Maximum", maxSpec, null);
+                DisplayRecommendedSpec("Maximum", vmSpecs.MaximumVMSpecOnThisMachine, null);
             }
 
             var tcpPortsInUse = Network.GetAllTcpPortsInUse();

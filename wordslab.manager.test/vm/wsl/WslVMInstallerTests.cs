@@ -16,11 +16,10 @@ namespace wordslab.manager.test.vm.wsl
         {
             var storage = new HostStorage();
 
-            VirtualMachineSpec minSpec, recSpec, maxSpec;
-            string minErrMsg, recErrMsg;
-            VirtualMachineSpec.GetRecommendedVMSpecs(storage, out minSpec, out recSpec, out maxSpec, out minErrMsg, out recErrMsg);
+           var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(storage);
 
             // Hardware requirements KO
+            var recSpec = vmSpecs.RecommendedVMSpec;
             recSpec.Name = "test-blank";
             recSpec.MemoryGB = 128;
             var ui = new TestProcessUI();
@@ -29,6 +28,7 @@ namespace wordslab.manager.test.vm.wsl
             Assert.IsTrue(ui.Messages.Last().Contains("Not enough physical memory"));
 
             // Hardware requirements OK
+            var minSpec = vmSpecs.MinimumVMSpec;
             minSpec.Name = "test-blank";
             var gpus = Compute.GetNvidiaGPUsInfo();
             if (gpus.Count > 0)
@@ -38,7 +38,7 @@ namespace wordslab.manager.test.vm.wsl
             }
             ui = new TestProcessUI();
             vm = await WslVMInstaller.Install(minSpec, storage, ui);
-            Assert.IsNull(vm);
+            Assert.IsNotNull(vm);
             Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
         }
 

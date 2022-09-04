@@ -164,13 +164,13 @@ namespace wordslab.manager.vm
             return gpuSpecOK;
         }
 
-        public static bool GetRecommendedVMSpecs(HostStorage hostStorage, out VirtualMachineSpec minVMSpec, out VirtualMachineSpec recVMSpec, out VirtualMachineSpec maxVMSpec, out string minVMSpecErrorMessage, out string recVMSpecErrorMessage)
+        public static RecommendedVMSpecs GetRecommendedVMSpecs(HostStorage hostStorage)
         {
             var cpuInfo = Compute.GetCPUInfo();
             var memInfo = Memory.GetMemoryInfo();
             var gpusInfo = Compute.GetNvidiaGPUsInfo();
 
-            minVMSpec = new VirtualMachineSpec("minimum-vm");
+            var minVMSpec = new VirtualMachineSpec("minimum-vm");
             minVMSpec.Processors = MIN_VM_PROCESSORS;
             minVMSpec.MemoryGB = MIN_VM_MEMORY_GB;
             minVMSpec.GPUModel = MIN_VM_GPUMODEL;
@@ -192,16 +192,13 @@ namespace wordslab.manager.vm
                minVMSpec.CheckMemoryRequirements(memInfo, out minMemoryErrorMessage) &&
                minVMSpec.CheckStorageRequirements(hostStorage, out minStorageReqsGB, out minStorageErrorMessage) && 
                minVMSpec.CheckGPURequirements(gpusInfo, out minGPUErrorMessage);
-            if(minRequirementsOK)
-            {
-                minVMSpecErrorMessage = null;
-            }
-            else
+            string minVMSpecErrorMessage = null;
+            if (!minRequirementsOK)
             {
                 minVMSpecErrorMessage = $"{minCPUErrorMessage} {minMemoryErrorMessage} {minStorageErrorMessage} {minGPUErrorMessage}";
             }
 
-            recVMSpec = new VirtualMachineSpec("recommended-vm");
+            var recVMSpec = new VirtualMachineSpec("recommended-vm");
             recVMSpec.Processors = REC_VM_PROCESSORS;
             recVMSpec.MemoryGB = REC_VM_MEMORY_GB;
             recVMSpec.GPUModel = REC_VM_GPUMODEL;
@@ -223,16 +220,13 @@ namespace wordslab.manager.vm
                recVMSpec.CheckMemoryRequirements(memInfo, out recMemoryErrorMessage) &&
                recVMSpec.CheckStorageRequirements(hostStorage, out recStorageReqsGB, out recStorageErrorMessage) &&
                recVMSpec.CheckGPURequirements(gpusInfo, out recGPUErrorMessage);
-            if (recRequirementsOK)
-            {
-                recVMSpecErrorMessage = null;
-            }
-            else
+            string recVMSpecErrorMessage = null;
+            if (!recRequirementsOK)
             {
                 recVMSpecErrorMessage = $"{recCPUErrorMessage} {recMemoryErrorMessage} {recStorageErrorMessage} {recGPUErrorMessage}";
             }
 
-            maxVMSpec = new VirtualMachineSpec("maximum-vm");
+            var maxVMSpec = new VirtualMachineSpec("maximum-vm");
             maxVMSpec.Processors = (int)cpuInfo.NumberOfLogicalProcessors - MIN_HOST_PROCESSORS;
             maxVMSpec.MemoryGB = (int)(memInfo.TotalPhysicalMB/1024) - MIN_HOST_MEMORY_GB;
 
@@ -273,7 +267,7 @@ namespace wordslab.manager.vm
                 vmSpec.HostHttpIngressPort = DEFAULT_HOST_HttpIngress_PORT;
             }
 
-            return minRequirementsOK;
+            return new RecommendedVMSpecs(minVMSpec, minRequirementsOK, minVMSpecErrorMessage, recVMSpec, recRequirementsOK, recVMSpecErrorMessage, maxVMSpec);
         }
 
         public static void ApplyRecommendedSpec(VirtualMachineConfig vmConfig)
@@ -295,5 +289,31 @@ namespace wordslab.manager.vm
             vmConfig.HostKubernetesPort = DEFAULT_HOST_Kubernetes_PORT;
             vmConfig.HostHttpIngressPort = DEFAULT_HOST_HttpIngress_PORT;
         }
+    }
+
+    public class RecommendedVMSpecs
+    {
+        public RecommendedVMSpecs(VirtualMachineSpec minVMSpec, bool minVMSpecIsOK, string minVMSpecErrorMessage, VirtualMachineSpec recVMSpec, bool recVMSpecIsOK, string recVMSpecErrorMessage, VirtualMachineSpec maxVMSpec)
+        {
+            MinimumVMSpec = minVMSpec;
+            MinimumVMSpecIsSupportedOnThisMachine = minVMSpecIsOK;
+            MinimunVMSpecErrorMessage = minVMSpecErrorMessage;
+
+            RecommendedVMSpec = recVMSpec;
+            RecommendedVMSpecIsSupportedOnThisMachine = recVMSpecIsOK;
+            RecommendedVMSpecErrorMessage = recVMSpecErrorMessage;
+
+            MaximumVMSpecOnThisMachine = maxVMSpec;
+        }
+
+        public VirtualMachineSpec MinimumVMSpec { get; private set; }
+        public bool MinimumVMSpecIsSupportedOnThisMachine { get; private set; }
+        public string MinimunVMSpecErrorMessage { get; private set; }
+
+        public VirtualMachineSpec RecommendedVMSpec { get; private set; }
+        public bool RecommendedVMSpecIsSupportedOnThisMachine { get; private set; }
+        public string RecommendedVMSpecErrorMessage { get; private set; }
+
+        public VirtualMachineSpec MaximumVMSpecOnThisMachine { get; private set; }
     }
 }

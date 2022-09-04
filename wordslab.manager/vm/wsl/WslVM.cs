@@ -61,35 +61,49 @@ namespace wordslab.manager.vm.wsl
             return false;
         }
 
-        public override VirtualMachineEndpoint Start(VirtualMachineConfig vmSpec)
+        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null)
         {
-            DataDisk.StartService();
-            ClusterDisk.StartService();
+            if (processors.HasValue) Processors = processors.Value;
+            if (memoryGB.HasValue) MemoryGB = memoryGB.Value;
+            // HostSSHPort is always 0 because we don't use SSH to launch WSL commands on Windows
+            if (hostKubernetesPort.HasValue) HostKubernetesPort = hostKubernetesPort.Value;
+            if (hostHttpIngressPort.HasValue) HostHttpIngressPort = hostHttpIngressPort.Value;
 
-            Wsl.execShell($"/root/{WslDisk.vmStartupScript} {vmSpec.HostKubernetesPort}", OsDisk.ServiceName, ignoreError: "screen size is bogus");
+            var wslConfig = Wsl.Read_wslconfig();
+            wslConfig.UpdateToVMSpec(Processors, MemoryGB, restartIfNeeded: true);
+
+            if (!IsRunning())
+            {
+                DataDisk.StartService();
+                ClusterDisk.StartService();
+
+                Wsl.execShell($"/root/{WslDisk.vmStartupScript} {HostKubernetesPort}", OsDisk.ServiceName, ignoreError: "screen size is bogus");
+            }
 
             string ip = null;
             Wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", OsDisk.ServiceName, outputHandler: output => ip = output);
-            var kubeconfig = Wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", OsDisk.ServiceName);
-            Directory.CreateDirectory(Path.GetDirectoryName(KubeconfigPath));
-            using (StreamWriter sw = new StreamWriter(KubeconfigPath))
-            {
-                sw.Write(kubeconfig);
-            }
-
-            endpoint = new VirtualMachineEndpoint(Name, ip, 0, vmSpec.HostKubernetesPort, vmSpec.HostHttpIngressPort);
+            string kubeconfig = null;
+            Wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", OsDisk.ServiceName, outputHandler: output => kubeconfig = output);
+            
+            endpoint = new VirtualMachineEndpoint(Name, ip, 0, HostKubernetesPort, HostHttpIngressPort, kubeconfig);
             endpoint.Save(storage);
             return endpoint;
         }
 
         public override void Stop()
-        {            
-            endpoint = null;
-            VirtualMachineEndpoint.Delete(storage, Name);
+        {
+            if (endpoint != null)
+            {
+                endpoint.Delete(storage);
+                endpoint = null;
+            }
 
-            Wsl.terminate(OsDisk.ServiceName);
-            ClusterDisk.StopService();
-            DataDisk.StopService();
+            if (IsRunning())
+            {
+                Wsl.terminate(OsDisk.ServiceName);
+                ClusterDisk.StopService();
+                DataDisk.StopService();
+            }
         }
     }
 }
