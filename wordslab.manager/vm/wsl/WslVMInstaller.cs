@@ -297,15 +297,15 @@ namespace wordslab.manager.vm.wsl
                     osDisk = WslDisk.CreateFromOSImage(vmSpec.Name, Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName), hostStorage);
                     virtualDiskVMOK = osDisk != null;
                     ui.DisplayCommandResult(c24, virtualDiskVMOK);
+
+                    if (createVMWithGPUSupport)
+                    {
+                        var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on VM virtual disk");
+                        ((WslDisk)osDisk).InstallNvidiaContainerRuntimeOnOSImage(hostStorage);
+                        ui.DisplayCommandResult(c25, true);
+                    }
                 }
                 if (!virtualDiskVMOK) { return null; }
-
-                if (createVMWithGPUSupport)
-                {
-                    var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on VM virtual disk");
-                    ((WslDisk)osDisk).InstallNvidiaContainerRuntimeOnOSImage(hostStorage);
-                    ui.DisplayCommandResult(c25, true);
-                }
 
                 // 6. Configure and start local Virtual Machine
                 bool vmConfigOK = true;
@@ -360,6 +360,7 @@ namespace wordslab.manager.vm.wsl
             try
             {
                 var localVM = WslVM.TryFindByName(vmName, hostStorage);
+                if (localVM == null) return true;
 
                 var c1 = ui.DisplayCommandLaunch("Stopping wordslab virtual machine and local k3s cluster");
                 localVM.Stop();

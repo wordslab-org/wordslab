@@ -19,14 +19,10 @@ namespace wordslab.manager.vm
 
         public List<VirtualMachine> ListLocalVMs()
         {
-            // List configs in database
+            // List configs found in database
             var localVmType = OS.IsWindows ? VirtualMachineType.Wsl : VirtualMachineType.Qemu;
-            var vmConfigsDict = new Dictionary<string,VirtualMachineConfig>(); 
-            foreach(var vmConfig in configStore.VirtualMachines.Where(vm => vm.Type == localVmType))
-            {
-                vmConfigsDict.Add(vmConfig.Name, vmConfig);
-            }
-            var vmConfigNames = new HashSet<string>(vmConfigsDict.Values.Select(vm => vm.Name));
+            var vmConfigs = configStore.VirtualMachines.Where(vm => vm.Type == localVmType);            
+            var vmNamesInDatabase = new HashSet<string>(vmConfigs.Select(config => config.Name));
 
             // List vms found on disk
             List<VirtualMachine> vms = null;
@@ -38,69 +34,32 @@ namespace wordslab.manager.vm
             {
                 vms = QemuVM.ListLocalVMs(hostStorage);
             }
+            var vmNamesOnDisk = new HashSet<string>(vms.Select(vm => vm.Name));
 
-            // Remove configs not found on disk from database 
-            foreach (var configNameNotFoundOnDisk in vmConfigNames.Except(vms.Select(vm => vm.Name)))
+            // The TRUTH is on disk => align the database
+
+            // Remove configs found in the database but not found on disk
+            foreach (var vmNameNotFoundOnDisk in vmNamesInDatabase.Except(vmNamesOnDisk))
             {
-                configStore.RemoveVirtualMachineConfig(vmConfigsDict[configNameNotFoundOnDisk].Name);
+                configStore.RemoveVirtualMachineConfig(vmNameNotFoundOnDisk);
             }
 
-            // Restrict list of vms to configs registered in database
-            vms = vms.Where(vm => vmConfigsDict.ContainsKey(vm.Name)).ToList();
+            // Add configs found on disk but not found in the databse
+            foreach (var vmNotFoundInDatabase in vmNamesOnDisk.Except(vmNamesInDatabase))
+            {
+                var vmToAdd = vms.First(vm => vm.Name == vmNotFoundInDatabase);
+                var vmConfigToAdd = new VirtualMachineConfig(vmToAdd);
+                configStore.AddVirtualMachineConfig(vmConfigToAdd);
+            }
 
             // Merge configs and vms properties to sync disk and database
-            foreach(var vm in vms)
+            foreach (var vmConfig in vmConfigs)
             {
-                var vmConfig = vmConfigsDict[vm.Name];
-                if(vm.Processors > 0)
-                {
-                    vmConfig.Processors = vm.Processors;
-                }
-                else
-                {
-                    vm.Processors = vmConfig.Processors;
-                }
-                if (vm.MemoryGB > 0)
-                {
-                    vmConfig.MemoryGB = vm.MemoryGB;
-                }
-                else
-                {
-                    vm.MemoryGB = vmConfig.MemoryGB;
-                }
-                if (!String.IsNullOrEmpty(vm.GPUModel))
-                {
-                    vmConfig.GPUModel = vm.GPUModel;
-                    vmConfig.GPUMemoryGB = vm.GPUMemoryGB;
-                }
-                else
-                {
-                    vm.GPUModel = vmConfig.GPUModel;
-                    vm.GPUMemoryGB = vmConfig.GPUMemoryGB;
-                }
-                vmConfig.VmDiskSizeGB = vm.OsDisk.MaxSizeGB;
-                vmConfig.VmDiskIsSSD = vm.OsDisk.IsSSD;
-                vmConfig.ClusterDiskSizeGB = vm.ClusterDisk.MaxSizeGB;
-                vmConfig.ClusterDiskIsSSD = vm.ClusterDisk.IsSSD;
-                vmConfig.DataDiskSizeGB = vm.DataDisk.MaxSizeGB;
-                vmConfig.DataDiskIsSSD = vm.DataDisk.IsSSD;
-                if (vm.Endpoint != null)
-                {
-                    vmConfig.HostSSHPort = vm.Endpoint.SSHPort;
-                    vmConfig.HostKubernetesPort = vm.Endpoint.KubernetesPort;
-                    vmConfig.HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
-                    vm.HostSSHPort = vm.Endpoint.SSHPort;
-                    vm.HostKubernetesPort = vm.Endpoint.KubernetesPort;
-                    vm.HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
-                }
-                else
-                {
-                    vm.HostSSHPort = vmConfig.HostSSHPort;
-                    vm.HostKubernetesPort = vmConfig.HostKubernetesPort;
-                    vm.HostHttpIngressPort = vmConfig.HostHttpIngressPort;
-                }
+                var vmOnDisk = vms.First(vm => vm.Name == vmConfig.Name);
+                vmConfig.UpdateFromVM(vmOnDisk);
             }
 
+            // Update configs in database
             configStore.SaveChanges();
 
             return vms;
@@ -130,6 +89,11 @@ namespace wordslab.manager.vm
             else if (OS.IsLinux || OS.IsMacOS)
             {
                 vm = await QemuVMInstaller.Install(vmSpec, hostStorage, installUI);
+            }
+            if(vm != null)
+            {
+                var vmConfig = new VirtualMachineConfig(vm);
+                configStore.AddVirtualMachineConfig(vmConfig);
             }
             return vm;
         }

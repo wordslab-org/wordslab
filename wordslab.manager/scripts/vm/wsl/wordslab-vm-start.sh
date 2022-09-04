@@ -1,10 +1,13 @@
 #!/bin/bash
-kubernetesPort=$1
+clusterServiceName=$1
+dataServiceName=$2
+kubernetesPort=$3
+httpIngressPort=$4
 
-mount -o bind /mnt/wsl/wordslab-cluster/etc/rancher /etc/rancher
-mount -o bind /mnt/wsl/wordslab-cluster/var/lib /var/lib
-mount -o bind /mnt/wsl/wordslab-cluster/var/log/rancher /var/log/rancher
-mount -o bind /mnt/wsl/wordslab-data/var/volume/rancher /var/volume/rancher
+mount -o bind /mnt/wsl/$clusterServiceName/etc/rancher /etc/rancher
+mount -o bind /mnt/wsl/$clusterServiceName/var/lib /var/lib
+mount -o bind /mnt/wsl/$clusterServiceName/var/log/rancher /var/log/rancher
+mount -o bind /mnt/wsl/$dataServiceName/var/volume/rancher /var/volume/rancher
 
 mkdir -p /etc/rancher/k3s
 rm -f /etc/rancher/k3s/k3s.yaml
@@ -12,6 +15,8 @@ mkdir -p /var/lib/rancher/k3s
 k3s --version | grep -o "v[0-9].*\s" > /var/lib/rancher/k3s/version
 mkdir -p /var/log/rancher/k3s
 mkdir -p /var/volume/rancher/k3s
+
+#echo $httpIngressPort > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
 
 export IPTABLES_MODE=legacy
 nohup /usr/local/bin/k3s server --https-listen-port $kubernetesPort --log /var/log/rancher/k3s/k3s-$(date +%Y%m%d-%H%M%S).log --default-local-storage-path /var/volume/rancher/k3s </dev/null >/dev/null 2>&1 &

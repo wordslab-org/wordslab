@@ -1,14 +1,15 @@
 #!/bin/bash
-scriptspath=$(wslpath "$1")
+clusterServiceName=$1
+scriptspath=$(wslpath "$2")
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 
-NVIDIA_CONTAINER_RUNTIME_VERSION=$2
+NVIDIA_CONTAINER_RUNTIME_VERSION=$3
 apt-get update && apt-get -y install gnupg2 curl
 curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add -
 curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | tee /etc/apt/sources.list.d/nvidia-container-runtime.list
 apt-get update && apt-get -y install nvidia-container-runtime=${NVIDIA_CONTAINER_RUNTIME_VERSION}
 
-mount -o bind /mnt/wsl/wordslab-cluster/var/lib /var/lib
+mount -o bind /mnt/wsl/$clusterServiceName/var/lib /var/lib
 
 mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
 cp $scriptspath/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl

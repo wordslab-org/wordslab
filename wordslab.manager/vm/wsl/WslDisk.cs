@@ -92,7 +92,7 @@ namespace wordslab.manager.vm.wsl
                 Wsl.execShell("echo -e \"[automount]\\nenabled=true\\n[interop]\\nenabled=true\\nappendWindowsPath=true\" > /etc/wsl.conf", ServiceName);
                 Wsl.terminate(ServiceName);
 
-                Wsl.execShell($"/root/{vmGPUInitScript} '{scriptsDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, timeoutSec: 60, ignoreError: "perl: warning");
+                Wsl.execShell($"/root/{vmGPUInitScript} {clusterDisk.ServiceName} '{scriptsDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, timeoutSec: 60, ignoreError: "perl: warning");
                 Wsl.terminate(ServiceName);
                 clusterDisk.StopService();
                 return true;
@@ -183,7 +183,7 @@ namespace wordslab.manager.vm.wsl
             var startupScript = GetDiskStartupScript();
             if (startupScript != null)
             {
-                var startupScriptPath = $"/root/{startupScript}";            
+                var startupScriptPath = $"/root/{startupScript} {ServiceName}";            
                 Wsl.execShell(startupScriptPath, ServiceName);
             }
         }

@@ -1,3 +1,5 @@
 #!/bin/ash
-mkdir -p /mnt/wsl/wordslab-data
-mount --bind / /mnt/wsl/wordslab-data
+dataServiceName=$1
+
+mkdir -p /mnt/wsl/$dataServiceName
+mount --bind / /mnt/wsl/$dataServiceName

@@ -13,6 +13,11 @@ namespace wordslab.manager.storage.config
             Type = vm.Type;
             Name = vm.Name;
 
+            UpdateFromVM(vm);
+        }
+
+        public void UpdateFromVM(VirtualMachine vm)
+        {
             Processors = vm.Processors;
             MemoryGB = vm.MemoryGB;
 
@@ -28,9 +33,18 @@ namespace wordslab.manager.storage.config
             DataDiskSizeGB = vm.DataDisk.MaxSizeGB;
             DataDiskIsSSD = vm.DataDisk.IsSSD;
 
-            HostSSHPort = vm.Endpoint.SSHPort;
-            HostKubernetesPort = vm.Endpoint.KubernetesPort;
-            HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
+            if (vm.Endpoint != null)
+            {
+                HostSSHPort = vm.Endpoint.SSHPort;
+                HostKubernetesPort = vm.Endpoint.KubernetesPort;
+                HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
+            }
+            else
+            {
+                HostSSHPort = vm.HostSSHPort;
+                HostKubernetesPort = vm.HostKubernetesPort;
+                HostHttpIngressPort = vm.HostHttpIngressPort;
+            }
         }
 
         public VirtualMachineType Type { get; internal set; }

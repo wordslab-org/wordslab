@@ -65,30 +65,48 @@ namespace wordslab.manager.vm.qemu
 
         public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null)
         {
+            if (IsRunning())
+            {
+                return Endpoint;
+            }
+
+            // Update VM properties default values
             if (processors.HasValue) Processors = processors.Value;
             if (memoryGB.HasValue) MemoryGB = memoryGB.Value;
             if (hostSSHPort.HasValue) HostSSHPort = hostSSHPort.Value;
             if (hostKubernetesPort.HasValue) HostKubernetesPort = hostKubernetesPort.Value;
             if (hostHttpIngressPort.HasValue) HostHttpIngressPort = hostHttpIngressPort.Value;
 
-            if (!IsRunning())
+            // Check if the requested ports are available right before startup
+            var usedPorts = Network.GetAllTcpPortsInUse();
+            if (usedPorts.Contains(HostSSHPort))
             {
-                // Start qemu process
-                processId = Qemu.StartVirtualMachine(Processors, MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, HostSSHPort, HostHttpIngressPort, HostKubernetesPort);
-               
-                // Start k3s inside virtual machine
-                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
-            } 
+                throw new InvalidOperationException($"Host port for SSH: {HostSSHPort} is already in use, please select another port");
+            }
+            if (usedPorts.Contains(HostKubernetesPort))
+            {
+                throw new InvalidOperationException($"Host port for Kubernetes: {HostKubernetesPort} is already in use, please select another port");
+            }
+            if (usedPorts.Contains(HostHttpIngressPort))
+            {
+                throw new InvalidOperationException($"Host port for HTTP ingress: {HostHttpIngressPort} is already in use, please select another port");
+            }
 
-            // Get virtual machine IP and kubeconfig file
+            // Start qemu process
+            processId = Qemu.StartVirtualMachine(Processors, MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, HostSSHPort, HostHttpIngressPort, HostKubernetesPort);
+               
+            // Start k3s inside the virtual machine
+            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
+
+            // Get virtual machine IP and kubeconfig
             string ip = null;
             SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
             string kubeconfig = null;
             SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
 
+            // Save it to the endpoint & kubeconfig files
             endpoint = new VirtualMachineEndpoint(Name, ip, HostSSHPort, HostKubernetesPort, HostHttpIngressPort, kubeconfig);
             endpoint.Save(storage);
-
             return endpoint;
         }
 

@@ -1,3 +1,5 @@
 #!/bin/ash
-mkdir -p /mnt/wsl/wordslab-cluster
-mount --bind / /mnt/wsl/wordslab-cluster
+clusterServiceName=$1
+
+mkdir -p /mnt/wsl/$clusterServiceName
+mount --bind / /mnt/wsl/$clusterServiceName
