@@ -29,7 +29,6 @@ namespace wordslab.manager.test.storage
             Assert.IsTrue(Directory.Exists(storage.ConfigDirectory));
             Assert.IsTrue(Directory.Exists(storage.LogsDirectory));
             Assert.IsTrue(Directory.Exists(storage.DownloadCacheDirectory));
-            Assert.IsTrue(Directory.Exists(storage.VirtualMachineOSDirectory));
             Assert.IsTrue(Directory.Exists(storage.VirtualMachineClusterDirectory));
             Assert.IsTrue(Directory.Exists(storage.VirtualMachineDataDirectory));
             Assert.IsTrue(Directory.Exists(storage.BackupDirectory));
@@ -37,7 +36,6 @@ namespace wordslab.manager.test.storage
             Assert.IsTrue(storage.ConfigDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.LogsDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.DownloadCacheDirectory.Contains(storage.AppDirectory));
-            Assert.IsTrue(storage.VirtualMachineOSDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.VirtualMachineClusterDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.VirtualMachineDataDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.BackupDirectory.Contains(storage.AppDirectory));
@@ -51,7 +49,6 @@ namespace wordslab.manager.test.storage
 
             Assert.IsTrue(dirs.Count == 5);
             Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.DownloadCache).First().Path.Contains(storage.AppDirectory));
-            Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.VirtualMachineOS).First().Path.Contains(storage.AppDirectory));
             Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.VirtualMachineCluster).First().Path.Contains(storage.AppDirectory));
             Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.VirtualMachineData).First().Path.Contains(storage.AppDirectory));
             Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.Backup).First().Path.Contains(storage.AppDirectory));
@@ -99,28 +96,24 @@ namespace wordslab.manager.test.storage
                 var path2 = Path.Combine(workdir, "dir2");
                 var path3 = Path.Combine(workdir, "dir3");
                 var path4 = Path.Combine(workdir, "dir4");
-                var path5 = Path.Combine(workdir, "dir5");
 
                 var dirs = new List<HostDirectory>();
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineCluster, path3));
                 dirs.Add(new HostDirectory(HostDirectory.StorageFunction.DownloadCache, path1));
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineOS, path2));
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.Backup, path5));
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineData, path4));
+                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineCluster, path2));
+                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineData, path3));
+                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.Backup, path4));
 
                 storage.InitConfigurableDirectories(dirs);
 
                 Assert.AreEqual(storage.DownloadCacheDirectory, path1);
-                Assert.AreEqual(storage.VirtualMachineOSDirectory, path2);
-                Assert.AreEqual(storage.VirtualMachineClusterDirectory, path3);
-                Assert.AreEqual(storage.VirtualMachineDataDirectory, path4);
-                Assert.AreEqual(storage.BackupDirectory, path5);
+                Assert.AreEqual(storage.VirtualMachineClusterDirectory, path2);
+                Assert.AreEqual(storage.VirtualMachineDataDirectory, path3);
+                Assert.AreEqual(storage.BackupDirectory, path4);
 
                 Assert.IsTrue(Directory.Exists(path1));
                 Assert.IsTrue(Directory.Exists(path2));
                 Assert.IsTrue(Directory.Exists(path3));
                 Assert.IsTrue(Directory.Exists(path4));
-                Assert.IsTrue(Directory.Exists(path5));
 
             }
             finally

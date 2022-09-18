@@ -6,10 +6,10 @@ namespace wordslab.manager.vm.wsl
 {
     public class WslDisk : VirtualDisk
     {
-        public static List<string> ListVMNamesFromOsDisks(HostStorage storage)
+        public static List<string> ListVMNamesFromClusterDisks(HostStorage storage)
         {
             var vmNames = new List<string>();
-            var storagePathTemplate = GetHostStorageDirectory("*", VirtualDiskFunction.OS, storage);
+            var storagePathTemplate = GetHostStorageDirectory("*", VirtualDiskFunction.Cluster, storage);
             var servicenames = Directory.GetFileSystemEntries(Path.GetDirectoryName(storagePathTemplate), Path.GetFileName(storagePathTemplate));
             var vmNameRegex = new Regex(storagePathTemplate.Replace("\\","\\\\").Replace("*", "(.+)"));
             foreach(var servicename in servicenames)
@@ -44,15 +44,15 @@ namespace wordslab.manager.vm.wsl
             // See below:  public override void Resize(int maxSizeGB)
             // maxSizeGB = 256;
 
-            var alreadyExistingDisk = TryFindByName(vmName, VirtualDiskFunction.OS, storage);
-            if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual OS disk already exists for virtual machine {vmName}");
+            var alreadyExistingDisk = TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
+            if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual cluster disk already exists for virtual machine {vmName}");
 
-            var serviceName = GetServiceName(vmName, VirtualDiskFunction.OS);
-            var storageDirectory = GetHostStorageDirectory(vmName, VirtualDiskFunction.OS, storage);
+            var serviceName = GetServiceName(vmName, VirtualDiskFunction.Cluster);
+            var storageDirectory = GetHostStorageDirectory(vmName, VirtualDiskFunction.Cluster, storage);
 
             string cacheDirectory = storage.DownloadCacheDirectory;
             string scriptsDirectory = GetScriptsDirectory(storage);
-            var diskInitAndStartScripts = GetDiskInitAndStartScripts(VirtualDiskFunction.OS);
+            var diskInitAndStartScripts = GetDiskInitAndStartScripts(VirtualDiskFunction.Cluster);
 
             Wsl.import(serviceName, storageDirectory, osImagePath, 2);
             foreach (var diskScript in diskInitAndStartScripts)
@@ -60,25 +60,18 @@ namespace wordslab.manager.vm.wsl
                 Wsl.execShell($"cp $(wslpath '{scriptsDirectory}')/{diskScript} /root/{diskScript}", serviceName);
                 Wsl.execShell($"chmod a+x /root/{diskScript}", serviceName);
             }
-            Wsl.execShell($"/root/{diskInitAndStartScripts[0]} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.helmFileName}'", serviceName, timeoutSec: 60, ignoreError: "perl: warning");
+            Wsl.execShell($"/root/{diskInitAndStartScripts[0]} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.k3sImagesFileName}' '{VirtualMachine.helmFileName}'", serviceName, timeoutSec: 60, ignoreError: "perl: warning");
             Wsl.terminate(serviceName);
 
-            return TryFindByName(vmName, VirtualDiskFunction.OS, storage);
+            return TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
         }
 
         public bool InstallNvidiaContainerRuntimeOnOSImage(HostStorage storage)
         {
-            var clusterDisk = WslDisk.TryFindByName(VMName, VirtualDiskFunction.Cluster, storage);
-            if(clusterDisk == null)
-            {
-                throw new FileNotFoundException($"Could not find cluster disk for vm {VMName}");
-            }
-
-            if (Function == VirtualDiskFunction.OS)
+            if (Function == VirtualDiskFunction.Cluster)
             {
                 string scriptsDirectory = GetScriptsDirectory(storage);
 
-                clusterDisk.StartService();
                 try
                 {
                     Wsl.execShell("nvidia-smi -L", ServiceName);
@@ -92,9 +85,8 @@ namespace wordslab.manager.vm.wsl
                 Wsl.execShell("echo -e \"[automount]\\nenabled=true\\n[interop]\\nenabled=true\\nappendWindowsPath=true\" > /etc/wsl.conf", ServiceName);
                 Wsl.terminate(ServiceName);
 
-                Wsl.execShell($"/root/{vmGPUInitScript} {clusterDisk.ServiceName} '{scriptsDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, timeoutSec: 60, ignoreError: "perl: warning");
+                Wsl.execShell($"/root/{clusterGPUInitScript} '{scriptsDirectory}' '{VirtualMachine.nvidiaContainerRuntimeVersion}'", ServiceName, timeoutSec: 60, ignoreError: "perl: warning");
                 Wsl.terminate(ServiceName);
-                clusterDisk.StopService();
                 return true;
             }
             else
@@ -124,7 +116,7 @@ namespace wordslab.manager.vm.wsl
                 Wsl.execShell($"cp $(wslpath '{scriptsDirectory}')/{diskScript} /root/{diskScript}", serviceName);
                 Wsl.execShell($"chmod a+x /root/{diskScript}", serviceName);
             }
-            Wsl.execShell($"/root/{diskInitAndStartScripts[0]}" + (function==VirtualDiskFunction.Cluster?$" '{cacheDirectory}' '{VirtualMachine.k3sImagesFileName}'":""), serviceName, timeoutSec: 120);
+            Wsl.execShell($"/root/{diskInitAndStartScripts[0]}", serviceName, timeoutSec: 120);
             Wsl.terminate(serviceName);
 
             return TryFindByName(vmName, function, storage);
@@ -163,7 +155,7 @@ namespace wordslab.manager.vm.wsl
 
         public override bool IsServiceRequired()
         {
-            return Function != VirtualDiskFunction.OS;
+            return Function != VirtualDiskFunction.Cluster;
         }
 
         private string GetDiskStartupScript()
@@ -196,7 +188,7 @@ namespace wordslab.manager.vm.wsl
 
         public override void StopService()
         {
-            if(Function != VirtualDiskFunction.OS && IsServiceRunnig())
+            if(Function != VirtualDiskFunction.Cluster && IsServiceRunnig())
             {
                 Wsl.terminate(ServiceName);
             }
@@ -225,12 +217,10 @@ namespace wordslab.manager.vm.wsl
 
         internal static string GetScriptsDirectory(HostStorage storage) { return Path.Combine(storage.ScriptsDirectory, "vm", "wsl"); }
 
-        internal static readonly string vmDiskInitScript      = "wordslab-vm-init.sh";
-        internal static readonly string vmGPUInitScript       = "wordslab-gpu-init.sh";
         internal static readonly string clusterDiskInitScript = "wordslab-cluster-init.sh";
+        internal static readonly string clusterGPUInitScript  = "wordslab-gpu-init.sh";
         internal static readonly string dataDiskInitScript    = "wordslab-data-init.sh";
 
-        internal static readonly string vmStartupScript          = "wordslab-vm-start.sh";
         internal static readonly string clusterDiskStartupScript = "wordslab-cluster-start.sh";
         internal static readonly string dataDiskStartupScript    = "wordslab-data-start.sh";
 
@@ -238,10 +228,8 @@ namespace wordslab.manager.vm.wsl
         {
             switch (function)
             {
-                case VirtualDiskFunction.OS:
-                    return new string[] { vmDiskInitScript, vmGPUInitScript, vmStartupScript };
                 case VirtualDiskFunction.Cluster:
-                    return new string[] { clusterDiskInitScript, clusterDiskStartupScript };
+                    return new string[] { clusterDiskInitScript, clusterGPUInitScript, clusterDiskStartupScript };
                 case VirtualDiskFunction.Data:
                     return new string[] { dataDiskInitScript, dataDiskStartupScript };
             }

@@ -6,10 +6,10 @@ namespace wordslab.manager.vm.qemu
 {
     public class QemuDisk : VirtualDisk
     {
-        public static List<string> ListVMNamesFromOsDisks(HostStorage storage)
+        public static List<string> ListVMNamesFromClusterDisks(HostStorage storage)
         {
             var vmNames = new List<string>();
-            var storagePathTemplate = GetHostStorageFile("*", VirtualDiskFunction.OS, storage);
+            var storagePathTemplate = GetHostStorageFile("*", VirtualDiskFunction.Cluster, storage);
             var filenames = Directory.GetFiles(Path.GetDirectoryName(storagePathTemplate), Path.GetFileName(storagePathTemplate));
             var vmNameRegex = new Regex(storagePathTemplate.Replace("\\", "\\\\").Replace("*", "(.+)"));
             foreach (var filename in filenames)
@@ -39,14 +39,14 @@ namespace wordslab.manager.vm.qemu
 
         public static VirtualDisk CreateFromOSImage(string vmName, string osImagePath, int totalSizeGB, HostStorage storage)
         {
-            var alreadyExistingDisk = TryFindByName(vmName, VirtualDiskFunction.OS, storage);
-            if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual OS disk already exists for virtual machine {vmName}");
+            var alreadyExistingDisk = TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
+            if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual cluster disk already exists for virtual machine {vmName}");
 
-            var diskStoragePath = GetHostStorageFile(vmName, VirtualDiskFunction.OS, storage);
+            var diskStoragePath = GetHostStorageFile(vmName, VirtualDiskFunction.Cluster, storage);
             var scriptsPath = GetLinuxScriptsPath(storage);
             Qemu.CreateVirtualDiskFromOsImageWithCloudInit(diskStoragePath, osImagePath, Path.Combine(scriptsPath, metadataFile), Path.Combine(scriptsPath, userdataFile));
 
-            return TryFindByName(vmName, VirtualDiskFunction.OS, storage);
+            return TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
         }
 
         private static string GetLinuxScriptsPath(HostStorage storage)
@@ -71,15 +71,15 @@ namespace wordslab.manager.vm.qemu
             SshClient.ExecuteRemoteCommand("ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"sudo ./{k3sInstallScript}");
         }
 
-        public static VirtualDisk CreateBlank(string vmName, VirtualDiskFunction function, int totalSizeGB, HostStorage storage)
+        public static VirtualDisk CreateBlank(string vmName, int totalSizeGB, HostStorage storage)
         {
-            var alreadyExistingDisk = TryFindByName(vmName, function, storage);
-            if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual {function} disk already exists for virtual machine {vmName}");
+            var alreadyExistingDisk = TryFindByName(vmName, VirtualDiskFunction.Data, storage);
+            if (alreadyExistingDisk != null) throw new ArgumentException($"A virtual data disk already exists for virtual machine {vmName}");
 
-            var diskStoragePath = GetHostStorageFile(vmName, VirtualDiskFunction.OS, storage);
+            var diskStoragePath = GetHostStorageFile(vmName, VirtualDiskFunction.Data, storage);
             Qemu.CreateVirtualDisk(diskStoragePath, totalSizeGB);
 
-            return TryFindByName(vmName, function, storage);
+            return TryFindByName(vmName, VirtualDiskFunction.Data, storage);
         }
 
 

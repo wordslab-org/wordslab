@@ -24,9 +24,6 @@ namespace wordslab.manager.storage.config
             GPUModel = vm.GPUModel;
             GPUMemoryGB = vm.GPUMemoryGB;
 
-            VmDiskSizeGB = vm.OsDisk.MaxSizeGB;
-            VmDiskIsSSD = vm.OsDisk.IsSSD;
-
             ClusterDiskSizeGB = vm.ClusterDisk.MaxSizeGB;
             ClusterDiskIsSSD = vm.ClusterDisk.IsSSD;
 
@@ -38,12 +35,14 @@ namespace wordslab.manager.storage.config
                 HostSSHPort = vm.Endpoint.SSHPort;
                 HostKubernetesPort = vm.Endpoint.KubernetesPort;
                 HostHttpIngressPort = vm.Endpoint.HttpIngressPort;
+                HostHttpsIngressPort = vm.Endpoint.HttpsIngressPort;
             }
             else
             {
                 HostSSHPort = vm.HostSSHPort;
                 HostKubernetesPort = vm.HostKubernetesPort;
                 HostHttpIngressPort = vm.HostHttpIngressPort;
+                HostHttpsIngressPort = vm.HostHttpsIngressPort;
             }
         }
 
@@ -58,9 +57,6 @@ namespace wordslab.manager.storage.config
         public string? GPUModel { get; internal set; }
         public int GPUMemoryGB { get; internal set; }
 
-        public int VmDiskSizeGB { get; internal set; }
-        public bool VmDiskIsSSD { get; internal set; }
-
         public int ClusterDiskSizeGB { get; internal set; }
         public bool ClusterDiskIsSSD { get; internal set; }
 
@@ -70,6 +66,7 @@ namespace wordslab.manager.storage.config
         public int HostSSHPort { get; internal set; }
         public int HostKubernetesPort { get; internal set; }
         public int HostHttpIngressPort { get; internal set; }
+        public int HostHttpsIngressPort { get; internal set; }
 
         public override bool Equals(object? obj)
         {
@@ -80,8 +77,6 @@ namespace wordslab.manager.storage.config
                    MemoryGB == config.MemoryGB &&
                    GPUModel == config.GPUModel &&
                    GPUMemoryGB == config.GPUMemoryGB &&
-                   VmDiskSizeGB == config.VmDiskSizeGB &&
-                   VmDiskIsSSD == config.VmDiskIsSSD &&
                    ClusterDiskSizeGB == config.ClusterDiskSizeGB &&
                    ClusterDiskIsSSD == config.ClusterDiskIsSSD &&
                    DataDiskSizeGB == config.DataDiskSizeGB &&

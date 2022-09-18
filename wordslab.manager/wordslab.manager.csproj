@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon>wwwroot\favicon.ico</ApplicationIcon>
+    <ApplicationIcon>web\wwwroot\favicon.ico</ApplicationIcon>
     <AssemblyName>wordslab</AssemblyName>
   </PropertyGroup>
 
@@ -63,10 +63,44 @@
     <Content Include="scripts\vm\wsl\wordslab-gpu-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\wsl\wordslab-vm-init.sh">
+    <Content Include="scripts\vm\wsl\wordslab-cluster-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\wsl\wordslab-vm-start.sh">
+    <Content Include="web\wwwroot\css\bootstrap\bootstrap.min.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\bootstrap\bootstrap.min.css.map" />
+    <Content Include="web\wwwroot\css\open-iconic\FONT-LICENSE">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\font\css\open-iconic-bootstrap.min.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\font\fonts\open-iconic.eot">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\font\fonts\open-iconic.otf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\font\fonts\open-iconic.svg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\font\fonts\open-iconic.ttf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\font\fonts\open-iconic.woff">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\ICON-LICENSE">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\open-iconic\README.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\css\site.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web\wwwroot\favicon.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -76,12 +110,6 @@
     <PackageReference Include="Serilog.AspNetCore" Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.43.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="scripts\vm\wsl\wordslab-cluster-start.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

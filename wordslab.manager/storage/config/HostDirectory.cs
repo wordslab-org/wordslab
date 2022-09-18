@@ -16,7 +16,6 @@ namespace wordslab.manager.storage.config
         public enum StorageFunction
         {
             DownloadCache,
-            VirtualMachineOS,
             VirtualMachineCluster,
             VirtualMachineData,
             Backup

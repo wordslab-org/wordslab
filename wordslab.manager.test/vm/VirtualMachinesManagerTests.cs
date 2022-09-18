@@ -40,8 +40,9 @@ namespace wordslab.manager.test.vm
                 Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
 
                 minSpec.Name = "test-blank2";
-                minSpec.HostHttpIngressPort += 2;
-                minSpec.HostKubernetesPort += 2;
+                minSpec.HostHttpIngressPort += 1;
+                minSpec.HostHttpsIngressPort += 1;
+                minSpec.HostKubernetesPort += 1;
                 ui = new TestProcessUI();
                 vm = await vmm.CreateLocalVM(minSpec, ui);
                 Assert.IsNotNull(vm);
@@ -68,7 +69,17 @@ namespace wordslab.manager.test.vm
                 var vm2 = vms[1];
 
                 Assert.IsTrue(vm1.Name == "test-blank1");
-                Assert.IsTrue(vm2.Name == "test-blank2");
+                Assert.IsTrue(vm2.Name == "test-blank2");                
+                
+                var portsbefore = Network.GetAllTcpPortsInUse();
+                vm1.Start();
+                var portsafter = Network.GetAllTcpPortsInUse();
+                var newports = portsafter.Except(portsbefore);
+
+                portsbefore = Network.GetAllTcpPortsInUse();
+                vm2.Start();
+                portsafter = Network.GetAllTcpPortsInUse();
+                newports = portsafter.Except(portsbefore);
 
                 Assert.IsTrue(vm1.IsRunning());
                 Assert.IsTrue(vm2.IsRunning());

@@ -170,8 +170,8 @@ namespace wordslab.manager.os
         // 4. Run Qemu virtual machine
 
         public static int StartVirtualMachine(int processors, int memoryGB,
-            string osDiskFilePath, string clusterDiskFilePath, string dataDiskFilePath,
-            int sshForwardPort=3022, int httpForwardPort=3080, int kubernetesForwardPort=3443)
+            string clusterDiskFilePath, string dataDiskFilePath,
+            int sshForwardPort=3022, int httpForwardPort=3080, int httpsForwardPort = 3043, int kubernetesForwardPort=3443)
         {
             string accelParam = null;
             if(OS.IsLinux)
@@ -183,12 +183,11 @@ namespace wordslab.manager.os
                 accelParam = "hvf";
             }
 
-            string osDiskFileDir = Directory.GetParent(osDiskFilePath).FullName;
+            string clusterDiskFileDir = Directory.GetParent(clusterDiskFilePath).FullName;
 
             var pid = Command.LaunchAndForget(QEMUEXE, $"-machine accel={accelParam},type=q35 -cpu host -smp {processors} -m {memoryGB}G -nographic " +
                         $"-device virtio-net-pci,netdev=net0 -netdev user,id=net0,hostfwd=tcp::{sshForwardPort}-:22,hostfwd=tcp::{httpForwardPort}-:80,hostfwd=tcp::{kubernetesForwardPort}-:6443 " +
-                        $"-drive if=virtio,format=qcow2,file={osDiskFilePath} -drive if=virtio,format=raw,file={osDiskFileDir}/cloudinit.img " +
-                        $"-drive if=virtio,format=qcow2,file={clusterDiskFilePath} " +
+                        $"-drive if=virtio,format=qcow2,file={clusterDiskFilePath} -drive if=virtio,format=raw,file={clusterDiskFileDir}/cloudinit.img " +
                         $"-drive if=virtio,format=qcow2,file={dataDiskFilePath}", showWindow: false);
             return pid;
         }
@@ -198,7 +197,6 @@ namespace wordslab.manager.os
             public int PID;
             public int Processors;
             public int MemoryGB;
-            public string OsDiskFilePath;
             public string ClusterDiskFilePath;
             public string DataDiskFilePath;
             public int sshForwardPort;
@@ -219,7 +217,7 @@ namespace wordslab.manager.os
                 var process = new QemuProcessProperties();
                 process.PID = Int32.Parse(strPID);
 
-                var qemuCommandRegex = new Regex("-smp\\s(\\d+).*-m\\s(\\d+)G.*tcp::(\\d+)-:22.*tcp::(\\d+)-:80.*tcp::(\\d+)-:6443.*-drive if=virtio,format=qcow2,file=([^\\s]+) -drive if=virtio,format=raw,file=[^\\s]+/cloudinit.img -drive if=virtio,format=qcow2,file=([^\\s]+) -drive if=virtio,format=qcow2,file=([^\\s]+)");
+                var qemuCommandRegex = new Regex("-smp\\s(\\d+).*-m\\s(\\d+)G.*tcp::(\\d+)-:22.*tcp::(\\d+)-:80.*tcp::(\\d+)-:6443.*-drive if=virtio,format=qcow2,file=([^\\s]+) -drive if=virtio,format=raw,file=[^\\s]+/cloudinit.img -drive if=virtio,format=qcow2,file=([^\\s]+)");
                 var match = qemuCommandRegex.Match(strCMD);
                 if (match.Success)
                 {
@@ -228,7 +226,6 @@ namespace wordslab.manager.os
                     process.sshForwardPort = Int32.Parse(match.Groups[3].Value);
                     process.httpForwardPort = Int32.Parse(match.Groups[4].Value);
                     process.kubernetesForwardPort = Int32.Parse(match.Groups[5].Value);
-                    process.OsDiskFilePath = match.Groups[6].Value;
                     process.ClusterDiskFilePath = match.Groups[7].Value;
                     process.DataDiskFilePath = match.Groups[8].Value;
                     return process;

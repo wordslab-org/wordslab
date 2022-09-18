@@ -165,9 +165,7 @@ namespace wordslab.manager.test.storage
             vm1.MemoryGB = 4;
             vm1.GPUModel = "GTX 1050";
             vm1.GPUMemoryGB = 4;
-            vm1.VmDiskSizeGB = 1;
-            vm1.VmDiskIsSSD = true;
-            vm1.ClusterDiskSizeGB = 4;
+            vm1.ClusterDiskSizeGB = 5;
             vm1.ClusterDiskIsSSD = true;
             vm1.DataDiskSizeGB = 8;
             vm1.DataDiskIsSSD = false;
@@ -188,8 +186,6 @@ namespace wordslab.manager.test.storage
             vm1.MemoryGB = 8;
             vm1.GPUModel = null;
             vm1.GPUMemoryGB = 0;
-            vm1.VmDiskSizeGB = 2;
-            vm1.VmDiskIsSSD = false;
             vm1.ClusterDiskSizeGB = 8;
             vm1.ClusterDiskIsSSD = false;
             vm1.DataDiskSizeGB = 16;

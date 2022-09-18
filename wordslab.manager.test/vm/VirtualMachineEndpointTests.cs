@@ -24,7 +24,7 @@ namespace wordslab.manager.test.vm
             var storage = new HostStorage();
             var path = VirtualMachineEndpoint.GetEndpointFilePath(storage, "toto");
 
-            var endpoint = new VirtualMachineEndpoint("toto", "127.0.0.1", 22, 4233, 81, "kubernetes\nconfig");
+            var endpoint = new VirtualMachineEndpoint("toto", "127.0.0.1", 22, 3444, 81, 444, "kubernetes\nconfig");
             endpoint.Save(storage);
 
             Assert.IsTrue(File.Exists(path));
@@ -42,8 +42,9 @@ namespace wordslab.manager.test.vm
             Assert.IsTrue(endpoint.VMName == "toto");
             Assert.IsTrue(endpoint.IPAddress == "127.0.0.1");
             Assert.IsTrue(endpoint.SSHPort == 22);
-            Assert.IsTrue(endpoint.KubernetesPort == 4233);
+            Assert.IsTrue(endpoint.KubernetesPort == 3444);
             Assert.IsTrue(endpoint.HttpIngressPort == 81);
+            Assert.IsTrue(endpoint.HttpsIngressPort == 444);
             Assert.IsTrue(endpoint.Kubeconfig == "kubernetes\nconfig");
             Assert.IsTrue(File.Exists(endpoint.KubeconfigPath));
         }

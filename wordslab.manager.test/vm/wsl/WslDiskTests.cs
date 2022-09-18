@@ -39,31 +39,7 @@ namespace wordslab.manager.test.vm.wsl
         public void T01_TestCreateBlank()
         {
             var storage = new HostStorage();
-            var disk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Cluster, storage);
-            Assert.IsNotNull(disk);
-            Assert.IsTrue(disk.VMName == "test-blank");
-            Assert.IsTrue(disk.Function == VirtualDiskFunction.Cluster);
-            Assert.IsTrue(disk.MaxSizeGB == 256);
-            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-cluster-disk");
-            Assert.IsTrue(disk.IsSSD);
-            Assert.IsTrue(disk.IsServiceRequired());
-            Assert.IsFalse(disk.IsServiceRunnig());
-            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-cluster-disk\ext4.vhdx"));
-
-            Exception expectedEx = null;
-            try
-            {
-                WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Cluster, storage);
-            }
-            catch (Exception ex)
-            {
-                expectedEx = ex;
-            }
-            Assert.IsNotNull(expectedEx);
-            Assert.IsTrue(expectedEx is ArgumentException);
-            Assert.IsTrue(expectedEx.Message.Contains("already exists"));
-
-            disk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+            var disk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
             Assert.IsNotNull(disk);
             Assert.IsTrue(disk.VMName == "test-blank");
             Assert.IsTrue(disk.Function == VirtualDiskFunction.Data);
@@ -73,6 +49,19 @@ namespace wordslab.manager.test.vm.wsl
             Assert.IsTrue(disk.IsServiceRequired());
             Assert.IsFalse(disk.IsServiceRunnig());
             Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-data-disk\ext4.vhdx"));
+
+            Exception expectedEx = null;
+            try
+            {
+                WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+            }
+            catch (Exception ex)
+            {
+                expectedEx = ex;
+            }
+            Assert.IsNotNull(expectedEx);
+            Assert.IsTrue(expectedEx is ArgumentException);
+            Assert.IsTrue(expectedEx.Message.Contains("already exists"));
         }
 
         [TestMethodOnWindows]
@@ -122,13 +111,13 @@ namespace wordslab.manager.test.vm.wsl
             var disk = WslDisk.CreateFromOSImage("test-blank", osImagePath, storage);
             Assert.IsNotNull(disk);
             Assert.IsTrue(disk.VMName == "test-blank");
-            Assert.IsTrue(disk.Function == VirtualDiskFunction.OS);
+            Assert.IsTrue(disk.Function == VirtualDiskFunction.Cluster);
             Assert.IsTrue(disk.MaxSizeGB == 256);
-            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-vm");
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-cluster-disk");
             Assert.IsTrue(disk.IsSSD);
             Assert.IsFalse(disk.IsServiceRequired());
             Assert.IsFalse(disk.IsServiceRunnig());
-            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-vm\ext4.vhdx"));
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-cluster-disk\ext4.vhdx"));
 
             Exception expectedEx = null;
             try
@@ -149,8 +138,8 @@ namespace wordslab.manager.test.vm.wsl
         {
             var storage = new HostStorage();
 
-            var osDisk = (WslDisk)WslDisk.TryFindByName("test-blank", VirtualDiskFunction.OS, storage);
-            var installOK = osDisk.InstallNvidiaContainerRuntimeOnOSImage(storage);
+            var clusterDisk = (WslDisk)WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            var installOK = clusterDisk.InstallNvidiaContainerRuntimeOnOSImage(storage);
             Assert.IsTrue(installOK);
         }
 
@@ -161,7 +150,7 @@ namespace wordslab.manager.test.vm.wsl
             var osImagePath = Path.Combine(storage.DownloadCacheDirectory, WslDisk.ubuntuFileName);
             WslDisk.CreateFromOSImage("test-blank2", osImagePath, storage);
 
-            var vms = WslDisk.ListVMNamesFromOsDisks(storage);
+            var vms = WslDisk.ListVMNamesFromClusterDisks(storage);
             Assert.IsTrue(vms.Count == 2);
             Assert.IsTrue(vms[0] == "test-blank");
             Assert.IsTrue(vms[1] == "test-blank2");
@@ -184,32 +173,27 @@ namespace wordslab.manager.test.vm.wsl
         {
             var storage = new HostStorage();
 
-            var os1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.OS, storage);
-            var os2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.OS, storage);
-            var cluster = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            var cluster1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            var cluster2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.Cluster, storage);
             var data = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
 
-            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineOSDirectory).Length == 4);
-            Assert.IsNotNull(os1);
-            Assert.IsNotNull(os2);
-            Assert.IsNotNull(cluster);
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineClusterDirectory).Length == 3);
+            Assert.IsNotNull(cluster1);
+            Assert.IsNotNull(cluster2);
             Assert.IsNotNull(data);
 
-            os1.Delete();
-            os2.Delete();
-            cluster.Delete();
+            cluster1.Delete();
+            cluster2.Delete();
             data.Delete();
 
-            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineOSDirectory).Length == 0);
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineClusterDirectory).Length == 0);
 
-            os1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.OS, storage);
-            os2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.OS, storage);
-            cluster = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            cluster1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
+            cluster2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.Cluster, storage);
             data = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Data, storage);
 
-            Assert.IsNull(os1);
-            Assert.IsNull(os2);
-            Assert.IsNull(cluster);
+            Assert.IsNull(cluster1);
+            Assert.IsNull(cluster2);
             Assert.IsNull(data);
         }
     }

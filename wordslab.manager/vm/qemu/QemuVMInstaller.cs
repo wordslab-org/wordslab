@@ -38,7 +38,7 @@ namespace wordslab.manager.vm.qemu
                     return null;
                 }
 
-                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.VmDiskSizeGB + vmSpec.ClusterDiskSizeGB + vmSpec.DataDiskSizeGB} (VM) + {VirtualMachineSpec.MIN_HOST_DISK_GB + VirtualMachineSpec.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
+                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.ClusterDiskSizeGB + vmSpec.DataDiskSizeGB} (VM) + {VirtualMachineSpec.MIN_HOST_DISK_GB + VirtualMachineSpec.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
                 Dictionary<os.DriveInfo, int> storageReqsGB;
                 string storageErrorMessage;
                 storageSpecOK = vmSpec.CheckStorageRequirements(hostStorage, out storageReqsGB, out storageErrorMessage);
@@ -290,48 +290,37 @@ namespace wordslab.manager.vm.qemu
                 }
 
                 // 5. Create VM disks
-                bool virtualDiskVMOK = true;
                 bool virtualDiskClusterOK = true;
                 bool virtualDiskDataOK = true;
 
                 ui.DisplayInstallStep(5, 6, "Initialize wordslab VM virtual disks");
 
+                var clusterDisk = QemuDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Cluster, hostStorage);
+                if (clusterDisk == null)
+                {
+                    var c24 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
+                    clusterDisk = QemuDisk.CreateFromOSImage(vmSpec.Name, Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName), vmSpec.ClusterDiskSizeGB, hostStorage);
+                    virtualDiskClusterOK = clusterDisk != null;
+                    ui.DisplayCommandResult(c24, virtualDiskClusterOK);
+                }
+                if (!virtualDiskClusterOK) { return null; }
+
+                /*if (createVMWithGPUSupport)
+                {
+                    var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on cluster virtual disk");
+                    ((WslDisk)osDisk).InstallNvidiaContainerRuntimeOnOSImage(clusterDisk);
+                    ui.DisplayCommandResult(c25, true);
+                }*/
+
                 var dataDisk = QemuDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Data, hostStorage);
                 if (dataDisk == null)
                 {
                     var c22 = ui.DisplayCommandLaunch("Initializing wordslab data virtual disk");
-                    dataDisk = QemuDisk.CreateBlank(vmSpec.Name, VirtualDiskFunction.Data, vmSpec.DataDiskSizeGB, hostStorage);
+                    dataDisk = QemuDisk.CreateBlank(vmSpec.Name, vmSpec.DataDiskSizeGB, hostStorage);
                     virtualDiskDataOK = dataDisk != null;
                     ui.DisplayCommandResult(c22, virtualDiskDataOK);
                 }
-                if (!virtualDiskDataOK) { return null; }
-
-                var clusterDisk = QemuDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Cluster, hostStorage);
-                if (clusterDisk == null)
-                {
-                    var c23 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
-                    clusterDisk = QemuDisk.CreateBlank(vmSpec.Name, VirtualDiskFunction.Cluster, vmSpec.ClusterDiskSizeGB, hostStorage);
-                    virtualDiskClusterOK = clusterDisk != null;
-                    ui.DisplayCommandResult(c23, virtualDiskClusterOK);
-                }
-                if (!virtualDiskClusterOK) { return null; }
-
-                var osDisk = QemuDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.OS, hostStorage);
-                if (osDisk == null)
-                {
-                    var c24 = ui.DisplayCommandLaunch("Initializing wordslab VM virtual disk");
-                    osDisk = QemuDisk.CreateFromOSImage(vmSpec.Name, Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName), vmSpec.VmDiskSizeGB, hostStorage);
-                    virtualDiskVMOK = osDisk != null;
-                    ui.DisplayCommandResult(c24, virtualDiskVMOK);
-                }
-                if (!virtualDiskVMOK) { return null; }
-
-                /*if (createVMWithGPUSupport)
-                {
-                    var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on VM virtual disk");
-                    ((WslDisk)osDisk).InstallNvidiaContainerRuntimeOnOSImage(clusterDisk);
-                    ui.DisplayCommandResult(c25, true);
-                }*/
+                if (!virtualDiskDataOK) { return null; }           
 
                 // 6. Configure and start local Virtual Machine
                 bool vmConfigOK = true;
@@ -377,7 +366,6 @@ namespace wordslab.manager.vm.qemu
                 if (confirm)
                 {
                     var c2 = ui.DisplayCommandLaunch("Deleting wordslab virtual machine and local k3s cluster");
-                    localVM.OsDisk.Delete();
                     localVM.ClusterDisk.Delete();
                     localVM.DataDisk.Delete();
                     ui.DisplayCommandResult(c2, true);

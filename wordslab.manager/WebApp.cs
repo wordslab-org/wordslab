@@ -1,12 +1,13 @@
 namespace wordslab.manager; 
 
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.os;
 
 public static class WebApp
 {
-    public const int DEFAULT_PORT = 3088;
+    public const int DEFAULT_PORT = 8080;
 
     // This attribute is a workaround to fix a bug in Blazor server when publishing with assembly trimming
     // https://github.com/dotnet/aspnetcore/issues/37143#issuecomment-931726256
@@ -17,8 +18,9 @@ public static class WebApp
         Console.WriteLine();
 
         // Register ASP.NET services for the web application
-        
+
         builder.Services.AddRazorPages();
+        builder.Services.Configure<RazorPagesOptions>(options => options.RootDirectory = "/web/Pages");
         builder.Services.AddServerSideBlazor();
 
         // Initialize the web application host
@@ -52,14 +54,11 @@ public static class WebApp
         Console.WriteLine();
 
         // Open browser
-        if (!app.Environment.IsDevelopment())
+        try
         {
-            try
-            {
-                WebBrowser.Open(url);
-            }
-            catch (Exception) { } // Ignore exceptions - best effort only
+            WebBrowser.Open(url);
         }
+        catch (Exception) { } // Ignore exceptions - best effort only
         
         Console.WriteLine("Press Ctrl-C to exit the application ...");
         Console.WriteLine();

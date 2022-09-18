@@ -176,13 +176,12 @@ namespace wordslab.manager.test.os
         public void T12_TestStartVirtualMachine()
         {
             var tmpDir = Path.Combine(AppContext.BaseDirectory, "test-quemu");
-            var osDiskFilePath = Path.Combine(tmpDir, "osDisk");
             var clusterDiskFilePath = Path.Combine(tmpDir, "clusterDisk");
             var dataDiskFilePath = Path.Combine(tmpDir, "dataDisk");
 
             // Everything ok
-            var pid = Qemu.StartVirtualMachine(2, 2, osDiskFilePath, clusterDiskFilePath, dataDiskFilePath);
-            var process = Qemu.TryFindVirtualMachineProcess(osDiskFilePath);
+            var pid = Qemu.StartVirtualMachine(2, 2, clusterDiskFilePath, dataDiskFilePath);
+            var process = Qemu.TryFindVirtualMachineProcess(clusterDiskFilePath);
             Assert.IsTrue(process.PID == pid);
             Qemu.StopVirtualMachine(pid);
 
@@ -190,7 +189,7 @@ namespace wordslab.manager.test.os
             Exception expectedEx = null;
             try
             {
-                Qemu.StartVirtualMachine(2000, 2, osDiskFilePath, clusterDiskFilePath, dataDiskFilePath);
+                Qemu.StartVirtualMachine(2000, 2, clusterDiskFilePath, dataDiskFilePath);
             }
             catch (Exception ex)
             {
@@ -204,7 +203,7 @@ namespace wordslab.manager.test.os
             expectedEx = null;
             try
             {
-                Qemu.StartVirtualMachine(2, 2000, osDiskFilePath, clusterDiskFilePath, dataDiskFilePath);
+                Qemu.StartVirtualMachine(2, 2000, clusterDiskFilePath, dataDiskFilePath);
             }
             catch (Exception ex)
             {
@@ -218,7 +217,7 @@ namespace wordslab.manager.test.os
             expectedEx = null;
             try
             {
-                Qemu.StartVirtualMachine(2, 2, osDiskFilePath+"toto", clusterDiskFilePath, dataDiskFilePath);
+                Qemu.StartVirtualMachine(2, 2, clusterDiskFilePath+"toto", dataDiskFilePath);
             }
             catch (Exception ex)
             {
@@ -233,18 +232,17 @@ namespace wordslab.manager.test.os
         public void T13_TestTryFindVirtualMachineProcess()
         {
             var tmpDir = Path.Combine(AppContext.BaseDirectory, "test-quemu");
-            var osDiskFilePath = Path.Combine(tmpDir, "osDisk");
             var clusterDiskFilePath = Path.Combine(tmpDir, "clusterDisk");
             var dataDiskFilePath = Path.Combine(tmpDir, "dataDisk");
 
             // VM started
-            var pid = Qemu.StartVirtualMachine(2, 2, osDiskFilePath, clusterDiskFilePath, dataDiskFilePath);
-            var process = Qemu.TryFindVirtualMachineProcess(osDiskFilePath);
+            var pid = Qemu.StartVirtualMachine(2, 2, clusterDiskFilePath, dataDiskFilePath);
+            var process = Qemu.TryFindVirtualMachineProcess(clusterDiskFilePath);
             Assert.IsTrue(process.PID == pid);
 
             // VM stopped
             Qemu.StopVirtualMachine(pid);
-            process = Qemu.TryFindVirtualMachineProcess(osDiskFilePath);
+            process = Qemu.TryFindVirtualMachineProcess(clusterDiskFilePath);
             Assert.IsTrue(process == null);
         }
 

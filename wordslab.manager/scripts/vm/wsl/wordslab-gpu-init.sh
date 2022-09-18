@@ -1,15 +1,11 @@
 #!/bin/bash
-clusterServiceName=$1
-scriptspath=$(wslpath "$2")
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+scriptspath=$(wslpath "$1")
+NVIDIA_CONTAINER_RUNTIME_VERSION=$2
 
-NVIDIA_CONTAINER_RUNTIME_VERSION=$3
-apt-get update && apt-get -y install gnupg2 curl
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add -
 curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | tee /etc/apt/sources.list.d/nvidia-container-runtime.list
-apt-get update && apt-get -y install nvidia-container-runtime=${NVIDIA_CONTAINER_RUNTIME_VERSION}
-
-mount -o bind /mnt/wsl/$clusterServiceName/var/lib /var/lib
+apt update && apt -y install nvidia-container-runtime=${NVIDIA_CONTAINER_RUNTIME_VERSION}
 
 mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
 cp $scriptspath/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
@@ -25,7 +21,7 @@ cp $scriptspath/config.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/confi
 # You would need a WSL2 specific build of the plugin (which doesn't exist) in order to make this work. 
 # There is nothing that can be done until support for that is added.
 
-#mkdir -p /var/lib/rancher/k3s/server/manifests
-#cp $downloadpath/device-plugin-daemonset.yaml /var/lib/rancher/k3s/server/manifests/nvidia-device-plugin-daemonset.yaml
+# mkdir -p /var/lib/rancher/k3s/server/manifests
+# cp $downloadpath/device-plugin-daemonset.yaml /var/lib/rancher/k3s/server/manifests/nvidia-device-plugin-daemonset.yaml
 
 echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" > /etc/wsl.conf

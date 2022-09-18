@@ -4,8 +4,8 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
-using wordslab.manager.cli;
-using wordslab.manager.cli.host;
+using wordslab.manager.console;
+using wordslab.manager.console.host;
 
 public static class ConsoleApp
 {
@@ -241,16 +241,7 @@ public static class ConsoleApp
 
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
-            try
-            {
-                WebApp.Run(builder, settings.Port, context.Remaining.Raw.ToArray());
-            }
-            catch (Exception ex)
-            {
-                AnsiConsole.WriteException(ex);
-                return -1;
-            }
-            return 0;
+            throw new NotImplementedException("ManagerCommand is used for documentation only, it should be intercepted before launching the ConsoleApp");
         }
 
         public class Settings : CommandSettings

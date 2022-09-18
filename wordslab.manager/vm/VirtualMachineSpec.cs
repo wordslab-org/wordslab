@@ -30,7 +30,6 @@ namespace wordslab.manager.vm
 
         public const int MIN_VM_PROCESSORS = 2;
         public const int MIN_VM_MEMORY_GB = 4;
-        public const int MIN_VM_OSDISK_GB = 2;
         public const int MIN_VM_CLUSTERDISK_GB = 5;
         public const int MIN_VM_DATADISK_GB = 1;
 
@@ -39,7 +38,6 @@ namespace wordslab.manager.vm
 
         public const int REC_VM_PROCESSORS = 6;
         public const int REC_VM_MEMORY_GB = 12;
-        public const int REC_VM_OSDISK_GB = 4;
         public const int REC_VM_CLUSTERDISK_GB = 10;
         public const int REC_VM_DATADISK_GB = 25;
 
@@ -47,8 +45,9 @@ namespace wordslab.manager.vm
         public const int    REC_VM_GPUMEMORY_GB = 6;
 
         public const int DEFAULT_HOST_SSH_PORT = 3022;
-        public const int DEFAULT_HOST_Kubernetes_PORT = 3443;
-        public const int DEFAULT_HOST_HttpIngress_PORT = 3080;
+        public const int DEFAULT_HOST_Kubernetes_PORT = 6443;
+        public const int DEFAULT_HOST_HttpIngress_PORT = 80;
+        public const int DEFAULT_HOST_HttpsIngress_PORT = 443;
 
         public bool CheckCPURequirements(Compute.CPUInfo cpuInfo, out string cpuErrorMessage)
         {
@@ -95,17 +94,14 @@ namespace wordslab.manager.vm
             }
 
             var vmDrives = new os.DriveInfo[] {
-                    Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineOSDirectory),
                     Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineClusterDirectory),
                     Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineDataDirectory) };
 
             var vmStorageReqs = new int[] {
-                VmDiskSizeGB,
                 ClusterDiskSizeGB,
                 DataDiskSizeGB };
 
             var vmSSDReqs = new bool[] {
-                VmDiskIsSSD,
                 ClusterDiskIsSSD,
                 DataDiskIsSSD };
 
@@ -175,8 +171,6 @@ namespace wordslab.manager.vm
             minVMSpec.MemoryGB = MIN_VM_MEMORY_GB;
             minVMSpec.GPUModel = MIN_VM_GPUMODEL;
             minVMSpec.GPUMemoryGB = MIN_VM_GPUMEMORY_GB;
-            minVMSpec.VmDiskSizeGB = MIN_VM_OSDISK_GB;
-            minVMSpec.VmDiskIsSSD = false;
             minVMSpec.ClusterDiskSizeGB = MIN_VM_CLUSTERDISK_GB;
             minVMSpec.ClusterDiskIsSSD = false;
             minVMSpec.DataDiskSizeGB = MIN_VM_DATADISK_GB;
@@ -203,8 +197,6 @@ namespace wordslab.manager.vm
             recVMSpec.MemoryGB = REC_VM_MEMORY_GB;
             recVMSpec.GPUModel = REC_VM_GPUMODEL;
             recVMSpec.GPUMemoryGB = REC_VM_GPUMEMORY_GB;
-            recVMSpec.VmDiskSizeGB = REC_VM_OSDISK_GB;
-            recVMSpec.VmDiskIsSSD = false;
             recVMSpec.ClusterDiskSizeGB = REC_VM_CLUSTERDISK_GB;
             recVMSpec.ClusterDiskIsSSD = true;
             recVMSpec.DataDiskSizeGB = REC_VM_DATADISK_GB;
@@ -234,29 +226,24 @@ namespace wordslab.manager.vm
             maxVMSpec.GPUModel = bestGPU != null ? bestGPU.ModelName : null;
             maxVMSpec.GPUMemoryGB = bestGPU != null ? (bestGPU.MemoryMB/1024) : 0;
             
-            var vmOSDrive = Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineOSDirectory);
             var vmClusterDrive = Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineClusterDirectory);
             var vmDataDrive = Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineDataDirectory);
 
             if (recRequirementsOK)
             {
-                maxVMSpec.VmDiskSizeGB = (int)(vmOSDrive.TotalSizeMB/1000) - recStorageReqsGB[vmOSDrive] + REC_VM_OSDISK_GB;
                 maxVMSpec.ClusterDiskSizeGB = (int)(vmClusterDrive.TotalSizeMB / 1000) - recStorageReqsGB[vmClusterDrive] + REC_VM_CLUSTERDISK_GB;
                 maxVMSpec.DataDiskSizeGB = (int)(vmDataDrive.TotalSizeMB / 1000) - recStorageReqsGB[vmDataDrive] + REC_VM_DATADISK_GB;
             }
             else if(minRequirementsOK)
             {
-                maxVMSpec.VmDiskSizeGB = (int)(vmOSDrive.TotalSizeMB / 1000) - minStorageReqsGB[vmOSDrive] + MIN_VM_OSDISK_GB;
                 maxVMSpec.ClusterDiskSizeGB = (int)(vmClusterDrive.TotalSizeMB / 1000) - minStorageReqsGB[vmClusterDrive] + MIN_VM_CLUSTERDISK_GB;
                 maxVMSpec.DataDiskSizeGB = (int)(vmDataDrive.TotalSizeMB / 1000) - minStorageReqsGB[vmDataDrive] + MIN_VM_DATADISK_GB;
             }
             else
             {
-                maxVMSpec.VmDiskSizeGB = (int)(vmOSDrive.TotalSizeMB / 1000);
                 maxVMSpec.ClusterDiskSizeGB = (int)(vmClusterDrive.TotalSizeMB / 1000);
                 maxVMSpec.DataDiskSizeGB = (int)(vmDataDrive.TotalSizeMB / 1000);
             }
-            maxVMSpec.VmDiskIsSSD = vmOSDrive.IsSSD;            
             maxVMSpec.ClusterDiskIsSSD = vmClusterDrive.IsSSD;
             maxVMSpec.DataDiskIsSSD = vmDataDrive.IsSSD;
 
@@ -265,6 +252,7 @@ namespace wordslab.manager.vm
                 vmSpec.HostSSHPort = DEFAULT_HOST_SSH_PORT;
                 vmSpec.HostKubernetesPort = DEFAULT_HOST_Kubernetes_PORT;
                 vmSpec.HostHttpIngressPort = DEFAULT_HOST_HttpIngress_PORT;
+                vmSpec.HostHttpsIngressPort = DEFAULT_HOST_HttpsIngress_PORT;
             }
 
             return new RecommendedVMSpecs(minVMSpec, minRequirementsOK, minVMSpecErrorMessage, recVMSpec, recRequirementsOK, recVMSpecErrorMessage, maxVMSpec);
@@ -281,7 +269,6 @@ namespace wordslab.manager.vm
             vmConfig.GPUModel = null;
             vmConfig.GPUMemoryGB = 0;
 
-            vmConfig.VmDiskSizeGB = REC_VM_OSDISK_GB;
             vmConfig.ClusterDiskSizeGB = REC_VM_CLUSTERDISK_GB;
             vmConfig.DataDiskSizeGB = REC_VM_DATADISK_GB;
 

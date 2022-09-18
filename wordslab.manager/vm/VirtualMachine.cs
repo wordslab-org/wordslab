@@ -8,7 +8,7 @@ namespace wordslab.manager.vm
     {
         protected HostStorage storage;
 
-        protected VirtualMachine(string vmName, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage)
+        protected VirtualMachine(string vmName, int processors, int memoryGB, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage)
         {
             if(!NAME_REGEX.IsMatch(vmName))
             {
@@ -17,7 +17,6 @@ namespace wordslab.manager.vm
             Name = vmName;
             Processors = processors;
             MemoryGB = memoryGB;
-            OsDisk = osDisk;
             ClusterDisk = clusterDisk;
             DataDisk = dataDisk;
             this.storage = storage;
@@ -37,8 +36,6 @@ namespace wordslab.manager.vm
 
         public int GPUMemoryGB { get; internal set; }
 
-        public VirtualDisk OsDisk { get; internal set; }
-
         public VirtualDisk ClusterDisk { get; internal set; }
 
         public VirtualDisk DataDisk { get; internal set; }
@@ -46,14 +43,15 @@ namespace wordslab.manager.vm
         public int HostSSHPort { get; internal set; }
         public int HostKubernetesPort { get; internal set; }
         public int HostHttpIngressPort { get; internal set; }
+        public int HostHttpsIngressPort { get; internal set; }
 
         public abstract bool IsRunning();
 
-        public abstract VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null);
+        public abstract VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null, int? hostHttpsIngressPort = null);
 
         public VirtualMachineEndpoint Start(VirtualMachineConfig vmConfig)
         {
-            return Start(vmConfig.Processors, vmConfig.MemoryGB, vmConfig.HostSSHPort, vmConfig.HostKubernetesPort, vmConfig.HostHttpIngressPort);
+            return Start(vmConfig.Processors, vmConfig.MemoryGB, vmConfig.HostSSHPort, vmConfig.HostKubernetesPort, vmConfig.HostHttpIngressPort, vmConfig.HostHttpsIngressPort);
         }
 
         protected VirtualMachineEndpoint endpoint;

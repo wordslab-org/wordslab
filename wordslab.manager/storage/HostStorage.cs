@@ -7,6 +7,7 @@ namespace wordslab.manager.storage
     public class HostStorage
     {
         private const string APP = "wordslab";
+
         private const string CONFIG = "config";
         private const string LOGS = "logs";
         private const string SCRIPTS = "scripts";
@@ -23,8 +24,6 @@ namespace wordslab.manager.storage
         public string ScriptsDirectory { get; init; }
 
         public string DownloadCacheDirectory { get; private set; }
-
-        public string VirtualMachineOSDirectory { get; private set; }
 
         public string VirtualMachineClusterDirectory { get; private set; }
 
@@ -51,7 +50,6 @@ namespace wordslab.manager.storage
             // The data directories are initialized as direct subdirectories of the install directory
             // The users can then move them to other locations of their choice with MoveConfigurableDirectoryTo()
             DownloadCacheDirectory = Path.Combine(AppDirectory, DOWNLOAD);
-            VirtualMachineOSDirectory = Path.Combine(AppDirectory, VM);
             VirtualMachineClusterDirectory = Path.Combine(AppDirectory, VM);
             VirtualMachineDataDirectory = Path.Combine(AppDirectory, VM);
             BackupDirectory = Path.Combine(AppDirectory, BACKUP);
@@ -64,7 +62,6 @@ namespace wordslab.manager.storage
         private void EnsureConfigurableDirectoriesExist()
         {
             if (!Directory.Exists(DownloadCacheDirectory)) Directory.CreateDirectory(DownloadCacheDirectory);
-            if (!Directory.Exists(VirtualMachineOSDirectory)) Directory.CreateDirectory(VirtualMachineOSDirectory);
             if (!Directory.Exists(VirtualMachineClusterDirectory)) Directory.CreateDirectory(VirtualMachineClusterDirectory);
             if (!Directory.Exists(VirtualMachineDataDirectory)) Directory.CreateDirectory(VirtualMachineDataDirectory);
             if (!Directory.Exists(BackupDirectory)) Directory.CreateDirectory(BackupDirectory);
@@ -81,9 +78,6 @@ namespace wordslab.manager.storage
                     {
                         case HostDirectory.StorageFunction.DownloadCache:
                             DownloadCacheDirectory = dir.Path;
-                            break;
-                        case HostDirectory.StorageFunction.VirtualMachineOS:
-                            VirtualMachineOSDirectory = dir.Path;
                             break;
                         case HostDirectory.StorageFunction.VirtualMachineCluster:
                             VirtualMachineClusterDirectory = dir.Path;
@@ -106,7 +100,6 @@ namespace wordslab.manager.storage
         {
             var localDirectories = new List<HostDirectory>();
             localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.DownloadCache, DownloadCacheDirectory));
-            localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineOS, VirtualMachineOSDirectory));
             localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineCluster, VirtualMachineClusterDirectory));
             localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineData, VirtualMachineDataDirectory));
             localDirectories.Add(new HostDirectory(HostDirectory.StorageFunction.Backup, BackupDirectory));
@@ -125,11 +118,6 @@ namespace wordslab.manager.storage
                     sourcePath = DownloadCacheDirectory;
                     destinationPath = Path.Combine(destinationBaseDir, APP, DOWNLOAD);
                     DownloadCacheDirectory = destinationPath;
-                    break;
-                case HostDirectory.StorageFunction.VirtualMachineOS:
-                    sourcePath = VirtualMachineOSDirectory;
-                    destinationPath = Path.Combine(destinationBaseDir, APP, VM);
-                    VirtualMachineOSDirectory = destinationPath;
                     break;
                 case HostDirectory.StorageFunction.VirtualMachineCluster:
                     sourcePath = VirtualMachineClusterDirectory;
@@ -189,7 +177,6 @@ namespace wordslab.manager.storage
             if (Directory.Exists(ConfigDirectory)) Directory.Delete(ConfigDirectory, true);
             if (Directory.Exists(LogsDirectory)) Directory.Delete(LogsDirectory, true);
             if (Directory.Exists(DownloadCacheDirectory)) Directory.Delete(DownloadCacheDirectory, true);
-            if (Directory.Exists(VirtualMachineOSDirectory)) Directory.Delete(VirtualMachineOSDirectory, true);
             if (Directory.Exists(VirtualMachineClusterDirectory)) Directory.Delete(VirtualMachineClusterDirectory, true);
             if (Directory.Exists(VirtualMachineDataDirectory)) Directory.Delete(VirtualMachineDataDirectory, true);
             if (Directory.Exists(BackupDirectory)) Directory.Delete(BackupDirectory, true);

@@ -10,9 +10,9 @@ namespace wordslab.manager.vm.wsl
         {
             var vms = new List<VirtualMachine>();
             
-            var vmNames = WslDisk.ListVMNamesFromOsDisks(storage);            
+            var vmNames = WslDisk.ListVMNamesFromClusterDisks(storage);            
             var wslDistribs = Wsl.list();
-            foreach(var vmName in wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.OS), (d,n) => n).OrderBy(s => s))
+            foreach(var vmName in wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.Cluster), (d,n) => n).OrderBy(s => s))
             {
                 try
                 {
@@ -26,26 +26,25 @@ namespace wordslab.manager.vm.wsl
 
         public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
         {
-            var osDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.OS, storage);
-            if(osDisk == null)
+            var clusterDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
+            if(clusterDisk == null)
             {
                 return null;
             }
 
-            var clusterDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
             var dataDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Data, storage);
-            if (clusterDisk == null || dataDisk == null)
+            if (dataDisk == null)
             {
                 throw new FileNotFoundException($"Could not find virtual disks for a local virtual machine named {vmName}");
             }
 
             var wslConfig = Wsl.Read_wslconfig();
-            return new WslVM(vmName, wslConfig.processors.Value, wslConfig.memoryMB.Value/1024, osDisk, clusterDisk, dataDisk, storage);
+            return new WslVM(vmName, wslConfig.processors.Value, wslConfig.memoryMB.Value/1024, clusterDisk, dataDisk, storage);
         }
 
 
-        public WslVM(string vmName, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
-            : base(vmName, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage) 
+        public WslVM(string vmName, int processors, int memoryGB, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
+            : base(vmName, processors, memoryGB, clusterDisk, dataDisk, storage) 
         {
             Type = VirtualMachineType.Wsl;
         }
@@ -55,13 +54,13 @@ namespace wordslab.manager.vm.wsl
             try
             {
                 var wslDistribs = Wsl.list();
-                return wslDistribs.Any(d => d.Distribution == OsDisk.ServiceName && d.IsRunning);
+                return wslDistribs.Any(d => d.Distribution == ClusterDisk.ServiceName && d.IsRunning);
             }
             catch { }
             return false;
         }
 
-        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null)
+        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null, int? hostHttpsIngressPort = null)
         {
             if (IsRunning())
             {
@@ -74,6 +73,7 @@ namespace wordslab.manager.vm.wsl
             // HostSSHPort is always 0 because we don't use SSH to launch WSL commands on Windows
             if (hostKubernetesPort.HasValue) HostKubernetesPort = hostKubernetesPort.Value;
             if (hostHttpIngressPort.HasValue) HostHttpIngressPort = hostHttpIngressPort.Value;
+            if (hostHttpsIngressPort.HasValue) HostHttpsIngressPort = hostHttpsIngressPort.Value;
 
             // Update machine-wide WSL config if needed and allowed
             var wslConfig = Wsl.Read_wslconfig();
@@ -89,22 +89,29 @@ namespace wordslab.manager.vm.wsl
             {
                 throw new InvalidOperationException($"Host port for HTTP ingress: {HostHttpIngressPort} is already in use, please select another port");
             }
+            if (usedPorts.Contains(HostHttpsIngressPort))
+            {
+                throw new InvalidOperationException($"Host port for HTTPS ingress: {HostHttpsIngressPort} is already in use, please select another port");
+            }
 
             // Start the VM
             DataDisk.StartService();
             ClusterDisk.StartService();
 
             // Start k3s inside the virtual machine
-            Wsl.execShell($"/root/{WslDisk.vmStartupScript} {ClusterDisk.ServiceName} {DataDisk.ServiceName} {HostKubernetesPort} {HostHttpIngressPort}", OsDisk.ServiceName, ignoreError: "screen size is bogus");
+            Wsl.execShell($"/root/{WslDisk.clusterDiskStartupScript} {DataDisk.ServiceName}", ClusterDisk.ServiceName, ignoreError: "screen size is bogus");
+
+            // Here's an example PowerShell command to add a port proxy that listens on port 4000 on the host and connects it to port 4000 to the WSL 2 VM with IP address 192.168.101.100.
+            // netsh interface portproxy add v4tov4 listenport=4000 listenaddress=0.0.0.0 connectport=4000 connectaddress=192.168.101.100
 
             // Get virtual machine IP and kubeconfig
             string ip = null;
-            Wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", OsDisk.ServiceName, outputHandler: output => ip = output);
+            Wsl.execShell("hostname -I | grep -Eo \"^[0-9\\.]+\"", ClusterDisk.ServiceName, outputHandler: output => ip = output);
             string kubeconfig = null;
-            Wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", OsDisk.ServiceName, outputHandler: output => kubeconfig = output);
+            Wsl.execShell("cat /etc/rancher/k3s/k3s.yaml", ClusterDisk.ServiceName, outputHandler: output => kubeconfig = output);
             
             // Save it to the endpoint & kubeconfig files
-            endpoint = new VirtualMachineEndpoint(Name, ip, 0, HostKubernetesPort, HostHttpIngressPort, kubeconfig);
+            endpoint = new VirtualMachineEndpoint(Name, ip, 0, HostKubernetesPort, HostHttpIngressPort, HostHttpsIngressPort, kubeconfig);
             endpoint.Save(storage);
             return endpoint;
         }
@@ -119,8 +126,7 @@ namespace wordslab.manager.vm.wsl
 
             if (IsRunning())
             {
-                Wsl.terminate(OsDisk.ServiceName);
-                ClusterDisk.StopService();
+                Wsl.terminate(ClusterDisk.ServiceName);
                 DataDisk.StopService();
             }
         }

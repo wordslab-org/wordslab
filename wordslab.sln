@@ -79,6 +79,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wsl", "wsl", "{5BB86118-B41
 		doc\infra\wsl\disk_and_memory_requirements.md = doc\infra\wsl\disk_and_memory_requirements.md
 		doc\infra\wsl\Install procedures screenshots.docx = doc\infra\wsl\Install procedures screenshots.docx
 		doc\infra\wsl\Reinstall WSL.docx = doc\infra\wsl\Reinstall WSL.docx
+		doc\infra\wsl\wsl compute.md = doc\infra\wsl\wsl compute.md
+		doc\infra\wsl\wsl disk.md = doc\infra\wsl\wsl disk.md
+		doc\infra\wsl\wsl networking.md = doc\infra\wsl\wsl networking.md
 		doc\infra\wsl\wsl-commands.txt = doc\infra\wsl\wsl-commands.txt
 		doc\infra\wsl\wsl-ubuntu-cpu.txt = doc\infra\wsl\wsl-ubuntu-cpu.txt
 	EndProjectSection
@@ -105,6 +108,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "k3s", "k3s", "{BD12799C-4DE
 	ProjectSection(SolutionItems) = preProject
 		doc\infra\k3s\containerd-images-layers-storage.md = doc\infra\k3s\containerd-images-layers-storage.md
 		doc\infra\k3s\Dockerfile = doc\infra\k3s\Dockerfile
+		doc\infra\k3s\traefik-dashboard.yaml = doc\infra\k3s\traefik-dashboard.yaml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ai", "ai", "{CA433C7A-30BD-416B-BC5E-ECA85FFCFD43}"
@@ -173,6 +177,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ui", "ui", "{04ECB04D-E6F6-
 	ProjectSection(SolutionItems) = preProject
 		doc\design\ui\cli-commands-tree.md = doc\design\ui\cli-commands-tree.md
 		doc\design\ui\Extraction UI.pptx = doc\design\ui\Extraction UI.pptx
+		doc\design\ui\user experience - config.md = doc\design\ui\user experience - config.md
 		doc\design\ui\wordslab-logo.PNG = doc\design\ui\wordslab-logo.PNG
 		doc\design\ui\wordslab-website-layout.pptx = doc\design\ui\wordslab-website-layout.pptx
 	EndProjectSection

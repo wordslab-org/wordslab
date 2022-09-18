@@ -11,7 +11,7 @@ namespace wordslab.manager.vm.qemu
             var vms = new List<VirtualMachine>();
             try
             {
-                var vmNames = QemuDisk.ListVMNamesFromOsDisks(storage);                
+                var vmNames = QemuDisk.ListVMNamesFromClusterDisks(storage);                
                 foreach (var vmName in vmNames)
                 {
                     vms.Add(TryFindByName(vmName, storage));
@@ -23,32 +23,31 @@ namespace wordslab.manager.vm.qemu
 
         public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
         {
-            var osDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.OS, storage);
             var clusterDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
             var dataDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.Data, storage);
-            if (osDisk == null || clusterDisk == null || dataDisk == null)
+            if (clusterDisk == null || dataDisk == null)
             {
                 throw new Exception($"Could not find virtual disks for a local virtual machine named {vmName}");
             }
 
-            var qemuProc = Qemu.TryFindVirtualMachineProcess(osDisk.StoragePath);
+            var qemuProc = Qemu.TryFindVirtualMachineProcess(clusterDisk.StoragePath);
             if(qemuProc == null)
             {
                 throw new Exception($"Could not find a running qemu process for a local virtual machine named {vmName}");
             }
 
-            return new QemuVM(vmName, qemuProc.Processors, qemuProc.MemoryGB, osDisk, clusterDisk, dataDisk, storage);
+            return new QemuVM(vmName, qemuProc.Processors, qemuProc.MemoryGB, clusterDisk, dataDisk, storage);
         }
 
-        internal QemuVM(string name, int processors, int memoryGB, VirtualDisk osDisk, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
-            : base(name, processors, memoryGB, osDisk, clusterDisk, dataDisk, storage) 
+        internal QemuVM(string name, int processors, int memoryGB, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
+            : base(name, processors, memoryGB, clusterDisk, dataDisk, storage) 
         {
             Type = VirtualMachineType.Qemu;        
         }
 
         public override bool IsRunning()
         {
-            var qemuProc = Qemu.TryFindVirtualMachineProcess(OsDisk.StoragePath);
+            var qemuProc = Qemu.TryFindVirtualMachineProcess(ClusterDisk.StoragePath);
             if(qemuProc != null)
             {
                 processId = qemuProc.PID;
@@ -63,7 +62,7 @@ namespace wordslab.manager.vm.qemu
 
         private int processId = -1;
 
-        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null)
+        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null, int? hostHttpsIngressPort = null)
         {
             if (IsRunning())
             {
@@ -76,6 +75,7 @@ namespace wordslab.manager.vm.qemu
             if (hostSSHPort.HasValue) HostSSHPort = hostSSHPort.Value;
             if (hostKubernetesPort.HasValue) HostKubernetesPort = hostKubernetesPort.Value;
             if (hostHttpIngressPort.HasValue) HostHttpIngressPort = hostHttpIngressPort.Value;
+            if (hostHttpsIngressPort.HasValue) HostHttpsIngressPort = hostHttpsIngressPort.Value;
 
             // Check if the requested ports are available right before startup
             var usedPorts = Network.GetAllTcpPortsInUse();
@@ -91,9 +91,13 @@ namespace wordslab.manager.vm.qemu
             {
                 throw new InvalidOperationException($"Host port for HTTP ingress: {HostHttpIngressPort} is already in use, please select another port");
             }
+            if (usedPorts.Contains(HostHttpsIngressPort))
+            {
+                throw new InvalidOperationException($"Host port for HTTPS ingress: {HostHttpsIngressPort} is already in use, please select another port");
+            }
 
             // Start qemu process
-            processId = Qemu.StartVirtualMachine(Processors, MemoryGB, OsDisk.StoragePath, ClusterDisk.StoragePath, DataDisk.StoragePath, HostSSHPort, HostHttpIngressPort, HostKubernetesPort);
+            processId = Qemu.StartVirtualMachine(Processors, MemoryGB, ClusterDisk.StoragePath, DataDisk.StoragePath, HostSSHPort, HostHttpIngressPort, HostHttpsIngressPort, HostKubernetesPort);
                
             // Start k3s inside the virtual machine
             SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
@@ -105,7 +109,7 @@ namespace wordslab.manager.vm.qemu
             SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
 
             // Save it to the endpoint & kubeconfig files
-            endpoint = new VirtualMachineEndpoint(Name, ip, HostSSHPort, HostKubernetesPort, HostHttpIngressPort, kubeconfig);
+            endpoint = new VirtualMachineEndpoint(Name, ip, HostSSHPort, HostKubernetesPort, HostHttpIngressPort, HostHttpsIngressPort, kubeconfig);
             endpoint.Save(storage);
             return endpoint;
         }

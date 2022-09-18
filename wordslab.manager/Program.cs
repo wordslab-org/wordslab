@@ -1,13 +1,14 @@
 ﻿using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using wordslab.manager;
 using wordslab.manager.storage;
 
 [assembly: InternalsVisibleToAttribute("wordslab.manager.test")]
 
 // Configure the application host
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = "web" });
 
 // builder properties:
 // - IHostEnvironment       Environment     Gets or sets the name of the application or environment via: ApplicationName / EnvironmentName
@@ -41,8 +42,27 @@ try
         ConfigStore.CreateDbIfNotExistsAndInitializeHostStorage(hostServiceProvider);
     }
 
-    // Start a console application (which may then start a web application in ManagerCommand)
-    return wordslab.manager.ConsoleApp.Run(builder, args);
+    // Start a web application if launched without parameters or with the "manager" command
+    if (args.Length == 0 || args[0] == "manager" || args[0] == "-p" || args[0] == "--port")
+    {
+        // Extract the optional "port" parameter
+        var skipArgs = 0;
+        var port = WebApp.DEFAULT_PORT;
+        if (args.Length >= 1 && args[0] == "manager") skipArgs = 1;
+        if(args.Length >= (skipArgs+2) && (args[skipArgs] == "-p" || args[skipArgs] == "--port"))
+        {
+            Int32.TryParse(args[skipArgs + 1], out port); 
+            skipArgs += 2;
+        }
+        // Launch the web app        
+        WebApp.Run(builder, port, args.Skip(skipArgs).ToArray());
+        return 0;
+    }
+    // Start a console application if launched with any other command
+    else
+    {        
+        return ConsoleApp.Run(builder, args);
+    }
 }
 catch (Exception ex)
 {

@@ -8,12 +8,10 @@ namespace wordslab.manager.vm
         {
             switch (function)
             {
-                case VirtualDiskFunction.OS:
-                    return $"wordslab-{vmName}-vm";
                 case VirtualDiskFunction.Cluster:
-                    return $"wordslab-{vmName}-cluster-disk";
+                    return $"wordslab-{vmName}-cluster";
                 case VirtualDiskFunction.Data:
-                    return $"wordslab-{vmName}-data-disk";
+                    return $"wordslab-{vmName}-data";
             }
             return null;
         }
@@ -23,9 +21,6 @@ namespace wordslab.manager.vm
             string hostStorageDirectory = null;
             switch (function)
             {
-                case VirtualDiskFunction.OS:
-                    hostStorageDirectory = storage.VirtualMachineOSDirectory;
-                    break;
                 case VirtualDiskFunction.Cluster:
                     hostStorageDirectory = storage.VirtualMachineClusterDirectory;
                     break;
@@ -79,7 +74,6 @@ namespace wordslab.manager.vm
     
     public enum VirtualDiskFunction
     {
-        OS,
         Cluster,
         Data
     }

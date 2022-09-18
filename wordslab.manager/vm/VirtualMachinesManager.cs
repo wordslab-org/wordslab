@@ -17,6 +17,25 @@ namespace wordslab.manager.vm
             this.configStore = configStore;
         }
 
+        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineSpec vmSpec, InstallProcessUI installUI)
+        {
+            VirtualMachine vm = null;
+            if (OS.IsWindows)
+            {
+                vm = await WslVMInstaller.Install(vmSpec, hostStorage, installUI);
+            }
+            else if (OS.IsLinux || OS.IsMacOS)
+            {
+                vm = await QemuVMInstaller.Install(vmSpec, hostStorage, installUI);
+            }
+            if (vm != null)
+            {
+                var vmConfig = new VirtualMachineConfig(vm);
+                configStore.AddVirtualMachineConfig(vmConfig);
+            }
+            return vm;
+        }
+
         public List<VirtualMachine> ListLocalVMs()
         {
             // List configs found in database
@@ -79,25 +98,6 @@ namespace wordslab.manager.vm
             return vm;
         }
 
-        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineSpec vmSpec, InstallProcessUI installUI)
-        {
-            VirtualMachine vm = null;
-            if (OS.IsWindows)
-            {
-                vm = await WslVMInstaller.Install(vmSpec, hostStorage, installUI);
-            }
-            else if (OS.IsLinux || OS.IsMacOS)
-            {
-                vm = await QemuVMInstaller.Install(vmSpec, hostStorage, installUI);
-            }
-            if(vm != null)
-            {
-                var vmConfig = new VirtualMachineConfig(vm);
-                configStore.AddVirtualMachineConfig(vmConfig);
-            }
-            return vm;
-        }
-
         public async Task<bool> DeleteLocalVM(string vmName, InstallProcessUI installUI)
         {
             bool uninstallSuccess = false;
@@ -108,6 +108,10 @@ namespace wordslab.manager.vm
             else if (OS.IsLinux || OS.IsMacOS)
             {
                 uninstallSuccess = await QemuVMInstaller.Uninstall(vmName, hostStorage, installUI);
+            }
+            if (uninstallSuccess)
+            {                
+                configStore.RemoveVirtualMachineConfig(vmName);
             }
             return uninstallSuccess;
         }

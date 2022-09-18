@@ -4,13 +4,14 @@ namespace wordslab.manager.vm
 {
     public class VirtualMachineEndpoint
     {
-        public VirtualMachineEndpoint(string vmName, string ipAddress, int sshPort, int kubernetesPort, int httpIngressPort, string kubeconfig)
+        public VirtualMachineEndpoint(string vmName, string ipAddress, int sshPort, int kubernetesPort, int httpIngressPort, int httpsIngressPort, string kubeconfig)
         {
             VMName = vmName;
             IPAddress = ipAddress;
             SSHPort = sshPort;
             KubernetesPort = kubernetesPort;
             HttpIngressPort = httpIngressPort;
+            HttpsIngressPort = httpsIngressPort;
             Kubeconfig = kubeconfig;
         }
 
@@ -23,6 +24,8 @@ namespace wordslab.manager.vm
         public int KubernetesPort { get; private set; }
 
         public int HttpIngressPort { get; private set; }
+
+        public int HttpsIngressPort { get; private set; }
 
         public string Kubeconfig { get; private set; }
 
@@ -48,6 +51,7 @@ namespace wordslab.manager.vm
                 sw.WriteLine(SSHPort);
                 sw.WriteLine(KubernetesPort);
                 sw.WriteLine(HttpIngressPort);
+                sw.WriteLine(HttpsIngressPort);
             }
 
             KubeconfigPath = GetKubeconfigFilePath(storage, VMName);
@@ -58,7 +62,7 @@ namespace wordslab.manager.vm
         public static VirtualMachineEndpoint Load(HostStorage storage, string name)
         {
             string ipAddress = null;
-            int sshPort, kubernetesPort, httpIngressPort;
+            int sshPort, kubernetesPort, httpIngressPort, httpsIngressPort;
             var endpointPath = GetEndpointFilePath(storage, name);
             if (File.Exists(endpointPath))
             {
@@ -68,6 +72,7 @@ namespace wordslab.manager.vm
                     sshPort = Int32.Parse(sr.ReadLine());
                     kubernetesPort = Int32.Parse(sr.ReadLine());
                     httpIngressPort = Int32.Parse(sr.ReadLine());
+                    httpsIngressPort = Int32.Parse(sr.ReadLine());
                 }
             }
             else
@@ -82,7 +87,7 @@ namespace wordslab.manager.vm
                 kubeconfig = File.ReadAllText(kubeconfigPath);                
             }
 
-            var endpoint = new VirtualMachineEndpoint(name, ipAddress, sshPort, kubernetesPort, httpIngressPort, kubeconfig);
+            var endpoint = new VirtualMachineEndpoint(name, ipAddress, sshPort, kubernetesPort, httpIngressPort, httpsIngressPort, kubeconfig);
             endpoint.KubeconfigPath = kubeconfigPath;
             return endpoint;
         }
