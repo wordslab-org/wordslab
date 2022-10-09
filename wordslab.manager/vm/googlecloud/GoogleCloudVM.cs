@@ -1,14 +1,30 @@
-﻿using wordslab.manager.storage;
-using wordslab.manager.storage.config;
+﻿using wordslab.manager.config;
+using wordslab.manager.storage;
 
 namespace wordslab.manager.vm.googlecloud
 {
     public class GoogleCloudVM : VirtualMachine
     {
-        internal GoogleCloudVM(string name, int processors, int memoryGB, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage)
-            : base(name, processors, memoryGB, clusterDisk, dataDisk, storage)
+        public static List<VirtualMachine> ListLocalVMs(ConfigStore configStore, HostStorage storage)
         {
-            Type = VirtualMachineType.GoogleCloud;
+            throw new NotImplementedException();
+        }
+
+        public static VirtualMachine FindByName(string vmName, ConfigStore configStore, HostStorage storage)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal GoogleCloudVM(VirtualMachineConfig vmConfig, VirtualDisk clusterDisk, VirtualDisk dataDisk, ConfigStore configStore, HostStorage storage)
+            : base(vmConfig, clusterDisk, dataDisk, configStore, storage)
+        {
+            if(vmConfig.VmProvider != VirtualMachineProvider.GoogleCloud)
+            {
+                throw new ArgumentException("VmProvider should be GoogleCloud");
+            }
+
+            // Initialize the running state
+            IsRunning();
         }
 
         public override bool IsRunning()
@@ -16,7 +32,7 @@ namespace wordslab.manager.vm.googlecloud
             throw new NotImplementedException();
         }
 
-        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null, int? hostHttpsIngressPort = null)
+        public override VirtualMachineInstance Start(ComputeSpec computeStartArguments, GPUSpec gpuStartArguments)
         {
             throw new NotImplementedException();
         }

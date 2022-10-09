@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
-using wordslab.manager.storage.config;
+using wordslab.manager.config;
 
 namespace wordslab.manager.storage
 {
@@ -14,23 +14,67 @@ namespace wordslab.manager.storage
             this.hostStorage = hostStorage;
         }
 
-        public DbSet<HostDirectory> HostDirectories { get; set; }
+        private DbSet<HostMachineConfig> HostMachineConfigTable { get; set; }
+
+        public HostMachineConfig HostMachineConfig
+        {
+            get
+            {
+                return HostMachineConfigTable.FirstOrDefault();
+            }
+        }
+
+        public void InitializeHostMachineConfig(HostMachineConfig config)
+        {
+            if(HostMachineConfigTable.Any())
+            {
+                throw new InvalidOperationException("Host machine configuration already initialized");
+            }
+            HostMachineConfigTable.Add(config);
+            SaveChanges();
+        }
 
         /// <summary>
         /// Moves the specified host directory and all its contents under a new base directory,
         /// then saves the new location in the configuration database.
         /// </summary>
-        public void MoveHostDirectoryTo(HostDirectory.StorageFunction storageFunction, string destinationBaseDir)
+        public void MoveHostStorageLocationTo(StorageLocation storageLocation, string destinationBaseDir)
         {
-            hostStorage.MoveConfigurableDirectoryTo(storageFunction, destinationBaseDir);
+            var config = HostMachineConfig;
+            if(config == null)
+            {
+                throw new InvalidOperationException("Host machine configuration not yet initialized");
+            }
 
-            var oldHostDirectory = HostDirectories.Where(d => d.Function == storageFunction).First();
-            var newHostDirectory = hostStorage.GetConfigurableDirectories().Where(d => d.Function == storageFunction).First();
+            hostStorage.MoveConfigurableDirectoryTo(storageLocation, destinationBaseDir);
 
-            HostDirectories.Remove(oldHostDirectory);
-            HostDirectories.Add(newHostDirectory);
+            config.VirtualMachineClusterPath = hostStorage.VirtualMachineClusterDirectory;
+            config.VirtualMachineDataPath = hostStorage.VirtualMachineDataDirectory;
+            config.BackupPath = hostStorage.BackupDirectory;
             SaveChanges();
         }
+
+        /*
+        private DbSet<CloudAccountConfig> CloudAccountConfigTable { get; set; }
+
+        public CloudAccountConfig CloudAccountConfig
+        {
+            get
+            {
+                return CloudAccountConfigTable.FirstOrDefault();
+            }
+        }
+
+        public void InitializeCloudAccountConfig(CloudAccountConfig config)
+        {
+            if (CloudAccountConfigTable.Any())
+            {
+                throw new InvalidOperationException("Cloud account configuration already initialized");
+            }
+            CloudAccountConfigTable.Add(config);
+            SaveChanges();
+        }
+        */
 
         public DbSet<VirtualMachineConfig> VirtualMachines { get; set; }
 
@@ -61,25 +105,39 @@ namespace wordslab.manager.storage
             }
         }
 
+        public DbSet<VirtualMachineInstance> VirtualMachineInstances { get; set; }
+
+        public void AddVirtualMachineInstance(VirtualMachineInstance vmInstance)
+        {
+            VirtualMachineInstances.Add(vmInstance);
+            SaveChanges();
+        }
+
+        /// <summary>
+        /// Returns null if a virtual machine config with the specified name is not found
+        /// </summary>
+        public VirtualMachineInstance TryGetLastVirtualMachineInstance(string vmName)
+        {
+            return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderByDescending(instance => instance.Id).FirstOrDefault();
+        }
+
         // Configure table name
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<HostDirectory>().ToTable("HostDirectory");
+            modelBuilder.Entity<HostMachineConfig>().ToTable("HostMachine");
+            modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
+            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.Id }); ;
         }
 
         // Bootstrap the config database
         private void InitializeHostStorage()
         {
-            if (HostDirectories.Any())
+            var config = HostMachineConfig;
+            if (config != null)
             {
-                hostStorage.InitConfigurableDirectories(HostDirectories);
-            }
-            else
-            {
-                var localDirectories = hostStorage.GetConfigurableDirectories();
-                HostDirectories.AddRange(localDirectories);
-                SaveChanges();
+                hostStorage.InitConfigurableDirectories(
+                    config.VirtualMachineClusterPath, config.VirtualMachineDataPath, config.BackupPath);
             }
         }
 

@@ -1,15 +1,21 @@
-﻿using wordslab.manager.os;
+﻿using wordslab.manager.config;
+using wordslab.manager.os;
 using wordslab.manager.storage;
 
 namespace wordslab.manager.vm.wsl
 {
-    public class WslVMInstaller
+    public static class WslVMInstaller
     {
-        public static async Task<VirtualMachine> Install(VirtualMachineSpec vmSpec, HostStorage hostStorage, InstallProcessUI ui)
+        // Note: before calling this method
+        // - you must configure HostStorage directories location
+        // - you must ask the user if they want to use a GPU
+        public static async Task<bool> CheckAndInstallHostMachineRequirements(bool userWantsVMWithGPU, HostStorage hostStorage, InstallProcessUI ui)
         {
-            VirtualMachine localVM = null;
             try
             {
+                // 0. Get minimum VM spec
+                var vmSpec = VMRequirements.GetMinimumVMSpec();
+
                 // 1. Check Hardware requirements
                 bool cpuSpecOK = true;
                 bool memorySpecOK = true;
@@ -19,34 +25,34 @@ namespace wordslab.manager.vm.wsl
 
                 ui.DisplayInstallStep(1, 6, "Check hardware requirements");
 
-                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.Processors} (VM) + {VirtualMachineSpec.MIN_HOST_PROCESSORS} (host) logical processors");
+                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.Compute.Processors} (VM) + {VMRequirements.MIN_HOST_PROCESSORS} (host) logical processors");
                 var cpuInfo = Compute.GetCPUInfo();
                 string cpuErrorMessage;
-                cpuSpecOK = vmSpec.CheckCPURequirements(cpuInfo, out cpuErrorMessage);
+                cpuSpecOK = VMRequirements.CheckCPURequirements(vmSpec, cpuInfo, out cpuErrorMessage);
                 ui.DisplayCommandResult(c1, cpuSpecOK, cpuSpecOK ? null : cpuErrorMessage);
                 if (!cpuSpecOK)
                 {
-                    return null;
+                    return false;
                 }
 
-                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.MemoryGB} (VM) + {VirtualMachineSpec.MIN_HOST_MEMORY_GB} (host) GB physical memory");
+                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.Compute.MemoryGB} (VM) + {VMRequirements.MIN_HOST_MEMORY_GB} (host) GB physical memory");
                 var memInfo = Memory.GetMemoryInfo();
                 string memoryErrorMessage;
-                memorySpecOK = vmSpec.CheckMemoryRequirements(memInfo, out memoryErrorMessage);
+                memorySpecOK = VMRequirements.CheckMemoryRequirements(vmSpec, memInfo, out memoryErrorMessage);
                 ui.DisplayCommandResult(c2, memorySpecOK, memorySpecOK ? null : memoryErrorMessage);
                 if (!memorySpecOK)
                 {
-                    return null;
+                    return false;
                 }
 
-                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.ClusterDiskSizeGB+vmSpec.DataDiskSizeGB} (VM) + {VirtualMachineSpec.MIN_HOST_DISK_GB + VirtualMachineSpec.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
+                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.Storage.ClusterDiskSizeGB + vmSpec.Storage.DataDiskSizeGB} (VM) + {VMRequirements.MIN_HOST_DISK_GB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
                 Dictionary<os.DriveInfo, int> storageReqsGB;
                 string storageErrorMessage;
-                storageSpecOK = vmSpec.CheckStorageRequirements(hostStorage, out storageReqsGB, out storageErrorMessage);
+                storageSpecOK = VMRequirements.CheckStorageRequirements(vmSpec, hostStorage, out storageReqsGB, out storageErrorMessage);
                 ui.DisplayCommandResult(c3, storageSpecOK, storageSpecOK ? null : $"{storageErrorMessage}You can try to update wordslab storage configuration by moving the VM directories to another disk where more space is available.");
                 if (!storageSpecOK)
                 {
-                    return null;
+                    return false;
                 }
 
                 var c4 = ui.DisplayCommandLaunch("Host machine with CPU virtualization enabled");
@@ -57,23 +63,23 @@ namespace wordslab.manager.vm.wsl
                 if (!cpuVirtualization)
                 {
                     Windows.OpenWindowsUpdate();
-                    return null;
+                    return false;
                 }
 
-                if (vmSpec.WithGPU)
+                if (userWantsVMWithGPU)
                 {
-                    var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: {vmSpec.GPUModel} and at least {vmSpec.GPUMemoryGB} GB GPU memory");
+                    var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: at least {vmSpec.GPU.ModelName} and {vmSpec.GPU.MemoryGB} GB GPU memory");
                     var gpusInfo = Compute.GetNvidiaGPUsInfo();
                     string gpuErrorMessage;
-                    gpuSpecOK = vmSpec.CheckGPURequirements(gpusInfo, out gpuErrorMessage);
+                    gpuSpecOK = VMRequirements.CheckGPURequirements(vmSpec, gpusInfo, out gpuErrorMessage);
                     ui.DisplayCommandResult(c5, gpuSpecOK, gpuSpecOK ? null : gpuErrorMessage);
                     if (!gpuSpecOK)
                     {
-                        return null;
+                        return false;
                     }
                 }
 
-                bool createVMWithGPUSupport = vmSpec.WithGPU && gpuSpecOK;
+                bool createVMWithGPUSupport = userWantsVMWithGPU && gpuSpecOK;
 
                 // 2. Check OS and drivers requirements
                 bool windowsVersionOK = true;
@@ -98,7 +104,7 @@ namespace wordslab.manager.vm.wsl
                     var c8 = ui.DisplayCommandLaunch("Launching Windows Update to upgrade operating system version");
                     ui.DisplayCommandResult(c8, true, "Please update Windows, reboot your machine if necessary, then launch this installer again");
                     Windows.OpenWindowsUpdate();
-                    return null;
+                    return false;
                 }
 
                 if (createVMWithGPUSupport)
@@ -116,7 +122,7 @@ namespace wordslab.manager.vm.wsl
                         var driverUpdateOK = await ui.DisplayQuestionAsync("Did you manage to update the Nvidia driver to the latest version ?");
                         if (!driverUpdateOK)
                         {
-                            return null;
+                            return false;
                         }
 
                         var c11 = ui.DisplayCommandLaunch("Checking Nvidia driver version (after update)");
@@ -124,7 +130,7 @@ namespace wordslab.manager.vm.wsl
                         ui.DisplayCommandResult(c11, nvidiaDriverVersionOK, nvidiaDriverVersionOK ? null : "Nvidia driver version still not OK: please restart the install process without using the GPU");
                         if (!nvidiaDriverVersionOK)
                         {
-                            return null;
+                            return false;
                         }
                     }
                 }
@@ -146,7 +152,7 @@ namespace wordslab.manager.vm.wsl
                         Windows.EnableWindowsSubsystemForLinux_script(hostStorage.ScriptsDirectory));
                     if (!enableWsl)
                     {
-                        return null;
+                        return false;
                     }
 
                     var c13 = ui.DisplayCommandLaunch("Activating Windows Virtual Machine Platform and Windows Subsystem for Linux");
@@ -159,7 +165,7 @@ namespace wordslab.manager.vm.wsl
                         {
                             Windows.ShutdownAndRestart();
                         }
-                        return null;
+                        return false;
                     }
                 }
 
@@ -180,7 +186,7 @@ namespace wordslab.manager.vm.wsl
                         ui.DisplayCommandResult(c16, linuxKernelVersionOK, linuxKernelVersionOK ? null : "Windows Subsystem for Linux kernel version still not OK: please restart the install process without using the GPU");
                         if (!linuxKernelVersionOK)
                         {
-                            return null;
+                            return false;
                         }
                     }
                 }
@@ -260,24 +266,39 @@ namespace wordslab.manager.vm.wsl
 
                 if (!alpineImageOK || !ubuntuImageOK || !k3sExecutableOK || !k3sImagesOK || !helmExecutableOK)
                 {
-                    return null;
+                    return false;
                 }
+                else
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ui.DisplayCommandError(ex.Message);
+                return false;
+            }
+        }
 
+        public static async Task<VirtualMachine> CreateVirtualMachine(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
+        {
+            try
+            {
                 // 5. Create VM disks
                 bool virtualDiskClusterOK = true;
                 bool virtualDiskDataOK = true;
 
                 ui.DisplayInstallStep(5, 6, "Initialize wordslab VM virtual disks");
 
-                var clusterDisk = WslDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Cluster, hostStorage);
+                var clusterDisk = WslDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Cluster, hostStorage);
                 if (clusterDisk == null)
                 {
                     var c24 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
-                    clusterDisk = WslDisk.CreateFromOSImage(vmSpec.Name, Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName), hostStorage);
+                    clusterDisk = WslDisk.CreateFromOSImage(vmConfig.Name, Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName), hostStorage);
                     virtualDiskClusterOK = clusterDisk != null;
                     ui.DisplayCommandResult(c24, virtualDiskClusterOK);
 
-                    if (createVMWithGPUSupport)
+                    if (vmConfig.Spec.GPU != null && vmConfig.Spec.GPU.GPUCount > 0)
                     {
                         var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on cluster virtual disk");
                         ((WslDisk)clusterDisk).InstallNvidiaContainerRuntimeOnOSImage(hostStorage);
@@ -286,11 +307,11 @@ namespace wordslab.manager.vm.wsl
                 }
                 if (!virtualDiskClusterOK) { return null; }
 
-                var dataDisk = WslDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Data, hostStorage);
+                var dataDisk = WslDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Data, hostStorage);
                 if (dataDisk == null)
                 {
                     var c22 = ui.DisplayCommandLaunch("Initializing wordslab data virtual disk");
-                    dataDisk = WslDisk.CreateBlank(vmSpec.Name, VirtualDiskFunction.Data, hostStorage);
+                    dataDisk = WslDisk.CreateBlank(vmConfig.Name, VirtualDiskFunction.Data, hostStorage);
                     virtualDiskDataOK = dataDisk != null;
                     ui.DisplayCommandResult(c22, virtualDiskDataOK);
                 }
@@ -303,12 +324,13 @@ namespace wordslab.manager.vm.wsl
                 ui.DisplayInstallStep(6, 6, "Configure and start wordslab Virtual Machine");
                                 
                 var wslConfig = Wsl.Read_wslconfig();
-                var needToUpdateWslConfig = wslConfig.NeedsToBeUpdatedForVmSpec(vmSpec.Processors, vmSpec.MemoryGB);
+                var hostConfig = configStore.HostMachineConfig; 
+                var needToUpdateWslConfig = wslConfig.NeedsToBeUpdatedForVmSpec(hostConfig.Processors, hostConfig.MemoryGB);
 
                 var updateWslConfig = false;
                 if (needToUpdateWslConfig)
                 {
-                    updateWslConfig = await ui.DisplayQuestionAsync($"Do you confirm you want to update the Windows Subsystem for Linux configuration to match with your VM specification: {vmSpec.Processors} processors, {vmSpec.MemoryGB} GB memory ? This will affect all WSL distributions launched from your Windows account, not only wordslab.");
+                    updateWslConfig = await ui.DisplayQuestionAsync($"Do you confirm you want to update the Windows Subsystem for Linux configuration to match your host sandbox configuration: {hostConfig.Processors} processors, {hostConfig.MemoryGB} GB memory ? This will affect all WSL distributions launched from your Windows account, not only wordslab.");
                 }
                 if (updateWslConfig && Wsl.IsRunning())
                 {
@@ -316,39 +338,35 @@ namespace wordslab.manager.vm.wsl
                 }               
                 if (updateWslConfig)
                 {
-                    var c26 = ui.DisplayCommandLaunch($"Updating Windows Subsystem for Linux configuration to match your VM specification: {vmSpec.Processors} processors, {vmSpec.MemoryGB} GB memory");
-                    wslConfig.UpdateToVMSpec(vmSpec.Processors, vmSpec.MemoryGB, restartIfNeeded: true);
+                    var c26 = ui.DisplayCommandLaunch($"Updating Windows Subsystem for Linux configuration to match your host sandbox configuration: {hostConfig.Processors} processors, {hostConfig.MemoryGB} GB memory");
+                    wslConfig.UpdateToVMSpec(hostConfig.Processors, hostConfig.MemoryGB, restartIfNeeded: true);
                     ui.DisplayCommandResult(c26, true);
                 }
 
-                localVM = WslVM.TryFindByName(vmSpec.Name, hostStorage);
+                var localVM = WslVM.FindByName(vmConfig.Name, configStore, hostStorage);
 
                 var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
-                VirtualMachineEndpoint localVMEndpoint = null;
                 if (!localVM.IsRunning())
                 {
-                    localVMEndpoint = localVM.Start(vmSpec);
-                }
-                else
-                {
-                    localVMEndpoint = localVM.Endpoint;
+                    localVM.Start();
                 }
 
-                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, HTTP port = {localVMEndpoint.HttpIngressPort}");
+                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVM.RunningInstance}, HTTP port = {localVM.Config.HostHttpIngressPort}, HTTPS port = {localVM.Config.HostHttpsIngressPort}");
+
+                return localVM;
             }
             catch (Exception ex)
             {
                 ui.DisplayCommandError(ex.Message);
+                return null;
             }
-
-            return localVM;
         }
 
-        public static async Task<bool> Uninstall(string vmName, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<bool> DeleteVirtualMachine(string vmName, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
-                var localVM = WslVM.TryFindByName(vmName, hostStorage);
+                var localVM = WslVM.FindByName(vmName, configStore, hostStorage);
                 if (localVM == null) return true;
 
                 var c1 = ui.DisplayCommandLaunch("Stopping wordslab virtual machine and local k3s cluster");

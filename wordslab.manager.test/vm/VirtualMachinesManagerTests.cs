@@ -24,7 +24,45 @@ namespace wordslab.manager.test.vm
                 var vmm = new VirtualMachinesManager(storage, configStore);
                 Assert.IsNotNull(vmm);
 
-                var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(storage);
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(storage);
+
+                var minSpec = vmSpecs.MinimumVMSpec;
+                minSpec.Name = "test-blank1";
+                var gpus = Compute.GetNvidiaGPUsInfo();
+                if (gpus.Count > 0)
+                {
+                    minSpec.GPUModel = gpus[0].ModelName;
+                    minSpec.GPUMemoryGB = gpus[0].MemoryMB / 1024;
+                }
+                var ui = new TestProcessUI();
+                var vm = await vmm.CreateLocalVM(minSpec, ui);
+                Assert.IsNotNull(vm);
+                Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+
+                minSpec.Name = "test-blank2";
+                minSpec.HostHttpIngressPort += 1;
+                minSpec.HostHttpsIngressPort += 1;
+                minSpec.HostKubernetesPort += 1;
+                ui = new TestProcessUI();
+                vm = await vmm.CreateLocalVM(minSpec, ui);
+                Assert.IsNotNull(vm);
+                Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+            }
+        }
+
+        [TestMethod]
+        public async Task T01_TestCreateLocalVM()
+        {
+            var serviceCollection = ConfigStoreTests.GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var storage = serviceProvider.GetService<HostStorage>();
+                var configStore = serviceProvider.GetService<ConfigStore>();
+
+                var vmm = new VirtualMachinesManager(storage, configStore);
+                Assert.IsNotNull(vmm);
+
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(storage);
 
                 var minSpec = vmSpecs.MinimumVMSpec;
                 minSpec.Name = "test-blank1";

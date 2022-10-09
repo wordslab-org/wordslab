@@ -35,6 +35,18 @@ public static class ConsoleApp
         manager
 
         host
+          install
+          config
+            info
+            update
+          vm
+            list
+            status [machinename]
+            create [machinename] [cores] [memory] [gpu] [disksizes]
+            update [machinename] [cores] [memory] [gpu] [disksizes]
+            start [machinename] ([cores] [memory] [gpu]) 
+            stop [machinename] 
+            delete [machinename]
           system
             info
             status
@@ -58,19 +70,11 @@ public static class ConsoleApp
             info
             hypervisor [enable|disable]
             update [packagename]
-          vm
-            list
-            status [machinename]
-            create [machinename] [cores] [memory] [gpu] [disksizes]
-            update [machinename] [cores] [memory] [gpu] [disksizes]
-            start [machinename]
-            stop [machinename] ([cores] [memory] [gpu]) 
-            delete [machinename]
-          secret
-            list
-            export [resourcepath] [secretfunction] [password] 
-            import [resourcepath] [secretfunction] [password]
         cloud
+          install
+          config
+            info
+            update
           account
             list 
             connect [servicename]
@@ -158,45 +162,16 @@ public static class ConsoleApp
 
         config.AddBranch("host", config =>
         {
-            config.SetDescription("Manage wordslab storage, compute, ports, secrets and vm on your local host machine");
-            config.AddBranch("system", config =>
+            config.SetDescription("Manage wordslab virtual machines on your local host machine");
+            config.AddCommand<InstallCommand>("install")
+                        .WithDescription("Install software prequisites and configure your host machine sandbox to enable local virtual machines");
+            config.AddBranch("config", config =>
             {
-                config.SetDescription("Display host machine system information and usage metrics");
-                config.AddCommand<SystemInfoCommand>("info")
-                    .WithDescription("Display host machine hardware and operating system information");
-                config.AddCommand<SystemStatusCommand>("status")
-                    .WithDescription("Display host machine usage metrics: cpu, memory, storage, network");
-            });
-            config.AddBranch("storage", config =>
-            {
-                config.SetDescription("Manage wordslab working directories and disk space quotas on your local host machine");
-                config.AddCommand<StorageInfoCommand>("info")
-                    .WithDescription("Display host machine disk space information");
-                config.AddCommand<StorageStatusCommand>("status")
-                    .WithDescription("Display host machine working directories and disk space usage");
-
-            });
-            config.AddBranch("compute", config =>
-            {
-                config.SetDescription("Manage wordslab cpu, gpu, and memory quotas on your local host machine");
-                config.AddCommand<ComputeInfoCommand>("info")
-                    .WithDescription("Display host machine cpu, gpu, and memory information");
-                config.AddCommand<ComputeStatusCommand>("status")
-                    .WithDescription("Display host machine cpu, gpu, and memory usage");
-            });
-            config.AddBranch("network", config =>
-            {
-                config.SetDescription("Manage wordslab services ports and network traffic on your local host machine");
-                config.AddCommand<NetworkInfoCommand>("info")
-                    .WithDescription("Display host machine network information");
-                config.AddCommand<NetworkStatusCommand>("status")
-                    .WithDescription("Display host machine network ports usage");
-            });
-            config.AddBranch("os", config =>
-            {
-                config.SetDescription("Manage operating system hypervisor and required packages on your local host machine");
-                config.AddCommand<OsInfoCommand>("info")
-                    .WithDescription("Display host machine operating system and hypervisor information");
+                config.SetDescription("Display and update your host machine sandbox configuration");
+                config.AddCommand<ConfigInfoCommand>("info")
+                    .WithDescription("Display  host machine sandbox configuration");
+                config.AddCommand<ConfigUpdateCommand>("update")
+                        .WithDescription("Update host machine sandbox configuration");
             });
             config.AddBranch("vm", config =>
             {
@@ -214,15 +189,48 @@ public static class ConsoleApp
                 config.AddCommand<VmCreateCommand>("create")
                         .WithDescription("Create a new wordslab virtual machine on your local host");
                 config.AddCommand<VmResizeCommand>("resize")
-                        .WithDescription("Resize the disks of an existing wordslab virtual machine on your local host");                
+                        .WithDescription("Resize the disks of an existing wordslab virtual machine on your local host");
                 config.AddCommand<VmDeleteCommand>("delete")
                         .WithDescription("DANGER - Delete a local wordslab virtual machine - ALL DATA WILL BE LOST");
             });
-            config.AddBranch("secret", config =>
+            config.AddBranch("system", config =>
             {
-                config.SetDescription("Import or export secrets used to access remote services on your local host machine");
-                config.AddCommand<SecretListCommand>("list")
-                    .WithDescription("List the secrets stored on your local host machine");
+                config.SetDescription("Display host machine system information and usage metrics");
+                config.AddCommand<SystemInfoCommand>("info")
+                    .WithDescription("Display host machine hardware and operating system information");
+                config.AddCommand<SystemStatusCommand>("status")
+                    .WithDescription("Display host machine usage metrics: cpu, memory, storage, network");
+            });
+            config.AddBranch("storage", config =>
+            {
+                config.SetDescription("Display wordslab working directories and disk space usage on your local host machine");
+                config.AddCommand<StorageInfoCommand>("info")
+                    .WithDescription("Display host machine disk space information");
+                config.AddCommand<StorageStatusCommand>("status")
+                    .WithDescription("Display wordslab working directories and disk space usage");
+
+            });
+            config.AddBranch("compute", config =>
+            {
+                config.SetDescription("Display wordslab cpu, gpu, and memory quotas on your local host machine");
+                config.AddCommand<ComputeInfoCommand>("info")
+                    .WithDescription("Display host machine cpu, gpu, and memory information");
+                config.AddCommand<ComputeStatusCommand>("status")
+                    .WithDescription("Display host machine cpu, gpu, and memory usage");
+            });
+            config.AddBranch("network", config =>
+            {
+                config.SetDescription("Display wordslab network traffic on your local host machine");
+                config.AddCommand<NetworkInfoCommand>("info")
+                    .WithDescription("Display host machine network information");
+                config.AddCommand<NetworkStatusCommand>("status")
+                    .WithDescription("Display host machine network ports usage");
+            });
+            config.AddBranch("os", config =>
+            {
+                config.SetDescription("Display operating system and hypervisor information on your local host machine");
+                config.AddCommand<OsInfoCommand>("info")
+                    .WithDescription("Display host machine operating system and hypervisor information");
             });
         });
 

@@ -1,12 +1,12 @@
-﻿using wordslab.manager.os;
+﻿using wordslab.manager.config;
+using wordslab.manager.os;
 using wordslab.manager.storage;
-using wordslab.manager.storage.config;
 
 namespace wordslab.manager.vm.qemu
 {
     public class QemuVM : VirtualMachine
     {
-        public static List<VirtualMachine> ListLocalVMs(HostStorage storage)
+        public static List<VirtualMachine> ListLocalVMs(ConfigStore configStore, HostStorage storage)
         {
             var vms = new List<VirtualMachine>();
             try
@@ -14,119 +14,144 @@ namespace wordslab.manager.vm.qemu
                 var vmNames = QemuDisk.ListVMNamesFromClusterDisks(storage);                
                 foreach (var vmName in vmNames)
                 {
-                    vms.Add(TryFindByName(vmName, storage));
+                    vms.Add(FindByName(vmName, configStore, storage));
                 }
             }
-            catch { }
+            catch(Exception e) 
+            {
+                throw new Exception($"Could not list the local virtual machines because one of them is in an inconsistent state : {e.Message}");
+            }
+
             return vms;
         }
 
-        public static VirtualMachine TryFindByName(string vmName, HostStorage storage)
+        public static VirtualMachine FindByName(string vmName, ConfigStore configStore, HostStorage storage)
         {
+            // Find the the virtual machine virtual disks files in host storage
             var clusterDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
             var dataDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.Data, storage);
             if (clusterDisk == null || dataDisk == null)
             {
                 throw new Exception($"Could not find virtual disks for a local virtual machine named {vmName}");
             }
-
-            var qemuProc = Qemu.TryFindVirtualMachineProcess(clusterDisk.StoragePath);
-            if(qemuProc == null)
+            
+            // Find the virtual machine configuration in the database
+            var vmConfig = configStore.TryGetVirtualMachineConfig(vmName);
+            if(vmConfig == null)
             {
-                throw new Exception($"Could not find a running qemu process for a local virtual machine named {vmName}");
+                throw new Exception($"Could not find a configuration record for a local virtual machine named {vmName}");
             }
-
-            return new QemuVM(vmName, qemuProc.Processors, qemuProc.MemoryGB, clusterDisk, dataDisk, storage);
+            
+            // Initialize the virtual machine and its running state
+            var vm = new QemuVM(vmConfig, clusterDisk, dataDisk, configStore, storage);
+            return vm;
         }
 
-        internal QemuVM(string name, int processors, int memoryGB, VirtualDisk clusterDisk, VirtualDisk dataDisk, HostStorage storage) 
-            : base(name, processors, memoryGB, clusterDisk, dataDisk, storage) 
+        internal QemuVM(VirtualMachineConfig vmConfig, VirtualDisk clusterDisk, VirtualDisk dataDisk, ConfigStore configStore, HostStorage storage)
+            : base(vmConfig, clusterDisk, dataDisk, configStore, storage)
         {
-            Type = VirtualMachineType.Qemu;        
+            if (vmConfig.VmProvider != VirtualMachineProvider.Qemu)
+            {
+                throw new ArgumentException("VmProvider should be Qemu");
+            }
+
+            // Initialize the running state
+            IsRunning();
         }
 
         public override bool IsRunning()
         {
+            // Find running process
             var qemuProc = Qemu.TryFindVirtualMachineProcess(ClusterDisk.StoragePath);
-            if(qemuProc != null)
+           
+            // Sync with config database state
+            if(qemuProc != null && RunningInstance == null)
             {
-                processId = qemuProc.PID;
+                var lastRunningInstance = configStore.TryGetLastVirtualMachineInstance(Name);
+                if(lastRunningInstance == null || lastRunningInstance.VmProcessId != qemuProc.PID)
+                {
+                    throw new InvalidOperationException($"The qemu virtual machine {Name} was launched outside of wordslab manager: please stop it from your terminal before you can use it from within wordslab manager again");
+                }
+                else
+                {
+                    RunningInstance = lastRunningInstance;
+                }
             }
-            else
+            if(qemuProc == null && RunningInstance != null)
             {
-                processId = -1;
-                endpoint = null;
+                RunningInstance.Killed($"A running qemu process for virtual machine {Name} was not found: it was killed outside of wordslab manager");
+                configStore.SaveChanges();
+                RunningInstance = null;
             }
+
             return qemuProc != null;
         }
 
-        private int processId = -1;
-
-        public override VirtualMachineEndpoint Start(int? processors = null, int? memoryGB = null, int? hostSSHPort = null, int? hostKubernetesPort = null, int? hostHttpIngressPort = null, int? hostHttpsIngressPort = null)
+        public override VirtualMachineInstance Start(ComputeSpec computeStartArguments = null, GPUSpec gpuStartArguments = null)
         {
+            // If the VM is already running, do nothing
             if (IsRunning())
             {
-                return Endpoint;
+                return RunningInstance;
             }
 
-            // Update VM properties default values
-            if (processors.HasValue) Processors = processors.Value;
-            if (memoryGB.HasValue) MemoryGB = memoryGB.Value;
-            if (hostSSHPort.HasValue) HostSSHPort = hostSSHPort.Value;
-            if (hostKubernetesPort.HasValue) HostKubernetesPort = hostKubernetesPort.Value;
-            if (hostHttpIngressPort.HasValue) HostHttpIngressPort = hostHttpIngressPort.Value;
-            if (hostHttpsIngressPort.HasValue) HostHttpsIngressPort = hostHttpsIngressPort.Value;
+            // Check start arguments and create a VM instance (state = Starting)
+            var vmInstance = CheckStartArgumentsAndCreateInstance(computeStartArguments, gpuStartArguments);
 
-            // Check if the requested ports are available right before startup
-            var usedPorts = Network.GetAllTcpPortsInUse();
-            if (usedPorts.Contains(HostSSHPort))
+            // Start the virtual machine
+            try
             {
-                throw new InvalidOperationException($"Host port for SSH: {HostSSHPort} is already in use, please select another port");
+                // Start qemu process
+                var processId = Qemu.StartVirtualMachine(computeStartArguments.Processors, computeStartArguments.MemoryGB, ClusterDisk.StoragePath, DataDisk.StoragePath, Config.HostSSHPort, Config.HostHttpIngressPort, Config.HostHttpsIngressPort, Config.HostKubernetesPort);
+
+                // Start k3s inside the virtual machine
+                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", Config.HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
+
+                // Get virtual machine IP and kubeconfig
+                string ip = null;
+                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", Config.HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
+                string kubeconfig = null;
+                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", Config.HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
+
+                vmInstance.Started(processId, ip, kubeconfig, null);
+                configStore.SaveChanges();
             }
-            if (usedPorts.Contains(HostKubernetesPort))
+            catch(Exception e)
             {
-                throw new InvalidOperationException($"Host port for Kubernetes: {HostKubernetesPort} is already in use, please select another port");
-            }
-            if (usedPorts.Contains(HostHttpIngressPort))
-            {
-                throw new InvalidOperationException($"Host port for HTTP ingress: {HostHttpIngressPort} is already in use, please select another port");
-            }
-            if (usedPorts.Contains(HostHttpsIngressPort))
-            {
-                throw new InvalidOperationException($"Host port for HTTPS ingress: {HostHttpsIngressPort} is already in use, please select another port");
+                vmInstance.Failed(e.Message);
+                configStore.SaveChanges();
+
+                throw new Exception($"Failed to start virtual machine {Name}: {e.Message}");
             }
 
-            // Start qemu process
-            processId = Qemu.StartVirtualMachine(Processors, MemoryGB, ClusterDisk.StoragePath, DataDisk.StoragePath, HostSSHPort, HostHttpIngressPort, HostHttpsIngressPort, HostKubernetesPort);
-               
-            // Start k3s inside the virtual machine
-            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, $"sudo ./{QemuDisk.k3sStartupScript}");
-
-            // Get virtual machine IP and kubeconfig
-            string ip = null;
-            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
-            string kubeconfig = null;
-            SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
-
-            // Save it to the endpoint & kubeconfig files
-            endpoint = new VirtualMachineEndpoint(Name, ip, HostSSHPort, HostKubernetesPort, HostHttpIngressPort, HostHttpsIngressPort, kubeconfig);
-            endpoint.Save(storage);
-            return endpoint;
+            // Set the running instance
+            RunningInstance = vmInstance;
+            return RunningInstance;
         }
 
         public override void Stop()
         {
-            if (endpoint != null)
+            if (!IsRunning())
             {
-                endpoint.Delete(storage);
-                endpoint = null;
+                return;
             }
 
-            if (IsRunning())
+            // Stop the virtual machine
+            try
             {
-                Qemu.StopVirtualMachine(processId);
+                Qemu.StopVirtualMachine(RunningInstance.VmProcessId);
+
+                RunningInstance.Stopped(null);
+                configStore.SaveChanges();
             }
-            processId = -1;
+            catch(Exception e)
+            {
+                RunningInstance.Killed(e.Message);
+                configStore.SaveChanges();
+            }
+
+            // Reset the running instance
+            RunningInstance = null;
         }
     }
 }

@@ -130,7 +130,7 @@ All deployments are executed inside the lightweight virtual machines: the only i
 3. Run virtual machine (starting from config)
 
 HostMachineConfig
-- Name
+- HostName
 - Processors
 - MemoryGB
 - WithGPU

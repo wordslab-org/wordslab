@@ -1,6 +1,6 @@
-﻿using wordslab.manager.os;
+﻿using wordslab.manager.config;
+using wordslab.manager.os;
 using wordslab.manager.storage;
-using wordslab.manager.storage.config;
 using wordslab.manager.vm.qemu;
 using wordslab.manager.vm.wsl;
 
@@ -17,42 +17,53 @@ namespace wordslab.manager.vm
             this.configStore = configStore;
         }
 
-        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineSpec vmSpec, InstallProcessUI installUI)
+        public async Task<bool> CheckAndInstallHostMachineRequirements(bool userWantsVMWithGPU, InstallProcessUI installUI)
+        {
+            var success = false;
+            if (OS.IsWindows)
+            {
+                success = await WslVMInstaller.CheckAndInstallHostMachineRequirements(userWantsVMWithGPU, hostStorage, installUI);
+            }
+            else if (OS.IsLinux || OS.IsMacOS)
+            {
+                success = await QemuVMInstaller.CheckAndInstallHostMachineRequirements(userWantsVMWithGPU, hostStorage, installUI);
+            }
+            return success;
+        }
+
+        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, InstallProcessUI installUI)
         {
             VirtualMachine vm = null;
             if (OS.IsWindows)
             {
-                vm = await WslVMInstaller.Install(vmSpec, hostStorage, installUI);
+                vm = await WslVMInstaller.CreateVirtualMachine(vmConfig, configStore, hostStorage, installUI);
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                vm = await QemuVMInstaller.Install(vmSpec, hostStorage, installUI);
-            }
-            if (vm != null)
-            {
-                var vmConfig = new VirtualMachineConfig(vm);
-                configStore.AddVirtualMachineConfig(vmConfig);
+                vm = await QemuVMInstaller.CreateVirtualMachine(vmConfig, configStore, hostStorage, installUI);
             }
             return vm;
         }
 
         public List<VirtualMachine> ListLocalVMs()
         {
-            // List configs found in database
-            var localVmType = OS.IsWindows ? VirtualMachineType.Wsl : VirtualMachineType.Qemu;
-            var vmConfigs = configStore.VirtualMachines.Where(vm => vm.Type == localVmType);            
-            var vmNamesInDatabase = new HashSet<string>(vmConfigs.Select(config => config.Name));
-
             // List vms found on disk
             List<VirtualMachine> vms = null;
             if (OS.IsWindows)
             {
-                vms = WslVM.ListLocalVMs(hostStorage);
+                vms = WslVM.ListLocalVMs(configStore, hostStorage);
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                vms = QemuVM.ListLocalVMs(hostStorage);
+                vms = QemuVM.ListLocalVMs(configStore, hostStorage);
             }
+
+            /*            
+            // List configs found in database
+            var localVmType = OS.IsWindows ? VirtualMachineType.Wsl : VirtualMachineType.Qemu;
+            var vmConfigs = configStore.VirtualMachines.Where(vm => vm.Type == localVmType);            
+            var vmNamesInDatabase = new HashSet<string>(vmConfigs.Select(config => config.Name));
+ 
             var vmNamesOnDisk = new HashSet<string>(vms.Select(vm => vm.Name));
 
             // The TRUTH is on disk => align the database
@@ -80,6 +91,7 @@ namespace wordslab.manager.vm
 
             // Update configs in database
             configStore.SaveChanges();
+            */
 
             return vms;
         }
@@ -87,14 +99,18 @@ namespace wordslab.manager.vm
         public VirtualMachine TryFindLocalVM(string vmName)
         {
             VirtualMachine vm = null;
-            if (OS.IsWindows)
+            try
             {
-                vm = WslVM.TryFindByName(vmName, hostStorage);
-            }
-            else if (OS.IsLinux || OS.IsMacOS)
-            {
-                vm = QemuVM.TryFindByName(vmName, hostStorage);
-            }
+                if (OS.IsWindows)
+                {
+                    vm = WslVM.FindByName(vmName, configStore, hostStorage);
+                }
+                else if (OS.IsLinux || OS.IsMacOS)
+                {
+                    vm = QemuVM.FindByName(vmName, configStore, hostStorage);
+                }
+            } 
+            catch(Exception) { }
             return vm;
         }
 
@@ -103,11 +119,11 @@ namespace wordslab.manager.vm
             bool uninstallSuccess = false;
             if (OS.IsWindows)
             {
-                uninstallSuccess = await WslVMInstaller.Uninstall(vmName, hostStorage, installUI);               
+                uninstallSuccess = await WslVMInstaller.DeleteVirtualMachine(vmName, configStore, hostStorage, installUI);               
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                uninstallSuccess = await QemuVMInstaller.Uninstall(vmName, hostStorage, installUI);
+                uninstallSuccess = await QemuVMInstaller.DeleteVirtualMachine(vmName, configStore, hostStorage, installUI);
             }
             if (uninstallSuccess)
             {                

@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 
@@ -54,21 +55,24 @@ namespace wordslab.manager.vm.qemu
             return Path.Combine(storage.DownloadCacheDirectory, "scripts", "linux");
         }
 
-        public static void InstallK3sOnVirtualMachine(VirtualMachineEndpoint vmEndpoint, HostStorage storage)
+        public static void InstallK3sOnVirtualMachine(VirtualMachineInstance vmInstance, HostStorage storage)
         {
-            SshClient.ImportKnownHostOnClient(vmEndpoint.IPAddress, vmEndpoint.SSHPort);
+            var ip = vmInstance.VmIPAddress;
+            var sshPort = vmInstance.Config.HostSSHPort;
 
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{VirtualMachine.k3sExecutableFileName}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{VirtualMachine.k3sImagesFileName}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{VirtualMachine.helmFileName}");
+            SshClient.ImportKnownHostOnClient(ip, sshPort);
+
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName), "ubuntu", ip, sshPort, $"~/{VirtualMachine.k3sExecutableFileName}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName), "ubuntu", ip, sshPort, $"~/{VirtualMachine.k3sImagesFileName}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName), "ubuntu", ip, sshPort, $"~/{VirtualMachine.helmFileName}");
 
             var scriptsPath = GetLinuxScriptsPath(storage);
-            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sInstallScript), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{k3sInstallScript}");
-            SshClient.ExecuteRemoteCommand("ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"chmod a+x {k3sInstallScript}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sStartupScript), "ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"~/{k3sStartupScript}");
-            SshClient.ExecuteRemoteCommand("ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"chmod a+x {k3sStartupScript}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sInstallScript), "ubuntu", ip, sshPort, $"~/{k3sInstallScript}");
+            SshClient.ExecuteRemoteCommand("ubuntu", ip, sshPort, $"chmod a+x {k3sInstallScript}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sStartupScript), "ubuntu", ip, sshPort, $"~/{k3sStartupScript}");
+            SshClient.ExecuteRemoteCommand("ubuntu", ip, sshPort, $"chmod a+x {k3sStartupScript}");
 
-            SshClient.ExecuteRemoteCommand("ubuntu", vmEndpoint.IPAddress, vmEndpoint.SSHPort, $"sudo ./{k3sInstallScript}");
+            SshClient.ExecuteRemoteCommand("ubuntu", ip, sshPort, $"sudo ./{k3sInstallScript}");
         }
 
         public static VirtualDisk CreateBlank(string vmName, int totalSizeGB, HostStorage storage)
@@ -81,8 +85,6 @@ namespace wordslab.manager.vm.qemu
 
             return TryFindByName(vmName, VirtualDiskFunction.Data, storage);
         }
-
-
 
         private QemuDisk(string vmName, VirtualDiskFunction function, string storagePath, int totalSizeGB, bool isSSD) :
             base(vmName, function, storagePath, totalSizeGB, isSSD)

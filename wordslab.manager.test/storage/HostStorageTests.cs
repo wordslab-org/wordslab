@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using wordslab.manager.storage;
-using wordslab.manager.storage.config;
 
 namespace wordslab.manager.test.storage
 {
@@ -42,35 +41,22 @@ namespace wordslab.manager.test.storage
         }
 
         [TestMethod]
-        public void T01_TestGetConfigurableDirectories()
-        {
-            var storage = new HostStorage();
-            var dirs = storage.GetConfigurableDirectories();
-
-            Assert.IsTrue(dirs.Count == 5);
-            Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.DownloadCache).First().Path.Contains(storage.AppDirectory));
-            Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.VirtualMachineCluster).First().Path.Contains(storage.AppDirectory));
-            Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.VirtualMachineData).First().Path.Contains(storage.AppDirectory));
-            Assert.IsTrue(dirs.Where(dir => dir.Function == HostDirectory.StorageFunction.Backup).First().Path.Contains(storage.AppDirectory));
-        }
-
-        [TestMethod]
-        public void T02_TestMoveConfigurableDirectoryTo()
+        public void T01_TestMoveConfigurableDirectoryTo()
         {
             var storage = new HostStorage();
 
             var subdir = "tmp"; 
-            var text = "downloaded content";
-            File.WriteAllText(Path.Combine(storage.DownloadCacheDirectory, "test1.txt"), text);
-            Directory.CreateDirectory(Path.Combine(storage.DownloadCacheDirectory, subdir));
-            File.WriteAllText(Path.Combine(storage.DownloadCacheDirectory, subdir, "test2.txt"), text);
+            var text = "test content";
+            File.WriteAllText(Path.Combine(storage.VirtualMachineClusterDirectory, "test1.txt"), text);
+            Directory.CreateDirectory(Path.Combine(storage.VirtualMachineClusterDirectory, subdir));
+            File.WriteAllText(Path.Combine(storage.VirtualMachineClusterDirectory, subdir, "test2.txt"), text);
 
-            var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T02");
-            storage.MoveConfigurableDirectoryTo(HostDirectory.StorageFunction.DownloadCache, workdir);
+            var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T01");
+            storage.MoveConfigurableDirectoryTo(StorageLocation.VirtualMachineCluster, workdir);
             try
             {
-                var destinationPath = Path.Combine(workdir, "wordslab", "download");
-                Assert.AreEqual(storage.DownloadCacheDirectory, destinationPath);
+                var destinationPath = Path.Combine(workdir, "wordslab", "vm", "cluster");
+                Assert.AreEqual(storage.VirtualMachineClusterDirectory, destinationPath);
                 var file1Path = Path.Combine(destinationPath, "test1.txt");
                 var file2Path = Path.Combine(destinationPath, subdir, "test2.txt");
                 Assert.IsTrue(File.Exists(file1Path));
@@ -82,53 +68,14 @@ namespace wordslab.manager.test.storage
             {
                 Directory.Delete(workdir, true);
             }
-        }
+        }  
 
         [TestMethod]
-        public void T03_TestInitConfigurableDirectories()
+        public async Task T02_TestDownloadFileWithCache()
         {
             var storage = new HostStorage();
+            storage.ClearDownloadCache();
 
-            var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T03");
-            try
-            {
-                var path1 = Path.Combine(workdir, "dir1");
-                var path2 = Path.Combine(workdir, "dir2");
-                var path3 = Path.Combine(workdir, "dir3");
-                var path4 = Path.Combine(workdir, "dir4");
-
-                var dirs = new List<HostDirectory>();
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.DownloadCache, path1));
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineCluster, path2));
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.VirtualMachineData, path3));
-                dirs.Add(new HostDirectory(HostDirectory.StorageFunction.Backup, path4));
-
-                storage.InitConfigurableDirectories(dirs);
-
-                Assert.AreEqual(storage.DownloadCacheDirectory, path1);
-                Assert.AreEqual(storage.VirtualMachineClusterDirectory, path2);
-                Assert.AreEqual(storage.VirtualMachineDataDirectory, path3);
-                Assert.AreEqual(storage.BackupDirectory, path4);
-
-                Assert.IsTrue(Directory.Exists(path1));
-                Assert.IsTrue(Directory.Exists(path2));
-                Assert.IsTrue(Directory.Exists(path3));
-                Assert.IsTrue(Directory.Exists(path4));
-
-            }
-            finally
-            {
-                Directory.Delete(workdir, true);
-            }
-        }                
-
-        [TestMethod]
-        public async Task T04_TestDownloadFileWithCache()
-        {
-            var storage = new HostStorage();
-
-            var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T04");
-            storage.MoveConfigurableDirectoryTo(HostDirectory.StorageFunction.DownloadCache, workdir);
             try
             {
                 // Test regular download
@@ -184,17 +131,16 @@ namespace wordslab.manager.test.storage
             }
             finally
             {
-                Directory.Delete(workdir, true);
+                storage.ClearDownloadCache();
             }
         }
 
         [TestMethod]
-        public async Task T05_TestExtractGZipFile()
+        public async Task T03_TestExtractGZipFile()
         {
             var storage = new HostStorage();
+            storage.ClearDownloadCache();
 
-            var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T05");
-            storage.MoveConfigurableDirectoryTo(HostDirectory.StorageFunction.DownloadCache, workdir);
             try
             {
                 // Download Gzip file
@@ -219,17 +165,16 @@ namespace wordslab.manager.test.storage
             }
             finally
             {
-                Directory.Delete(workdir, true);
+                storage.ClearDownloadCache();
             }
         }
 
         [TestMethod]
-        public async Task T06_TestExtractTarFile()
+        public async Task T04_TestExtractTarFile()
         {
             var storage = new HostStorage();
+            storage.ClearDownloadCache();
 
-            var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T06");
-            storage.MoveConfigurableDirectoryTo(HostDirectory.StorageFunction.DownloadCache, workdir);
             try
             {
                 // Download Tar file
@@ -254,7 +199,7 @@ namespace wordslab.manager.test.storage
             }
             finally
             {
-                Directory.Delete(workdir, true);
+                storage.ClearDownloadCache();
             }
         }
     }

@@ -2,10 +2,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using wordslab.manager.config;
+using wordslab.manager.os;
 using wordslab.manager.storage;
-using wordslab.manager.storage.config;
 
 namespace wordslab.manager.test.storage
 {
@@ -59,12 +61,37 @@ namespace wordslab.manager.test.storage
 
                 // Test database content
                 Assert.IsNotNull(configStore);
-                Assert.IsTrue(configStore.HostDirectories.Count() == 5);
+                Assert.IsTrue(configStore.HostMachineConfig == null);
+
+                // Intialize host machine config
+                var machineConfig = new HostMachineConfig(OS.GetMachineName(), hostStorage,
+                    2, 4, true, hostStorage.VirtualMachineClusterDirectory, 5, hostStorage.VirtualMachineDataDirectory, 10, hostStorage.BackupDirectory, 20,
+                    21..23, 6433..6455, 80..82, false, 443..445, true);
+                configStore.InitializeHostMachineConfig(machineConfig);
+
+                // Test host machine config
+                machineConfig = configStore.HostMachineConfig;
+                Assert.IsTrue(machineConfig != null);
+                Assert.IsTrue(machineConfig.Processors == 2);
+                Assert.IsTrue(machineConfig.MemoryGB == 4);
+                Assert.IsTrue(machineConfig.CanUseGPUs == true);
+                Assert.IsTrue(machineConfig.VirtualMachineClusterPath == hostStorage.VirtualMachineClusterDirectory);
+                Assert.IsTrue(machineConfig.VirtualMachineClusterSizeGB == 5);
+                Assert.IsTrue(machineConfig.VirtualMachineDataPath == hostStorage.VirtualMachineDataDirectory);
+                Assert.IsTrue(machineConfig.VirtualMachineDataSizeGB == 10);
+                Assert.IsTrue(machineConfig.BackupPath == hostStorage.BackupDirectory);
+                Assert.IsTrue(machineConfig.BackupSizeGB == 20);
+                Assert.IsTrue(machineConfig.SSHPorts.Start.Value == 21);
+                Assert.IsTrue(machineConfig.KubernetesPorts.End.Value == 6455);
+                Assert.IsTrue(machineConfig.HttpPorts.Start.Value == 80);
+                Assert.IsTrue(machineConfig.CanExposeHttpOnLAN == false);
+                Assert.IsTrue(machineConfig.HttpsPorts.End.Value == 445);
+                Assert.IsTrue(machineConfig.CanExposeHttpsOnLAN == true);
             }
         }
 
         [TestMethod]
-        public void T01_1_TestMoveHostDirectoryTo()
+        public void T01_1_TestMoveHostStorageLocationTo()
         {
             var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T01");
 
@@ -74,23 +101,22 @@ namespace wordslab.manager.test.storage
             {
                 var storage = serviceProvider.GetService<HostStorage>();
                 var configStore = serviceProvider.GetService<ConfigStore>();
-                Assert.IsTrue(configStore.HostDirectories.Count() == 5);
+                var machineConfig = configStore.HostMachineConfig;
+                Assert.IsTrue(machineConfig != null);
 
                 Assert.IsTrue(storage.BackupDirectory.StartsWith(storage.AppDirectory));
-                var backupPath = configStore.HostDirectories.Where(d => d.Function == HostDirectory.StorageFunction.Backup).First().Path;
-                Assert.IsTrue(backupPath.StartsWith(storage.AppDirectory));
+                Assert.IsTrue(machineConfig.BackupPath.StartsWith(storage.AppDirectory));
 
                 // Move backup directory under working directory
-                configStore.MoveHostDirectoryTo(HostDirectory.StorageFunction.Backup, workdir);
+                configStore.MoveHostStorageLocationTo(StorageLocation.Backup, workdir);
 
                 Assert.IsTrue(storage.BackupDirectory.StartsWith(workdir));
-                backupPath = configStore.HostDirectories.Where(d => d.Function == HostDirectory.StorageFunction.Backup).First().Path;
-                Assert.IsTrue(backupPath.StartsWith(workdir));
+                Assert.IsTrue(machineConfig.BackupPath.StartsWith(workdir));
             }
         }
 
         [TestMethod]
-        public void T01_2_TestMoveHostDirectoryTo()
+        public void T01_2_TestMoveHostStorageLocationTo()
         {
             var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T01");
             
@@ -100,23 +126,22 @@ namespace wordslab.manager.test.storage
             {
                 var storage2 = serviceProvider2.GetService<HostStorage>();
                 var configStore2 = serviceProvider2.GetService<ConfigStore>();
-                Assert.IsTrue(configStore2.HostDirectories.Count() == 5);
+                var machineConfig2 = configStore2.HostMachineConfig;
+                Assert.IsTrue(machineConfig2 != null);
 
                 Assert.IsTrue(storage2.BackupDirectory.StartsWith(workdir));
-                var backupPath2 = configStore2.HostDirectories.Where(d => d.Function == HostDirectory.StorageFunction.Backup).First().Path;
-                Assert.IsTrue(backupPath2.StartsWith(workdir));
+                Assert.IsTrue(machineConfig2.BackupPath.StartsWith(workdir));
 
                 // Move backup directory back under app directory
-                configStore2.MoveHostDirectoryTo(HostDirectory.StorageFunction.Backup, storage2.AppDirectory);
+                configStore2.MoveHostStorageLocationTo(StorageLocation.Backup, storage2.AppDirectory);
 
                 Assert.IsTrue(storage2.BackupDirectory.StartsWith(storage2.AppDirectory));
-                backupPath2 = configStore2.HostDirectories.Where(d => d.Function == HostDirectory.StorageFunction.Backup).First().Path;
-                Assert.IsTrue(backupPath2.StartsWith(storage2.AppDirectory));
+                Assert.IsTrue(machineConfig2.BackupPath.StartsWith(storage2.AppDirectory));
             }
         }
 
         [TestMethod]
-        public void T01_3_TestMoveHostDirectoryTo()
+        public void T01_3_TestMoveHostStorageLocationTo()
         {
             var workdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "wordslab-tmp-T01");
 
@@ -126,11 +151,11 @@ namespace wordslab.manager.test.storage
             {
                 var storage3 = serviceProvider3.GetService<HostStorage>();
                 var configStore3 = serviceProvider3.GetService<ConfigStore>();
-                Assert.IsTrue(configStore3.HostDirectories.Count() == 5);
+                var machineConfig3 = configStore3.HostMachineConfig;
+                Assert.IsTrue(machineConfig3 != null);
 
                 Assert.IsTrue(storage3.BackupDirectory.StartsWith(storage3.AppDirectory));
-                var backupPath3 = configStore3.HostDirectories.Where(d => d.Function == HostDirectory.StorageFunction.Backup).First().Path;
-                Assert.IsTrue(backupPath3.StartsWith(storage3.AppDirectory));
+                Assert.IsTrue(machineConfig3.BackupPath.StartsWith(storage3.AppDirectory));
             }
 
             Directory.Delete(workdir, true);
@@ -157,44 +182,43 @@ namespace wordslab.manager.test.storage
 
         private static VirtualMachineConfig GetVMConfig1()
         {
-            var vm1 = new VirtualMachineConfig();
+            var vmSpec1 = new VirtualMachineSpec();
+            vmSpec1.Compute.Processors = 2;
+            vmSpec1.Compute.MemoryGB = 4;
+            vmSpec1.GPU.GPUCount = 1;
+            vmSpec1.GPU.ModelName = "GTX 1050";
+            vmSpec1.GPU.MemoryGB = 4;
+            vmSpec1.Storage.ClusterDiskSizeGB = 5;
+            vmSpec1.Storage.ClusterDiskIsSSD = true;
+            vmSpec1.Storage.DataDiskSizeGB = 8;
+            vmSpec1.Storage.DataDiskIsSSD = false; 
 
-            vm1.Type = VirtualMachineType.Wsl;
-            vm1.Name = "vm1";
-            vm1.Processors = 2;
-            vm1.MemoryGB = 4;
-            vm1.GPUModel = "GTX 1050";
-            vm1.GPUMemoryGB = 4;
-            vm1.ClusterDiskSizeGB = 5;
-            vm1.ClusterDiskIsSSD = true;
-            vm1.DataDiskSizeGB = 8;
-            vm1.DataDiskIsSSD = false;
-            vm1.HostSSHPort = 21;
-            vm1.HostKubernetesPort = 6443;
-            vm1.HostHttpIngressPort = 80;
+            var vm1 = new VirtualMachineConfig("vm1",
+                vmSpec1, VirtualMachineProvider.Wsl, "WslVm", false,
+                false, 0, false, 0, true, 8080, false, true, 8433, true);
 
             return vm1;
         }
 
         private static VirtualMachineConfig GetVMConfig2()
         {
-            var vm1 = new VirtualMachineConfig();
+            var vmSpec2 = new VirtualMachineSpec();
+            vmSpec2.Compute.Processors = 4;
+            vmSpec2.Compute.MemoryGB = 8;
+            vmSpec2.Storage.ClusterDiskSizeGB = 8;
+            vmSpec2.Storage.ClusterDiskIsSSD = false;
+            vmSpec2.Storage.DataDiskSizeGB = 16;
+            vmSpec2.Storage.DataDiskIsSSD = true;
+            vmSpec2.Network.SSHPort = 22;
+            vmSpec2.Network.KubernetesPort = 6444;
+            vmSpec2.Network.HttpIngressPort = 81;
+            vmSpec2.Network.HttpsIngressPort = 444;
 
-            vm1.Type = VirtualMachineType.Wsl;
-            vm1.Name = "vm2";
-            vm1.Processors = 4;
-            vm1.MemoryGB = 8;
-            vm1.GPUModel = null;
-            vm1.GPUMemoryGB = 0;
-            vm1.ClusterDiskSizeGB = 8;
-            vm1.ClusterDiskIsSSD = false;
-            vm1.DataDiskSizeGB = 16;
-            vm1.DataDiskIsSSD = true;
-            vm1.HostSSHPort = 22;
-            vm1.HostKubernetesPort = 6444;
-            vm1.HostHttpIngressPort = 81;
+            var vm2 = new VirtualMachineConfig("vm2",
+                vmSpec2, VirtualMachineProvider.Qemu, "QemuVm", true,
+                true, 8021, true, 8443, true, 80, true, false, 0, false);
 
-            return vm1;
+            return vm2;
         }
 
         [TestMethod]
@@ -213,6 +237,9 @@ namespace wordslab.manager.test.storage
                 var vmRef2 = GetVMConfig2();
                 var vm2 = configStore.TryGetVirtualMachineConfig(vmRef2.Name);
                 Assert.IsTrue(vm2 != null && vm2.Equals(vmRef2));
+
+                var vm3 = configStore.TryGetVirtualMachineConfig("vm3");
+                Assert.IsTrue(vm3 == null);
             }
         }
 
@@ -225,12 +252,10 @@ namespace wordslab.manager.test.storage
                 var configStore = serviceProvider.GetService<ConfigStore>();
                 Assert.IsTrue(configStore.VirtualMachines.Count() == 2);
 
-                var vmRef1 = GetVMConfig1();
-                configStore.RemoveVirtualMachineConfig(vmRef1.Name);
+                configStore.RemoveVirtualMachineConfig("vm1");
                 Assert.IsTrue(configStore.VirtualMachines.Count() == 1);
 
-                var vmRef2 = GetVMConfig2();
-                configStore.RemoveVirtualMachineConfig(vmRef2.Name);
+                configStore.RemoveVirtualMachineConfig("vm2");
                 Assert.IsTrue(configStore.VirtualMachines.Count() == 0); ;
             }
         }
@@ -243,6 +268,133 @@ namespace wordslab.manager.test.storage
             {
                 var configStore = serviceProvider.GetService<ConfigStore>();
                 Assert.IsTrue(configStore.VirtualMachines.Count() == 0);
+            }
+        }
+
+        [TestMethod]
+        public void T05_TestAddVirtualMachineInstance()
+        {
+            var serviceCollection = GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var configStore = serviceProvider.GetService<ConfigStore>();
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 0);
+
+                var vm1 = GetVMConfig1();
+                configStore.AddVirtualMachineConfig(vm1);
+                var vm2 = GetVMConfig2();
+                configStore.AddVirtualMachineConfig(vm2);
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 2);
+
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 0);
+
+                var instance1_1 = GetVMInstance1(configStore, true);                
+                configStore.AddVirtualMachineInstance(instance1_1);
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 1);
+                Assert.IsTrue(instance1_1.Id > 0); 
+
+                var instance1_2 = GetVMInstance1(configStore, false);
+                configStore.AddVirtualMachineInstance(instance1_2);
+                instance1_2.ExecutionMessages = "This is the last one";
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 2);
+                Assert.IsTrue(instance1_2.Id > 0);
+                Assert.IsTrue(instance1_1.Id != instance1_2.Id);
+
+                var instance2 = GetVMInstance2(configStore);
+                configStore.AddVirtualMachineInstance(instance2);
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 3);
+            }
+        }
+
+        private static VirtualMachineInstance GetVMInstance1(ConfigStore configStore, bool isFirst)
+        {
+            var vmConfig1 = configStore.TryGetVirtualMachineConfig("vm1");
+            var vmInstance1 = new VirtualMachineInstance(vmConfig1.Name, vmConfig1, null, null, null);
+            if(isFirst)
+            {
+                vmInstance1.Started(31, "127.0.0.11", "kubeconfig content1", "Everything OK1");
+                vmInstance1.Stopped();
+                vmInstance1.StartTimestamp = new DateTime(2022, 10, 8, 12, 10, 55);
+                vmInstance1.StopTimestamp = new DateTime(2022, 10, 8, 15, 2, 21);
+            }
+            else
+            {
+                vmInstance1.Started(17, "127.0.0.12", "kubeconfig content2", "Everything OK2");
+                vmInstance1.StartTimestamp = new DateTime(2022, 10, 9, 9, 44, 0);
+            }
+            return vmInstance1;
+        }
+
+        private static VirtualMachineInstance GetVMInstance2(ConfigStore configStore)
+        {
+            var vmConfig2 = configStore.TryGetVirtualMachineConfig("vm2");
+            var vmInstance2 = new VirtualMachineInstance(vmConfig2.Name, vmConfig2, 
+                new ComputeSpec() { Processors = 1, MemoryGB = 1 }, new GPUSpec() { GPUCount = 2, ModelName = "RTX 3090", MemoryGB = 24 }, new List<string>(new string[] { "One message", "Two messages" }));
+            return vmInstance2;
+        }
+
+        [TestMethod]
+        public void T06_TestVirtualMachineInstances()
+        {
+            var serviceCollection = GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var configStore = serviceProvider.GetService<ConfigStore>();
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 3);
+            }
+        }
+        [TestMethod]
+        public void T07_TestTryGetVirtualMachineInstance()
+        {
+            var serviceCollection = GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var configStore = serviceProvider.GetService<ConfigStore>();
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 2);
+
+                var instanceRef1 = GetVMInstance1(configStore, false);
+                var instance1 = configStore.TryGetLastVirtualMachineInstance(instanceRef1.Name);
+                Assert.IsTrue(instance1 != null && instance1.Equals(instanceRef1));
+
+                var instanceRef2 = GetVMInstance2(configStore);
+                var instance2 = configStore.TryGetLastVirtualMachineInstance(instanceRef2.Name);
+                Assert.IsTrue(instance2 != null && instance2.Equals(instanceRef2));
+
+                var instance3 = configStore.TryGetLastVirtualMachineInstance("vm3");
+                Assert.IsTrue(instance3 == null);
+            }
+        }
+
+        [TestMethod]
+        public void T08_1_TestRemoveVirtualMachineConfigWithInstances()
+        {
+            var serviceCollection = GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var configStore = serviceProvider.GetService<ConfigStore>();
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 2);
+
+                var vmRef1 = GetVMConfig1();
+                configStore.RemoveVirtualMachineConfig(vmRef1.Name);
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 1);
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 1);
+
+                var vmRef2 = GetVMConfig2();
+                configStore.RemoveVirtualMachineConfig(vmRef2.Name);
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 0); ;
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 0);
+            }
+        }
+
+        [TestMethod]
+        public void T08_2_TestRemoveVirtualMachineConfigWithInstances()
+        {
+            var serviceCollection = GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var configStore = serviceProvider.GetService<ConfigStore>();
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 0);
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 0);
             }
         }
     }

@@ -2,9 +2,9 @@
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
-using wordslab.manager.storage.config;
 using wordslab.manager.vm;
 
 namespace wordslab.manager.console.host
@@ -16,7 +16,6 @@ namespace wordslab.manager.console.host
     {
         [Description("Virtual machine name")]
         [CommandArgument(0, "[Name]")]
-        [DefaultValue(VirtualMachineSpec.DEFAULT_LOCALVM_NAME)]
         public string MachineName { get; init; }
     }
 
@@ -34,11 +33,11 @@ namespace wordslab.manager.console.host
 
         [Description("Number of processors")]
         [CommandOption("--proc")]
-        [DefaultValue(VirtualMachineSpec.MIN_VM_PROCESSORS)]
+        [DefaultValue(VMRequirements.MIN_VM_PROCESSORS)]
         public int? Processors { get; init; }
         [Description("Memory size in GB")]
         [CommandOption("--mem")]
-        [DefaultValue(VirtualMachineSpec.MIN_VM_MEMORY_GB)]
+        [DefaultValue(VMRequirements.MIN_VM_MEMORY_GB)]
         public int? MemoryGB { get; init; }
         [Description("GPU device index")]
         [CommandOption("--gpu")]
@@ -46,15 +45,15 @@ namespace wordslab.manager.console.host
 
         [Description("Host port to connect to the virtual machine through SSH (port forward)")]
         [CommandOption("--sshport")]
-        [DefaultValue(VirtualMachineSpec.DEFAULT_HOST_SSH_PORT)]
+        [DefaultValue(VMRequirements.DEFAULT_HOST_SSH_PORT)]
         public int? SSHPort { get; init; }
         [Description("Host port to connect to the Kubernetes cluster inside the virtual machine (port forward)")]
         [CommandOption("--kubeport")]
-        [DefaultValue(VirtualMachineSpec.DEFAULT_HOST_Kubernetes_PORT)]
+        [DefaultValue(VMRequirements.DEFAULT_HOST_Kubernetes_PORT)]
         public int? KubernetesPort { get; init; }
         [Description("Host port to connect to the http services inside the virtual machine (port forward)")]
         [CommandOption("--httpport")]
-        [DefaultValue(VirtualMachineSpec.DEFAULT_HOST_HttpIngress_PORT)]
+        [DefaultValue(VMRequirements.DEFAULT_HOST_HttpIngress_PORT)]
         public int? HttpIngressPort { get; init; }
 
         public string ApplyToVMConfig(VirtualMachineConfig vmConfig, HostStorage hostStorage)
@@ -64,7 +63,7 @@ namespace wordslab.manager.console.host
             // Step 2 : override compute values with min, rec or max specs 
             if (vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
             {
-                var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage);
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(hostStorage);
 
                 VirtualMachineSpec targetSpec = null;
                 if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
@@ -90,27 +89,27 @@ namespace wordslab.manager.console.host
                     targetSpec = vmSpecs.MaximumVMSpecOnThisMachine;
                 }
 
-                vmConfig.Processors = targetSpec.Processors;
-                vmConfig.MemoryGB = targetSpec.MemoryGB;
-                if (string.IsNullOrEmpty(targetSpec.GPUModel))
+                vmConfig.Spec.Compute.Processors = targetSpec.Compute.Processors;
+                vmConfig.Spec.Compute.MemoryGB = targetSpec.Compute.MemoryGB;
+                if (string.IsNullOrEmpty(targetSpec.GPU.ModelName))
                 {
-                    vmConfig.GPUModel = null;
+                    vmConfig.Spec.GPU.ModelName = null;
                 }
-                else if (string.IsNullOrEmpty(vmConfig.GPUModel))
+                else if (string.IsNullOrEmpty(vmConfig.Spec.GPU.ModelName))
                 {
-                    vmConfig.GPUModel = vmSpecs.MaximumVMSpecOnThisMachine.GPUModel;
-                    vmConfig.GPUMemoryGB = vmSpecs.MaximumVMSpecOnThisMachine.GPUMemoryGB;
+                    vmConfig.Spec.GPU.ModelName = vmSpecs.MaximumVMSpecOnThisMachine.GPU.ModelName;
+                    vmConfig.Spec.GPU.MemoryGB = vmSpecs.MaximumVMSpecOnThisMachine.GPU.MemoryGB;
                 }
             }
 
             // Step 3 : apply all the values explicitly set on the command line
             if (vmSettings.Processors.HasValue)
             {
-                vmConfig.Processors = vmSettings.Processors.Value;
+                vmConfig.Spec.Compute.Processors = vmSettings.Processors.Value;
             }
             if (vmSettings.MemoryGB.HasValue)
             {
-                vmConfig.MemoryGB = vmSettings.MemoryGB.Value;
+                vmConfig.Spec.Compute.MemoryGB = vmSettings.MemoryGB.Value;
             }
             if (vmSettings.GPUDevice.HasValue)
             {
@@ -122,8 +121,8 @@ namespace wordslab.manager.console.host
                     return errorMessage;
                 }
                 var selectedGPU = gpusInfo[gpuDevice - 1];
-                vmConfig.GPUModel = selectedGPU.ModelName;
-                vmConfig.GPUMemoryGB = selectedGPU.MemoryMB / 1024;
+                vmConfig.Spec.GPU.ModelName = selectedGPU.ModelName;
+                vmConfig.Spec.GPU.MemoryGB = selectedGPU.MemoryMB / 1024;
             }
             if (vmSettings.SSHPort.HasValue)
             {
@@ -146,12 +145,12 @@ namespace wordslab.manager.console.host
     {
         [Description("Cluster disk size in GB")]
         [CommandOption("--clusterdisk")]
-        [DefaultValue(VirtualMachineSpec.REC_VM_CLUSTERDISK_GB)]
+        [DefaultValue(VMRequirements.REC_VM_CLUSTERDISK_GB)]
         public int? ClusterDiskSizeGB { get; init; }
 
         [Description("Data disk size in GB")]
         [CommandOption("--datadisk")]
-        [DefaultValue(VirtualMachineSpec.REC_VM_DATADISK_GB)]
+        [DefaultValue(VMRequirements.REC_VM_DATADISK_GB)]
         public int? DataDiskSizeGB { get; init; }
     }
 
@@ -201,11 +200,11 @@ namespace wordslab.manager.console.host
             table.AddColumn("Data disk");
             foreach (var vm in vms)
             {
-                table.AddRow(vm.Name,
+                table.AddRow( vm.Name,
                     vm.IsRunning() ? "running" : "stopped",
-                    vm.Endpoint != null ? vm.Endpoint.HttpIngressPort.ToString() : "",
-                    vm.Processors.ToString(),
-                    vm.MemoryGB + " GB",
+                    vm.Config.HostHttpIngressPort.ToString(),
+                    vm.IsRunning() ? vm.RunningInstance.ComputeStartArguments.Processors.ToString() : vm.Config.Spec.Compute.Processors.ToString(),
+                    vm.IsRunning() ? vm.RunningInstance.ComputeStartArguments.MemoryGB.ToString() : vm.Config.Spec.Compute.MemoryGB.ToString(),
                     vm.ClusterDisk.MaxSizeGB + " GB",
                     vm.DataDisk.MaxSizeGB + " GB"
                     );
@@ -258,7 +257,7 @@ namespace wordslab.manager.console.host
             }
 
             // Then start the VM with the merged config properties
-            vm.Start(vmConfig);
+            vm.Start(vmConfig.Spec.Compute, vmConfig.Spec.GPU);
 
             // Save the new config to the database
             configStore.SaveChanges();
@@ -335,7 +334,7 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(hostStorage);
+            var vmSpecs = VMRequirements.GetRecommendedVMSpecs(hostStorage);
             
             DisplayRecommendedSpec("Minimum", vmSpecs.MinimumVMSpec, vmSpecs.MinimunVMSpecErrorMessage);
             DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage);
@@ -345,16 +344,16 @@ namespace wordslab.manager.console.host
             }
 
             var tcpPortsInUse = Network.GetAllTcpPortsInUse();
-            var sshPortAvailable = !tcpPortsInUse.Contains(VirtualMachineSpec.DEFAULT_HOST_SSH_PORT);
-            var kubernetesPortAvailable = !tcpPortsInUse.Contains(VirtualMachineSpec.DEFAULT_HOST_Kubernetes_PORT);
-            var httpPortAvailable = !tcpPortsInUse.Contains(VirtualMachineSpec.DEFAULT_HOST_HttpIngress_PORT);
+            var sshPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_SSH_PORT);
+            var kubernetesPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_Kubernetes_PORT);
+            var httpPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_HttpIngress_PORT);
 
             string portAvailable = "available";
             string portInUse = "already in use";
             AnsiConsole.WriteLine("Checking if the default Host ports (VM port forward on localhost) are already used:");
-            AnsiConsole.WriteLine($"- connect to the virtual machine through SSH: {VirtualMachineSpec.DEFAULT_HOST_SSH_PORT} -> {(sshPortAvailable ? portAvailable : portInUse)}");
-            AnsiConsole.WriteLine($"- connect to the Kubernetes cluster inside the VM: {VirtualMachineSpec.DEFAULT_HOST_Kubernetes_PORT} -> {(kubernetesPortAvailable ? portAvailable : portInUse)}");
-            AnsiConsole.WriteLine($"- connect to the HTTP services inside the VM: {VirtualMachineSpec.DEFAULT_HOST_HttpIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
+            AnsiConsole.WriteLine($"- connect to the virtual machine through SSH: {VMRequirements.DEFAULT_HOST_SSH_PORT} -> {(sshPortAvailable ? portAvailable : portInUse)}");
+            AnsiConsole.WriteLine($"- connect to the Kubernetes cluster inside the VM: {VMRequirements.DEFAULT_HOST_Kubernetes_PORT} -> {(kubernetesPortAvailable ? portAvailable : portInUse)}");
+            AnsiConsole.WriteLine($"- connect to the HTTP services inside the VM: {VMRequirements.DEFAULT_HOST_HttpIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
             AnsiConsole.WriteLine("");
             if (!sshPortAvailable || !kubernetesPortAvailable || !httpPortAvailable)
             {
@@ -362,15 +361,15 @@ namespace wordslab.manager.console.host
                 var portOptions = "";
                 if (!sshPortAvailable)
                 {
-                    portOptions += $"--sshport {Network.GetNextAvailablePort(VirtualMachineSpec.DEFAULT_HOST_SSH_PORT, tcpPortsInUse)} ";
+                    portOptions += $"--sshport {Network.GetNextAvailablePort(VMRequirements.DEFAULT_HOST_SSH_PORT, tcpPortsInUse)} ";
                 }
                 if (!kubernetesPortAvailable)
                 {
-                    portOptions += $"--kubeport {Network.GetNextAvailablePort(VirtualMachineSpec.DEFAULT_HOST_Kubernetes_PORT, tcpPortsInUse)} ";
+                    portOptions += $"--kubeport {Network.GetNextAvailablePort(VMRequirements.DEFAULT_HOST_Kubernetes_PORT, tcpPortsInUse)} ";
                 }
                 if (!httpPortAvailable)
                 {
-                    portOptions += $"--httpport {Network.GetNextAvailablePort(VirtualMachineSpec.DEFAULT_HOST_HttpIngress_PORT, tcpPortsInUse)}";
+                    portOptions += $"--httpport {Network.GetNextAvailablePort(VMRequirements.DEFAULT_HOST_HttpIngress_PORT, tcpPortsInUse)}";
                 }
                 AnsiConsole.WriteLine(portOptions);
             }
@@ -388,14 +387,14 @@ namespace wordslab.manager.console.host
             else
             {
                 AnsiConsole.WriteLine($"- command: wordslab host vm create --{specName.ToLowerInvariant()}");
-                AnsiConsole.WriteLine($"- number of processors: {spec.Processors}");
-                AnsiConsole.WriteLine($"- memory size in GB: {spec.MemoryGB}");
-                if (!String.IsNullOrEmpty(spec.GPUModel))
+                AnsiConsole.WriteLine($"- number of processors: {spec.Compute.Processors}");
+                AnsiConsole.WriteLine($"- memory size in GB: {spec.Compute.MemoryGB}");
+                if (!String.IsNullOrEmpty(spec.GPU.ModelName))
                 {
-                    AnsiConsole.WriteLine($"- GPU model: {spec.GPUModel} {spec.GPUMemoryGB}GB");
+                    AnsiConsole.WriteLine($"- GPU model: {spec.GPU.ModelName} {spec.GPU.MemoryGB}GB");
                 }
-                AnsiConsole.WriteLine($"- cluster disk size in GB: {spec.ClusterDiskSizeGB}" + (spec.ClusterDiskIsSSD ? " (SSD)" : ""));
-                AnsiConsole.WriteLine($"- data disk size in GB: {spec.DataDiskSizeGB}" + (spec.DataDiskIsSSD ? " (SSD)" : ""));
+                AnsiConsole.WriteLine($"- cluster disk size in GB: {spec.Storage.ClusterDiskSizeGB}" + (spec.Storage.ClusterDiskIsSSD ? " (SSD)" : ""));
+                AnsiConsole.WriteLine($"- data disk size in GB: {spec.Storage.DataDiskSizeGB}" + (spec.Storage.DataDiskIsSSD ? " (SSD)" : ""));
             }
             AnsiConsole.WriteLine();
         }
@@ -408,17 +407,17 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmConfigSettings vmSettings)
         {
+            /*
             // Step 1 : initialize vm config with default values
             var vmSpec = new VirtualMachineSpec();
-            VirtualMachineSpec.ApplyRecommendedSpec(vmSpec);
-
+            
             // Step 2 & 3 : override with command line parameters
             var errorMessage = vmSettings.ApplyToVMConfig(vmSpec, hostStorage);
             if (errorMessage != null)
             {
                 AnsiConsole.WriteLine(errorMessage);
                 return 1;
-            }
+            }*
             if(vmSettings.ClusterDiskSizeGB.HasValue) vmSpec.ClusterDiskSizeGB = vmSettings.ClusterDiskSizeGB.Value;
             if(vmSettings.DataDiskSizeGB.HasValue) vmSpec.DataDiskSizeGB = vmSettings.DataDiskSizeGB.Value;
 
@@ -431,6 +430,8 @@ namespace wordslab.manager.console.host
 
             // Save the new virtual machine config in the database
             configStore.AddVirtualMachineConfig(new VirtualMachineConfig(vm));
+            */
+            throw new NotImplementedException();
 
             return 0;
         }        

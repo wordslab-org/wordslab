@@ -1,14 +1,21 @@
-﻿using wordslab.manager.os;
+﻿using wordslab.manager.config;
+using wordslab.manager.os;
 using wordslab.manager.storage;
 
 namespace wordslab.manager.vm.qemu
 {
-    public class QemuVMInstaller
+    public static class QemuVMInstaller
     {
-        public static async Task<VirtualMachine> Install(VirtualMachineSpec vmSpec, HostStorage hostStorage, InstallProcessUI ui)
+        // Note: before calling this method
+        // - you must configure HostStorage directories location
+        // - you must ask the user if they want to use a GPU
+        public static async Task<bool> CheckAndInstallHostMachineRequirements(bool userWantsVMWithGPU, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
+                // 0. Get minimum VM spec
+                var vmSpec = VMRequirements.GetMinimumVMSpec();
+
                 // 1. Check Hardware requirements
                 bool cpuSpecOK = true;
                 bool memorySpecOK = true;
@@ -18,34 +25,34 @@ namespace wordslab.manager.vm.qemu
 
                 ui.DisplayInstallStep(1, 6, "Check hardware requirements");
 
-                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.Processors} (VM) + {VirtualMachineSpec.MIN_HOST_PROCESSORS} (host) logical processors");
+                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.Compute.Processors} (VM) + {VMRequirements.MIN_HOST_PROCESSORS} (host) logical processors");
                 var cpuInfo = Compute.GetCPUInfo();
                 string cpuErrorMessage;
-                cpuSpecOK = vmSpec.CheckCPURequirements(cpuInfo, out cpuErrorMessage);
+                cpuSpecOK = VMRequirements.CheckCPURequirements(vmSpec, cpuInfo, out cpuErrorMessage);
                 ui.DisplayCommandResult(c1, cpuSpecOK, cpuSpecOK ? null : cpuErrorMessage);
                 if (!cpuSpecOK)
                 {
-                    return null;
+                    return false;
                 }
 
-                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.MemoryGB} (VM) + {VirtualMachineSpec.MIN_HOST_MEMORY_GB} (host) GB physical memory");
+                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.Compute.MemoryGB} (VM) + {VMRequirements.MIN_HOST_MEMORY_GB} (host) GB physical memory");
                 var memInfo = Memory.GetMemoryInfo();
                 string memoryErrorMessage;
-                memorySpecOK = vmSpec.CheckMemoryRequirements(memInfo, out memoryErrorMessage);
+                memorySpecOK = VMRequirements.CheckMemoryRequirements(vmSpec, memInfo, out memoryErrorMessage);
                 ui.DisplayCommandResult(c2, memorySpecOK, memorySpecOK ? null : memoryErrorMessage);
                 if (!memorySpecOK)
                 {
-                    return null;
+                    return false;
                 }
 
-                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.ClusterDiskSizeGB + vmSpec.DataDiskSizeGB} (VM) + {VirtualMachineSpec.MIN_HOST_DISK_GB + VirtualMachineSpec.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
+                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.Storage.ClusterDiskSizeGB + vmSpec.Storage.DataDiskSizeGB} (VM) + {VMRequirements.MIN_HOST_DISK_GB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
                 Dictionary<os.DriveInfo, int> storageReqsGB;
                 string storageErrorMessage;
-                storageSpecOK = vmSpec.CheckStorageRequirements(hostStorage, out storageReqsGB, out storageErrorMessage);
+                storageSpecOK = VMRequirements.CheckStorageRequirements(vmSpec, hostStorage, out storageReqsGB, out storageErrorMessage);
                 ui.DisplayCommandResult(c3, storageSpecOK, storageSpecOK ? null : $"{storageErrorMessage}You can try to update wordslab storage configuration by moving the VM directories to another disk where more space is available.");
                 if (!storageSpecOK)
                 {
-                    return null;
+                    return false;
                 }
 
                 var c4 = ui.DisplayCommandLaunch("Host machine with CPU virtualization enabled");
@@ -53,23 +60,23 @@ namespace wordslab.manager.vm.qemu
                 ui.DisplayCommandResult(c4, cpuVirtualization, cpuVirtualization ? null : "Please reboot to the UEFI or BIOS settings of your machine and enable the CPU virtualization instructions");
                 if (!cpuVirtualization)
                 {
-                    return null;
+                    return false;
                 }
 
-                if (vmSpec.WithGPU)
+                if (userWantsVMWithGPU)
                 {
-                    var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: {vmSpec.GPUModel} and at least {vmSpec.GPUMemoryGB} GB GPU memory");
+                    var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: at least {vmSpec.GPU.ModelName} and {vmSpec.GPU.MemoryGB} GB GPU memory");
                     var gpusInfo = Compute.GetNvidiaGPUsInfo();
                     string gpuErrorMessage;
-                    gpuSpecOK = vmSpec.CheckGPURequirements(gpusInfo, out gpuErrorMessage);
+                    gpuSpecOK = VMRequirements.CheckGPURequirements(vmSpec, gpusInfo, out gpuErrorMessage);
                     ui.DisplayCommandResult(c5, gpuSpecOK, gpuSpecOK ? null : gpuErrorMessage);
                     if (!gpuSpecOK)
                     {
-                        return null;
+                        return false;
                     }
                 }
 
-                bool createVMWithGPUSupport = vmSpec.WithGPU && gpuSpecOK;
+                bool createVMWithGPUSupport = userWantsVMWithGPU && gpuSpecOK;
 
                 // 2. Check OS and drivers requirements
                 bool osVersionOK = true;
@@ -91,7 +98,7 @@ namespace wordslab.manager.vm.qemu
                             var c8 = ui.DisplayCommandLaunch("Please execute the following command to upgrade your Ubuntu installation: sudo do-release-upgrade -d");
                             ui.DisplayCommandResult(c8, false);
                         }
-                        return null;
+                        return false;
                     }
 
                     var c7_1 = ui.DisplayCommandLaunch("Checking if Linux native hypervisor KVM (Kernel-based Virtual Machine) is available");
@@ -102,7 +109,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c8_1 = ui.DisplayCommandLaunch("Please refer to the following documentation to activate Linux KVM: https://wiki.ubuntu.com/kvm");
                         ui.DisplayCommandResult(c8_1, false);
-                        return null;
+                        return false;
                     }
                 }
                 else if (OS.IsMacOS)
@@ -115,7 +122,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c8 = ui.DisplayCommandLaunch("Please follow this procedure to upgrade your MacOS installation: go to System Preferences / Software Update, click Upgrade Now");
                         ui.DisplayCommandResult(c8, false);
-                        return null;
+                        return false;
                     }
 
                     var c7_1 = ui.DisplayCommandLaunch("Checking if MacOS native hypervisor (Hypervisor Framework) is available");
@@ -126,7 +133,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c8_1 = ui.DisplayCommandLaunch("Please refer to the following documentation to activate Apple Hypervisor: https://developer.apple.com/documentation/hypervisor");
                         ui.DisplayCommandResult(c8_1, false);
-                        return null;
+                        return false;
                     }
                 }
 
@@ -136,13 +143,13 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c6 = ui.DisplayCommandLaunch("Virtual Machine with GPU is not yet supported by wordslab on Linux in this version, it will be implemented as soon as possible");
                         ui.DisplayCommandResult(c6, false);
-                        return null;
+                        return false;
                     }
                     else if (OS.IsMacOS)
                     {
                         var c6 = ui.DisplayCommandLaunch("Virtual Machine with Nvidia GPU support is not planned for wordslab on MacOS");
                         ui.DisplayCommandResult(c6, false);
-                        return null;
+                        return false;
                     }
 
                     var c9 = ui.DisplayCommandLaunch("Checking Nvidia driver version");
@@ -154,7 +161,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c10 = ui.DisplayCommandLaunch("Please update your Nvidia driver to the latest version by running this command, then reboot: sudo ubuntu-drivers autoinstall");
                         ui.DisplayCommandResult(c10, false);
-                        return null;
+                        return false;
                     }
                 }
 
@@ -175,7 +182,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c13 = ui.DisplayCommandLaunch("Please install apt on your system by executing the following command: " + Linux.GetAptInstallCommand());
                         ui.DisplayCommandResult(c13, false);
-                        return null;
+                        return false;
                     }
                 }
                 else if (OS.IsMacOS)
@@ -188,7 +195,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c13 = ui.DisplayCommandLaunch("Please install Homebrew on your system by executing the following command: " + MacOS.GetHomebrewInstallCommand());
                         ui.DisplayCommandResult(c13, false);
-                        return null;
+                        return false;
                     }
                 }
 
@@ -216,7 +223,7 @@ namespace wordslab.manager.vm.qemu
                 {
                     var c16 = ui.DisplayCommandLaunch("Please install qemu on your system by executing the following command: " + Qemu.GetLinuxInstallCommand());
                     ui.DisplayCommandResult(c16, false);
-                    return null;
+                    return false;
                 }
 
                 // 4. Download VM software images
@@ -225,15 +232,13 @@ namespace wordslab.manager.vm.qemu
                 bool k3sImagesOK = true;
                 bool helmExecutableOK = true;
 
-                // wget https://cloud-images.ubuntu.com/minimal/releases/focal/release-20220201/ubuntu-20.04-minimal-cloudimg-amd64.img
-
-
                 ui.DisplayInstallStep(4, 6, "Download Virtual Machine OS images and Kubernetes tools");
 
                 var c18 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({QemuDisk.ubuntuRelease} {QemuDisk.ubuntuVersion})", QemuDisk.ubuntuImageSize, "Bytes",
-                    displayProgress => hostStorage.DownloadFileWithCache(QemuDisk.ubuntuImageURL, QemuDisk.ubuntuFileName, 
+                    displayProgress => hostStorage.DownloadFileWithCache(QemuDisk.ubuntuImageURL, QemuDisk.ubuntuFileName,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
-                    displayResult => {
+                    displayResult =>
+                    {
                         var ubuntuFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName));
                         ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == QemuDisk.ubuntuImageSize;
                         displayResult(ubuntuImageOK);
@@ -241,7 +246,7 @@ namespace wordslab.manager.vm.qemu
 
 
                 var c19 = new LongRunningCommand($"Downloading Rancher K3s executable (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sExecutableSize, "Bytes",
-                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName, 
+                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
                     {
@@ -261,7 +266,7 @@ namespace wordslab.manager.vm.qemu
                     });
 
                 var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableDownloadSize, "Bytes",
-                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true, 
+                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
                     {
@@ -282,29 +287,45 @@ namespace wordslab.manager.vm.qemu
                         displayResult(helmExecutableOK);
                     });
 
-                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c18, c19, c20, c21 });                
+                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c18, c19, c20, c21 });
 
                 if (!ubuntuImageOK || !k3sExecutableOK || !k3sImagesOK || !helmExecutableOK)
                 {
-                    return null;
+                    return false;
                 }
+                else
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ui.DisplayCommandError(ex.Message);
+                return false;
+            }
+        }
 
+        public static async Task<VirtualMachine> CreateVirtualMachine(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
+        {
+            try
+            {
                 // 5. Create VM disks
                 bool virtualDiskClusterOK = true;
                 bool virtualDiskDataOK = true;
 
                 ui.DisplayInstallStep(5, 6, "Initialize wordslab VM virtual disks");
 
-                var clusterDisk = QemuDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Cluster, hostStorage);
+                var clusterDisk = QemuDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Cluster, hostStorage);
                 if (clusterDisk == null)
                 {
                     var c24 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
-                    clusterDisk = QemuDisk.CreateFromOSImage(vmSpec.Name, Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName), vmSpec.ClusterDiskSizeGB, hostStorage);
+                    clusterDisk = QemuDisk.CreateFromOSImage(vmConfig.Name, Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName), vmConfig.Spec.Storage.ClusterDiskSizeGB, hostStorage);
                     virtualDiskClusterOK = clusterDisk != null;
                     ui.DisplayCommandResult(c24, virtualDiskClusterOK);
                 }
                 if (!virtualDiskClusterOK) { return null; }
 
+                // Nvidia GPU not yet supported with qmeu on Linux
                 /*if (createVMWithGPUSupport)
                 {
                     var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on cluster virtual disk");
@@ -312,15 +333,15 @@ namespace wordslab.manager.vm.qemu
                     ui.DisplayCommandResult(c25, true);
                 }*/
 
-                var dataDisk = QemuDisk.TryFindByName(vmSpec.Name, VirtualDiskFunction.Data, hostStorage);
+                var dataDisk = QemuDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Data, hostStorage);
                 if (dataDisk == null)
                 {
                     var c22 = ui.DisplayCommandLaunch("Initializing wordslab data virtual disk");
-                    dataDisk = QemuDisk.CreateBlank(vmSpec.Name, vmSpec.DataDiskSizeGB, hostStorage);
+                    dataDisk = QemuDisk.CreateBlank(vmConfig.Name, vmConfig.Spec.Storage.DataDiskSizeGB, hostStorage);
                     virtualDiskDataOK = dataDisk != null;
                     ui.DisplayCommandResult(c22, virtualDiskDataOK);
                 }
-                if (!virtualDiskDataOK) { return null; }           
+                if (!virtualDiskDataOK) { return null; }
 
                 // 6. Configure and start local Virtual Machine
                 bool vmConfigOK = true;
@@ -328,20 +349,15 @@ namespace wordslab.manager.vm.qemu
 
                 ui.DisplayInstallStep(6, 6, "Configure and start wordslab Virtual Machine");
 
-                var localVM = QemuVM.TryFindByName(vmSpec.Name, hostStorage);
+                var localVM = QemuVM.FindByName(vmConfig.Name, configStore, hostStorage);
 
                 var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
-                VirtualMachineEndpoint localVMEndpoint = null;
                 if (!localVM.IsRunning())
                 {
-                    localVMEndpoint = localVM.Start(vmSpec);
-                }
-                else
-                {
-                    localVMEndpoint = localVM.Endpoint;
+                    localVM.Start();
                 }
 
-                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVMEndpoint.IPAddress}, SSH port = {localVMEndpoint.SSHPort}");
+                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVM.RunningInstance.VmIPAddress}, HTTP port = {localVM.Config.HostHttpIngressPort}, HTTPS port = {localVM.Config.HostHttpsIngressPort}");
 
                 return localVM;
             }
@@ -352,11 +368,11 @@ namespace wordslab.manager.vm.qemu
             }
         }
 
-        public static async Task<bool> Uninstall(string vmName, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<bool> DeleteVirtualMachine(string vmName, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
-                var localVM = QemuVM.TryFindByName(vmName, hostStorage);
+                var localVM = QemuVM.FindByName(vmName, configStore, hostStorage);
 
                 var c1 = ui.DisplayCommandLaunch("Stopping wordslab virtual machine and local k3s cluster");
                 localVM.Stop();

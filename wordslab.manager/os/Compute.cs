@@ -357,30 +357,39 @@ namespace wordslab.manager.os
             {
                 get
                 {
-                    if (ModelName.Contains("GeForce GTX 10") || ModelName.Contains("TITAN X") || ModelName.Contains("GeForce MX150") || ModelName.Contains("GeForce MX2") || ModelName.Contains("GeForce MX3") || ModelName.Contains("Quadro P") || ModelName.Contains("Quadro GP") || ModelName.Contains("P4") || ModelName.Contains("P6") || ModelName.Contains("P100"))
-                    {
-                        return GPUArchitectureInfo.Pascal;
-                    }
-                    else if (ModelName.Contains("TITAN V") || ModelName.Contains("Quadro GV") || ModelName.Contains("V100"))
-                    {
-                        return GPUArchitectureInfo.Volta;
-                    }
-                    else if (ModelName.Contains("GeForce GTX 16") || ModelName.Contains("GeForce RTX 20") || ModelName.Contains("TITAN RTX") || ModelName.Contains("GeForce MX4") || ModelName.Contains("GeForce MX550") || ModelName.Contains("Quadro T") || ModelName.Contains("Quadro RTX") || ModelName.Contains("T4"))
-                    {
-                        return GPUArchitectureInfo.Turing;
-                    }
-                    else if (ModelName.Contains("GeForce RTX 30") || ModelName.Contains("GeForce MX570") || ModelName.Contains("RTX A") || ModelName.Contains("A1") || ModelName.Contains("A2") || ModelName.Contains("A3") || ModelName.Contains("A4"))
-                    {
-                        return GPUArchitectureInfo.Ampere;
-                    }
-                    else if (ModelName.Contains("H100"))
-                    {
-                        return GPUArchitectureInfo.Hopper;
-                    }
-                    else
-                    {
-                        return GPUArchitectureInfo.Unknown;
-                    }
+                    return GetArchitecture(ModelName);
+                }
+            }
+
+            public static GPUArchitectureInfo GetArchitecture(string modelName)
+            {
+                if (modelName.Contains("GeForce GTX 10") || modelName.Contains("TITAN X") || modelName.Contains("GeForce MX150") || modelName.Contains("GeForce MX2") || modelName.Contains("GeForce MX3") || modelName.Contains("Quadro P") || modelName.Contains("Quadro GP") || modelName.Contains("P4") || modelName.Contains("P6") || modelName.Contains("P100"))
+                {
+                    return GPUArchitectureInfo.Pascal;
+                }
+                else if (modelName.Contains("TITAN V") || modelName.Contains("Quadro GV") || modelName.Contains("V100"))
+                {
+                    return GPUArchitectureInfo.Volta;
+                }
+                else if (modelName.Contains("GeForce GTX 16") || modelName.Contains("GeForce RTX 20") || modelName.Contains("TITAN RTX") || modelName.Contains("GeForce MX4") || modelName.Contains("GeForce MX550") || modelName.Contains("Quadro T") || modelName.Contains("Quadro RTX") || modelName.Contains("T4"))
+                {
+                    return GPUArchitectureInfo.Turing;
+                }
+                else if (modelName.Contains("GeForce RTX 30") || modelName.Contains("GeForce MX570") || modelName.Contains("RTX A") || modelName.Contains("A1") || modelName.Contains("A2") || modelName.Contains("A3") || modelName.Contains("A4"))
+                {
+                    return GPUArchitectureInfo.Ampere;
+                }
+                else if (modelName.Contains("H100"))
+                {
+                    return GPUArchitectureInfo.Hopper;
+                }
+                else if (modelName.Contains("GeForce RTX 40"))
+                {
+                    return GPUArchitectureInfo.AdaLovelace;
+                }
+                else
+                {
+                    return GPUArchitectureInfo.Unknown;
                 }
             }
         }
@@ -390,6 +399,7 @@ namespace wordslab.manager.os
         // Turing: GeForce GTX 16xx | GeForce RTX 20xx | TITAN RTX | T4
         // Ampere: GeForce RTX 30xx | A100
         // Hopper : H100
+        // AdaLovelace : GeForce RTX 40xx
         public enum GPUArchitectureInfo
         {
             Unknown,
@@ -397,7 +407,8 @@ namespace wordslab.manager.os
             Volta,
             Turing,
             Ampere,
-            Hopper
+            Hopper,
+            AdaLovelace
         }
 
         // nvidia-smi --query-gpu=index,gpu_name,memory.total --format=csv,noheader

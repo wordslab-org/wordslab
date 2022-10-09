@@ -117,11 +117,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "fastai", "fastai", "{A09B1F
 	ProjectSection(SolutionItems) = preProject
 		doc\ai\fastai\docs.fast.ai.csv = doc\ai\fastai\docs.fast.ai.csv
 		doc\ai\fastai\fastaidocs.html = doc\ai\fastai\fastaidocs.html
-		doc\ai\fastai\fastai_docs_v1.pptx = doc\ai\fastai\fastai_docs_v1.pptx
 		doc\ai\fastai\Generate page.ipynb = doc\ai\fastai\Generate page.ipynb
+		doc\ai\fastai\fastai_docs_v2.7.8.pptx = doc\ai\fastai\fastai_docs_v2.7.8.pptx
 		doc\ai\fastai\links.csv = doc\ai\fastai\links.csv
 		doc\ai\fastai\titles.csv = doc\ai\fastai\titles.csv
-		doc\ai\fastai\URL to fastai docs v1.1.txt = doc\ai\fastai\URL to fastai docs v1.1.txt
+		doc\ai\fastai\URL to fastaidocs.txt = doc\ai\fastai\URL to fastaidocs.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pytorch", "pytorch", "{8CA8379C-3DAD-4170-9B8F-125C4C52556F}"

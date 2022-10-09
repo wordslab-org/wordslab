@@ -624,6 +624,19 @@ namespace wordslab.manager.os
 
         // Get running process properties
 
+        public static int GetVirtualMachineProcessId()
+        {
+            var processes = Process.GetProcessesByName("vmmem");
+            if (processes.Length == 0)
+            {
+                return -1;
+            }
+            else
+            {
+                return processes[0].Id;
+            }
+        }
+
         private static readonly int MEGA = 1024 * 1024;
 
         public static uint GetVirtualMachineWorkingSetMB()

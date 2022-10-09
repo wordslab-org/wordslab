@@ -16,12 +16,12 @@ namespace wordslab.manager.test.vm.wsl
         {
             var storage = new HostStorage();
 
-           var vmSpecs = VirtualMachineSpec.GetRecommendedVMSpecs(storage);
+           var vmSpecs = VMRequirements.GetRecommendedVMSpecs(storage);
 
             // Hardware requirements KO
             var recSpec = vmSpecs.RecommendedVMSpec;
             recSpec.Name = "test-blank";
-            recSpec.MemoryGB = 128;
+            recSpec.Compute.MemoryGB = 128;
             var ui = new TestProcessUI();
             var vm = await WslVMInstaller.Install(recSpec, storage, ui);
             Assert.IsNull(vm);
