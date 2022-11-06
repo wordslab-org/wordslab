@@ -61,7 +61,7 @@ namespace wordslab.manager.test.os
 
             // --- END OF PREREQUISITES ---
 
-            var sshserver = "172.21.218.122";
+            var sshserver = "172.20.211.195";
             var sshport = 22;
             var sshuser = "laurent";
 
@@ -88,7 +88,7 @@ namespace wordslab.manager.test.os
         [TestMethod]
         public void T06_TestExecuteRemoteCommand()
         {
-            var sshserver = "172.21.218.122";
+            var sshserver = "172.20.211.195";
             var sshport = 22;
             var sshuser = "laurent";
 
@@ -168,7 +168,7 @@ namespace wordslab.manager.test.os
         [TestMethod]
         public void T07_TestCopyFileToRemoteMachine()
         {
-            var sshserver = "172.21.218.122";
+            var sshserver = "172.20.211.195";
             var sshport = 22;
             var sshuser = "laurent";
 

@@ -5,49 +5,46 @@ namespace wordslab.manager.config
 {
     public class HostMachineConfig : BaseConfig
     {
-        private HostMachineConfig() { }
+        public HostMachineConfig() { }
 
         public HostMachineConfig(
             string hostName, HostStorage storage, 
             int processors, int memoryGB, bool canUseGPUs,
-            string vmClusterPath, int vmClusterSizeGB, string vmDataPath , int vmDataSizeGB, string backupPath, int backupSizeGB,
-            Range sshPorts, Range kubernetesPorts, Range httpPorts, bool canExposeHttpOnLAN, Range httpsPorts, bool canExposeHttpsOnLAN)
+            int vmClusterSizeGB, int vmDataSizeGB, int backupSizeGB,
+            int sshPort, int kubernetesPort, int httpPort, bool canExposeHttpOnLAN, int httpsPort, bool canExposeHttpsOnLAN)
         {
             HostName = hostName;
+            // Host storage dirs
+            VirtualMachineClusterPath = storage.VirtualMachineClusterDirectory;
+            VirtualMachineDataPath = storage.VirtualMachineDataDirectory;
+            BackupPath = storage.BackupDirectory;
             // Compute
             Processors = processors;
             MemoryGB = memoryGB;
             CanUseGPUs = canUseGPUs;
             // Storage
-            if(vmClusterPath != storage.VirtualMachineClusterDirectory)
-            {
-                storage.MoveConfigurableDirectoryTo(StorageLocation.VirtualMachineCluster, vmClusterPath);
-            }
-            VirtualMachineClusterPath = vmClusterPath;
             VirtualMachineClusterSizeGB = vmClusterSizeGB;
-            if (vmDataPath != storage.VirtualMachineDataDirectory)
-            {
-                storage.MoveConfigurableDirectoryTo(StorageLocation.VirtualMachineData, vmDataPath);
-            }
-            VirtualMachineDataPath = vmDataPath;
             VirtualMachineDataSizeGB = vmDataSizeGB;
-            if (backupPath != storage.BackupDirectory)
-            {
-                storage.MoveConfigurableDirectoryTo(StorageLocation.Backup, backupPath);
-            }
-            BackupPath = backupPath;
             BackupSizeGB = backupSizeGB;
             // Network
-            SSHPorts = sshPorts;
-            KubernetesPorts = kubernetesPorts;
-            HttpPorts = httpPorts;
+            SSHPort = sshPort;
+            KubernetesPort = kubernetesPort;
+            HttpPort = httpPort;
             CanExposeHttpOnLAN = canExposeHttpOnLAN;
-            HttpsPorts = httpsPorts;
+            HttpsPort = httpsPort;
             CanExposeHttpsOnLAN = canExposeHttpsOnLAN;
         }
 
         [Key]
         public string HostName { get; set; }
+
+        // Host storage directories
+
+        public string VirtualMachineClusterPath { get; set; }
+
+        public string VirtualMachineDataPath { get; set; }
+
+        public string BackupPath { get; set; }
 
         // Sandbox limits
 
@@ -61,29 +58,23 @@ namespace wordslab.manager.config
 
         // -- Storage ---
 
-        public string VirtualMachineClusterPath { get; set; }
-
         public int VirtualMachineClusterSizeGB { get; set; }
 
-        public string VirtualMachineDataPath { get; set; }
-
         public int VirtualMachineDataSizeGB { get; set; }
-
-        public string BackupPath { get; set; }
 
         public int BackupSizeGB { get; set; }
 
         // --- Network ---
 
-        public Range SSHPorts { get; private set; }
+        public int SSHPort { get; set; }
 
-        public Range KubernetesPorts { get; private set; }
+        public int KubernetesPort { get; set; }
 
-        public Range HttpPorts { get; private set; }
+        public int HttpPort { get; set; }
 
         public bool CanExposeHttpOnLAN { get; set; }
 
-        public Range HttpsPorts { get; private set; }
+        public int HttpsPort { get; set; }
 
         public bool CanExposeHttpsOnLAN { get; set; }
     }

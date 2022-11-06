@@ -91,6 +91,12 @@ namespace wordslab.manager.test.vm
             return Task.FromResult(answer);
         }
 
+        public Task<string> DisplayInputQuestion(string question, string defaultValue)
+        {
+            Messages.Add($"{question} [{defaultValue}] ?");
+            var answer = defaultValue;
+            return Task.FromResult(answer);
+        }
 
         public void DisplayCommandError(string errorMessage)
         {

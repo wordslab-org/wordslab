@@ -25,7 +25,7 @@ namespace wordslab.manager.config
     [Owned]
     public class GPUSpec
     {
-        public string ModelName { get; set; }
+        public string? ModelName { get; set; }
 
         public int MemoryGB { get; set; }
 

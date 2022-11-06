@@ -12,7 +12,7 @@ namespace wordslab.manager.test.storage
     public class HostStorageTests
     {
         [TestMethod]
-        [Ignore]
+        //[Ignore]
         public void T00_TestHostStorage()
         {
             // Reset environment
@@ -27,15 +27,15 @@ namespace wordslab.manager.test.storage
 
             Assert.IsTrue(Directory.Exists(storage.ConfigDirectory));
             Assert.IsTrue(Directory.Exists(storage.LogsDirectory));
-            Assert.IsTrue(Directory.Exists(storage.DownloadCacheDirectory));
             Assert.IsTrue(Directory.Exists(storage.VirtualMachineClusterDirectory));
+            Assert.IsTrue(Directory.Exists(storage.DownloadCacheDirectory));
             Assert.IsTrue(Directory.Exists(storage.VirtualMachineDataDirectory));
             Assert.IsTrue(Directory.Exists(storage.BackupDirectory));
 
             Assert.IsTrue(storage.ConfigDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.LogsDirectory.Contains(storage.AppDirectory));
-            Assert.IsTrue(storage.DownloadCacheDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.VirtualMachineClusterDirectory.Contains(storage.AppDirectory));
+            Assert.IsTrue(storage.DownloadCacheDirectory.Contains(storage.VirtualMachineClusterDirectory));
             Assert.IsTrue(storage.VirtualMachineDataDirectory.Contains(storage.AppDirectory));
             Assert.IsTrue(storage.BackupDirectory.Contains(storage.AppDirectory));
         }

@@ -9,70 +9,74 @@ namespace wordslab.manager.vm.qemu
         // Note: before calling this method
         // - you must configure HostStorage directories location
         // - you must ask the user if they want to use a GPU
-        public static async Task<bool> CheckAndInstallHostMachineRequirements(bool userWantsVMWithGPU, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
+                var machineConfig = new HostMachineConfig();
+                machineConfig.HostName = OS.GetMachineName();
+
                 // 0. Get minimum VM spec
-                var vmSpec = VMRequirements.GetMinimumVMSpec();
+                var minVmSpec = VMRequirements.GetMinimumVMSpec();
 
                 // 1. Check Hardware requirements
                 bool cpuSpecOK = true;
                 bool memorySpecOK = true;
-                bool storageSpecOK = true;
                 bool cpuVirtualization = true;
                 bool gpuSpecOK = true;
 
                 ui.DisplayInstallStep(1, 6, "Check hardware requirements");
 
-                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {vmSpec.Compute.Processors} (VM) + {VMRequirements.MIN_HOST_PROCESSORS} (host) logical processors");
+                var c1 = ui.DisplayCommandLaunch($"Host CPU with at least {minVmSpec.Compute.Processors} (VM) + {VMRequirements.MIN_HOST_RESERVED_PROCESSORS} (host) logical processors");
                 var cpuInfo = Compute.GetCPUInfo();
                 string cpuErrorMessage;
-                cpuSpecOK = VMRequirements.CheckCPURequirements(vmSpec, cpuInfo, out cpuErrorMessage);
+                cpuSpecOK = VMRequirements.CheckCPURequirements(minVmSpec, cpuInfo, out cpuErrorMessage);
                 ui.DisplayCommandResult(c1, cpuSpecOK, cpuSpecOK ? null : cpuErrorMessage);
                 if (!cpuSpecOK)
                 {
-                    return false;
+                    return null;
                 }
 
-                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.Compute.MemoryGB} (VM) + {VMRequirements.MIN_HOST_MEMORY_GB} (host) GB physical memory");
+                var c2 = ui.DisplayCommandLaunch($"Host machine with at least {minVmSpec.Compute.MemoryGB} (VM) + {VMRequirements.MIN_HOST_RESERVED_MEMORY_GB} (host) GB physical memory");
                 var memInfo = Memory.GetMemoryInfo();
                 string memoryErrorMessage;
-                memorySpecOK = VMRequirements.CheckMemoryRequirements(vmSpec, memInfo, out memoryErrorMessage);
+                memorySpecOK = VMRequirements.CheckMemoryRequirements(minVmSpec, memInfo, out memoryErrorMessage);
                 ui.DisplayCommandResult(c2, memorySpecOK, memorySpecOK ? null : memoryErrorMessage);
                 if (!memorySpecOK)
                 {
-                    return false;
+                    return null;
                 }
 
-                var c3 = ui.DisplayCommandLaunch($"Host machine with at least {vmSpec.Storage.ClusterDiskSizeGB + vmSpec.Storage.DataDiskSizeGB} (VM) + {VMRequirements.MIN_HOST_DISK_GB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB} (host) GB free storage space");
-                Dictionary<os.DriveInfo, int> storageReqsGB;
-                string storageErrorMessage;
-                storageSpecOK = VMRequirements.CheckStorageRequirements(vmSpec, hostStorage, out storageReqsGB, out storageErrorMessage);
-                ui.DisplayCommandResult(c3, storageSpecOK, storageSpecOK ? null : $"{storageErrorMessage}You can try to update wordslab storage configuration by moving the VM directories to another disk where more space is available.");
-                if (!storageSpecOK)
-                {
-                    return false;
-                }
-
-                var c4 = ui.DisplayCommandLaunch("Host machine with CPU virtualization enabled");
+                var c3 = ui.DisplayCommandLaunch("Host machine with CPU virtualization enabled");
                 cpuVirtualization = Compute.IsCPUVirtualizationAvailable(cpuInfo);
-                ui.DisplayCommandResult(c4, cpuVirtualization, cpuVirtualization ? null : "Please reboot to the UEFI or BIOS settings of your machine and enable the CPU virtualization instructions");
+                ui.DisplayCommandResult(c3, cpuVirtualization, cpuVirtualization ? null :
+                    "Please go to Windows Settings > Update & Security > Recovery (left menu) > Advanced Startup > Restart Now," +
+                    " then select: Troubleshoot > Advanced options > UEFI firmware settings, and navigate menus to enable virtualization");
                 if (!cpuVirtualization)
                 {
-                    return false;
+                    Windows.OpenWindowsUpdate();
+                    return null;
                 }
 
+                var userWantsVMWithGPU = false;
+                var c4 = ui.DisplayCommandLaunch($"[optional] Host machine with at least one Nvidia GPU");
+                var gpusInfo = Compute.GetNvidiaGPUsInfo();
+                var hasNvidiaGPU = gpusInfo.Count > 0;
+                ui.DisplayCommandResult(c4, hasNvidiaGPU, hasNvidiaGPU ? null : "Could not find any GPU on this machine using the nvidia-smi command");
+                if (hasNvidiaGPU)
+                {
+                    userWantsVMWithGPU = await ui.DisplayQuestionAsync("Do you want to allow the local virtual machines to access your Nvidia GPU(s) ?");
+                }
+                machineConfig.CanUseGPUs = true;
                 if (userWantsVMWithGPU)
                 {
-                    var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: at least {vmSpec.GPU.ModelName} and {vmSpec.GPU.MemoryGB} GB GPU memory");
-                    var gpusInfo = Compute.GetNvidiaGPUsInfo();
+                    var c5 = ui.DisplayCommandLaunch($"Host machine with a recent Nvidia GPU: at least {minVmSpec.GPU.ModelName} and {minVmSpec.GPU.MemoryGB} GB GPU memory");
                     string gpuErrorMessage;
-                    gpuSpecOK = VMRequirements.CheckGPURequirements(vmSpec, gpusInfo, out gpuErrorMessage);
+                    gpuSpecOK = VMRequirements.CheckGPURequirements(minVmSpec, gpusInfo, out gpuErrorMessage);
                     ui.DisplayCommandResult(c5, gpuSpecOK, gpuSpecOK ? null : gpuErrorMessage);
                     if (!gpuSpecOK)
                     {
-                        return false;
+                        return null;
                     }
                 }
 
@@ -98,7 +102,7 @@ namespace wordslab.manager.vm.qemu
                             var c8 = ui.DisplayCommandLaunch("Please execute the following command to upgrade your Ubuntu installation: sudo do-release-upgrade -d");
                             ui.DisplayCommandResult(c8, false);
                         }
-                        return false;
+                        return null;
                     }
 
                     var c7_1 = ui.DisplayCommandLaunch("Checking if Linux native hypervisor KVM (Kernel-based Virtual Machine) is available");
@@ -109,7 +113,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c8_1 = ui.DisplayCommandLaunch("Please refer to the following documentation to activate Linux KVM: https://wiki.ubuntu.com/kvm");
                         ui.DisplayCommandResult(c8_1, false);
-                        return false;
+                        return null;
                     }
                 }
                 else if (OS.IsMacOS)
@@ -122,7 +126,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c8 = ui.DisplayCommandLaunch("Please follow this procedure to upgrade your MacOS installation: go to System Preferences / Software Update, click Upgrade Now");
                         ui.DisplayCommandResult(c8, false);
-                        return false;
+                        return null;
                     }
 
                     var c7_1 = ui.DisplayCommandLaunch("Checking if MacOS native hypervisor (Hypervisor Framework) is available");
@@ -133,7 +137,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c8_1 = ui.DisplayCommandLaunch("Please refer to the following documentation to activate Apple Hypervisor: https://developer.apple.com/documentation/hypervisor");
                         ui.DisplayCommandResult(c8_1, false);
-                        return false;
+                        return null;
                     }
                 }
 
@@ -143,13 +147,13 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c6 = ui.DisplayCommandLaunch("Virtual Machine with GPU is not yet supported by wordslab on Linux in this version, it will be implemented as soon as possible");
                         ui.DisplayCommandResult(c6, false);
-                        return false;
+                        return null;
                     }
                     else if (OS.IsMacOS)
                     {
                         var c6 = ui.DisplayCommandLaunch("Virtual Machine with Nvidia GPU support is not planned for wordslab on MacOS");
                         ui.DisplayCommandResult(c6, false);
-                        return false;
+                        return null;
                     }
 
                     var c9 = ui.DisplayCommandLaunch("Checking Nvidia driver version");
@@ -161,7 +165,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c10 = ui.DisplayCommandLaunch("Please update your Nvidia driver to the latest version by running this command, then reboot: sudo ubuntu-drivers autoinstall");
                         ui.DisplayCommandResult(c10, false);
-                        return false;
+                        return null;
                     }
                 }
 
@@ -182,7 +186,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c13 = ui.DisplayCommandLaunch("Please install apt on your system by executing the following command: " + Linux.GetAptInstallCommand());
                         ui.DisplayCommandResult(c13, false);
-                        return false;
+                        return null;
                     }
                 }
                 else if (OS.IsMacOS)
@@ -195,7 +199,7 @@ namespace wordslab.manager.vm.qemu
                     {
                         var c13 = ui.DisplayCommandLaunch("Please install Homebrew on your system by executing the following command: " + MacOS.GetHomebrewInstallCommand());
                         ui.DisplayCommandResult(c13, false);
-                        return false;
+                        return null;
                     }
                 }
 
@@ -223,18 +227,85 @@ namespace wordslab.manager.vm.qemu
                 {
                     var c16 = ui.DisplayCommandLaunch("Please install qemu on your system by executing the following command: " + Qemu.GetLinuxInstallCommand());
                     ui.DisplayCommandResult(c16, false);
-                    return false;
+                    return null;
                 }
 
-                // 4. Download VM software images
+                // 4. Check and configure host machine Storage
+                bool storageSpecOK = true;
+
+                ui.DisplayInstallStep(4, 6, "Check and configure host storage");
+
+                var drivesInfo = Storage.GetDrivesInfo();
+                foreach (var drivePath in drivesInfo.Keys)
+                {
+                    var driveInfo = drivesInfo[drivePath];
+                    var c17 = ui.DisplayCommandLaunch($"Checking volume '{drivePath}'");
+                    ui.DisplayCommandResult(c17, true, $"Volume '{drivePath}' : total size = {driveInfo.TotalSizeMB / 1000f:F1} GB, free space = {driveInfo.FreeSpaceMB / 1000f:F1} GB, is SSD = {driveInfo.IsSSD}");
+                }
+
+                var c18 = ui.DisplayCommandLaunch($"Checking minimum disk space requirements for cluster software (min {minVmSpec.Storage.ClusterDiskSizeGB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB} GB{(minVmSpec.Storage.ClusterDiskIsSSD ? " on SSD" : "")}), user data (min {minVmSpec.Storage.DataDiskSizeGB} GB{(minVmSpec.Storage.DataDiskIsSSD ? " on SSD" : "")}), and backups (min {VMRequirements.MIN_HOST_BACKUPDIR_GB} GB)");
+                string storageErrorMessage;
+                storageSpecOK = VMRequirements.CheckStorageRequirements(minVmSpec, drivesInfo, out storageErrorMessage);
+                ui.DisplayCommandResult(c3, storageSpecOK, storageSpecOK ? null : storageErrorMessage);
+                if (!storageSpecOK)
+                {
+                    return null;
+                }
+
+                var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
+                var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
+                var currentDirectories = new string[] { hostStorage.VirtualMachineClusterDirectory, hostStorage.VirtualMachineDataDirectory, hostStorage.BackupDirectory };
+                var candidateVolumesForCluster = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > (minVmSpec.Storage.ClusterDiskSizeGB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB) && (!minVmSpec.Storage.ClusterDiskIsSSD || di.IsSSD)).ToList();
+                var candidateVolumesForData = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > minVmSpec.Storage.DataDiskSizeGB && (!minVmSpec.Storage.DataDiskIsSSD || di.IsSSD)).ToList();
+                var candidateVolumesForBackup = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > VMRequirements.MIN_HOST_BACKUPDIR_GB).ToList();
+                var candidateVolumesArray = new List<os.DriveInfo>[] { candidateVolumesForCluster, candidateVolumesForData, candidateVolumesForBackup };
+                foreach (var (storageLocation, currentDirectory, candidateVolumes) in storageLocations.Zip(currentDirectories, candidateVolumesArray))
+                {
+                    var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} [{(di.IsSSD ? "SDD" : "HDD")}] [{di.FreeSpaceMB / 1000f:F1} GB free]"));
+                    var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));
+                    var defaultPath = currentPathIsOK ? currentDirectory : null;
+                    var storageDescription = storageDescriptions[(int)storageLocation];
+                    var targetPath = await ui.DisplayInputQuestion($"Choose a base directory to store the {storageDescription} (a subdirectory {HostStorage.GetSubdirectoryFor(StorageLocation.VirtualMachineCluster)} will be created). Candidate volumes: ${volumeCandidates})", defaultPath);
+                    if (!targetPath.Equals(currentDirectory))
+                    {
+                        hostStorage.MoveConfigurableDirectoryTo(storageLocation, targetPath);
+                    }
+                }
+                machineConfig.VirtualMachineClusterPath = hostStorage.VirtualMachineDataDirectory;
+                machineConfig.VirtualMachineDataPath = hostStorage.VirtualMachineDataDirectory;
+                machineConfig.BackupPath = hostStorage.BackupDirectory;
+
+                // 5. Configure a sandbox to host the local virtual machines
+
+                ui.DisplayInstallStep(5, 6, "Configure a sandbox to host the local virtual machines");
+
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
+                var recVmSpec = vmSpecs.RecommendedVMSpec;
+                var maxVmSpec = vmSpecs.MaximumVMSpecOnThisMachine;
+
+                machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestion($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
+                machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestion($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
+
+                machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestion($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
+                machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestion($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
+                machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestion($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", VMRequirements.MIN_HOST_BACKUPDIR_GB.ToString()));
+
+                machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestion($"SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
+                machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestion($"Cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
+                machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestion($"Cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
+                machineConfig.CanExposeHttpOnLAN = Boolean.Parse(await ui.DisplayInputQuestion($"Allow access to cluster http port from other machines on local network", false.ToString()));
+                machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestion($"Cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
+                machineConfig.CanExposeHttpsOnLAN = Boolean.Parse(await ui.DisplayInputQuestion($"Allow access to cluster https port from other machines on local network", false.ToString()));
+
+                // 6. Download VM software images
                 bool ubuntuImageOK = true;
                 bool k3sExecutableOK = true;
                 bool k3sImagesOK = true;
                 bool helmExecutableOK = true;
 
-                ui.DisplayInstallStep(4, 6, "Download Virtual Machine OS images and Kubernetes tools");
+                ui.DisplayInstallStep(6, 6, "Download Virtual Machine OS images and Kubernetes tools");
 
-                var c18 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({QemuDisk.ubuntuRelease} {QemuDisk.ubuntuVersion})", QemuDisk.ubuntuImageSize, "Bytes",
+                var c28 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({QemuDisk.ubuntuRelease} {QemuDisk.ubuntuVersion})", QemuDisk.ubuntuImageSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(QemuDisk.ubuntuImageURL, QemuDisk.ubuntuFileName,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
@@ -245,7 +316,7 @@ namespace wordslab.manager.vm.qemu
                     });
 
 
-                var c19 = new LongRunningCommand($"Downloading Rancher K3s executable (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sExecutableSize, "Bytes",
+                var c29 = new LongRunningCommand($"Downloading Rancher K3s executable (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sExecutableSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
@@ -255,7 +326,7 @@ namespace wordslab.manager.vm.qemu
                         displayResult(k3sExecutableOK);
                     });
 
-                var c20 = new LongRunningCommand($"Downloading Rancher K3s containers images (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sImagesDownloadSize, "Bytes",
+                var c30 = new LongRunningCommand($"Downloading Rancher K3s containers images (v{VirtualMachine.k3sVersion})", VirtualMachine.k3sImagesDownloadSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.k3sImagesURL, VirtualMachine.k3sImagesFileName, gunzip: true,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
@@ -265,7 +336,7 @@ namespace wordslab.manager.vm.qemu
                         displayResult(k3sImagesOK);
                     });
 
-                var c21 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableDownloadSize, "Bytes",
+                var c31 = new LongRunningCommand($"Downloading Helm executable (v{VirtualMachine.helmVersion})", VirtualMachine.helmExecutableDownloadSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
@@ -287,21 +358,19 @@ namespace wordslab.manager.vm.qemu
                         displayResult(helmExecutableOK);
                     });
 
-                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c18, c19, c20, c21 });
+                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c28, c29, c30, c31 });
 
                 if (!ubuntuImageOK || !k3sExecutableOK || !k3sImagesOK || !helmExecutableOK)
                 {
-                    return false;
+                    return null;
                 }
-                else
-                {
-                    return true;
-                }
+
+                return machineConfig;
             }
             catch (Exception ex)
             {
                 ui.DisplayCommandError(ex.Message);
-                return false;
+                return null;
             }
         }
 

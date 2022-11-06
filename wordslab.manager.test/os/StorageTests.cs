@@ -2,7 +2,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using wordslab.manager.os;
 
 namespace wordslab.manager.test.os
@@ -17,7 +16,7 @@ namespace wordslab.manager.test.os
             var drives = Storage.GetDrivesInfo();
             Assert.IsTrue(drives.Count >= 2);
 
-            var firstDrive = drives.Values.First();
+            var firstDrive = drives.Values.OrderBy(d => d.DiskId).First();
             Assert.IsTrue(firstDrive.IsSSD);
 
             var lastDrive = drives.Values.Last();

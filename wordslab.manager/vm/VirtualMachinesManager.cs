@@ -10,25 +10,36 @@ namespace wordslab.manager.vm
     {
         private HostStorage hostStorage;
         private ConfigStore configStore;
+        private HostMachineConfig machineConfig;
 
         public VirtualMachinesManager(HostStorage hostStorage, ConfigStore configStore)
         {
             this.hostStorage = hostStorage;
             this.configStore = configStore;
+            this.machineConfig = configStore.HostMachineConfig;
         }
 
-        public async Task<bool> CheckAndInstallHostMachineRequirements(bool userWantsVMWithGPU, InstallProcessUI installUI)
+        public async Task<HostMachineConfig> ConfigureHostMachine(bool userWantsVMWithGPU, InstallProcessUI installUI)
         {
-            var success = false;
+            var cmd1 = installUI.DisplayCommandLaunch($"Checking if host machine {OS.GetMachineName()} is already configured");
+            if (machineConfig != null)
+            {
+                installUI.DisplayCommandResult(cmd1, true);
+                return machineConfig;
+            }
+            else
+            {
+                installUI.DisplayCommandResult(cmd1, false);
+            }
             if (OS.IsWindows)
             {
-                success = await WslVMInstaller.CheckAndInstallHostMachineRequirements(userWantsVMWithGPU, hostStorage, installUI);
+                machineConfig = await WslVMInstaller.ConfigureHostMachine(hostStorage, installUI);
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                success = await QemuVMInstaller.CheckAndInstallHostMachineRequirements(userWantsVMWithGPU, hostStorage, installUI);
+                machineConfig = await QemuVMInstaller.ConfigureHostMachine(hostStorage, installUI);
             }
-            return success;
+            return machineConfig;
         }
 
         public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, InstallProcessUI installUI)

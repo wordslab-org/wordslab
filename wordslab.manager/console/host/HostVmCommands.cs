@@ -63,7 +63,7 @@ namespace wordslab.manager.console.host
             // Step 2 : override compute values with min, rec or max specs 
             if (vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
             {
-                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(hostStorage);
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
 
                 VirtualMachineSpec targetSpec = null;
                 if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
@@ -334,7 +334,7 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            var vmSpecs = VMRequirements.GetRecommendedVMSpecs(hostStorage);
+            var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             
             DisplayRecommendedSpec("Minimum", vmSpecs.MinimumVMSpec, vmSpecs.MinimunVMSpecErrorMessage);
             DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage);

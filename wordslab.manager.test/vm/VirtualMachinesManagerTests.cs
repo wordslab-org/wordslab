@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
 using System.Threading.Tasks;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.test.storage;
@@ -13,7 +14,7 @@ namespace wordslab.manager.test.vm
     public class VirtualMachinesManagerTests
     {
         [TestMethod]
-        public async Task T01_TestCreateLocalVM()
+        public async Task T01_TestConfigureHostMachine()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
@@ -24,34 +25,19 @@ namespace wordslab.manager.test.vm
                 var vmm = new VirtualMachinesManager(storage, configStore);
                 Assert.IsNotNull(vmm);
 
-                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(storage);
+                Assert.IsNull(configStore.HostMachineConfig);
 
-                var minSpec = vmSpecs.MinimumVMSpec;
-                minSpec.Name = "test-blank1";
-                var gpus = Compute.GetNvidiaGPUsInfo();
-                if (gpus.Count > 0)
-                {
-                    minSpec.GPUModel = gpus[0].ModelName;
-                    minSpec.GPUMemoryGB = gpus[0].MemoryMB / 1024;
-                }
+                var userWantsGPU = true;
                 var ui = new TestProcessUI();
-                var vm = await vmm.CreateLocalVM(minSpec, ui);
-                Assert.IsNotNull(vm);
-                Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+                var machineConfig = await vmm.ConfigureHostMachine(userWantsGPU, ui);
+                Assert.IsNotNull(machineConfig);
 
-                minSpec.Name = "test-blank2";
-                minSpec.HostHttpIngressPort += 1;
-                minSpec.HostHttpsIngressPort += 1;
-                minSpec.HostKubernetesPort += 1;
-                ui = new TestProcessUI();
-                vm = await vmm.CreateLocalVM(minSpec, ui);
-                Assert.IsNotNull(vm);
-                Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+                Assert.IsNotNull(configStore.HostMachineConfig);
             }
         }
 
         [TestMethod]
-        public async Task T01_TestCreateLocalVM()
+        public async Task T02_TestCreateLocalVM()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
@@ -62,34 +48,33 @@ namespace wordslab.manager.test.vm
                 var vmm = new VirtualMachinesManager(storage, configStore);
                 Assert.IsNotNull(vmm);
 
-                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(storage);
-
-                var minSpec = vmSpecs.MinimumVMSpec;
-                minSpec.Name = "test-blank1";
+                var minSpec = VMRequirements.GetMinimumVMSpec();
                 var gpus = Compute.GetNvidiaGPUsInfo();
                 if (gpus.Count > 0)
                 {
-                    minSpec.GPUModel = gpus[0].ModelName;
-                    minSpec.GPUMemoryGB = gpus[0].MemoryMB / 1024;
+                    minSpec.GPU.ModelName = gpus[0].ModelName;
+                    minSpec.GPU.MemoryGB = gpus[0].MemoryMB / 1024;
                 }
+                var minConfig = new VirtualMachineConfig("test-blank1", minSpec);
+
                 var ui = new TestProcessUI();
-                var vm = await vmm.CreateLocalVM(minSpec, ui);
+                var vm = await vmm.CreateLocalVM(minConfig, ui);
                 Assert.IsNotNull(vm);
                 Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
 
-                minSpec.Name = "test-blank2";
-                minSpec.HostHttpIngressPort += 1;
-                minSpec.HostHttpsIngressPort += 1;
-                minSpec.HostKubernetesPort += 1;
+                minConfig.Name = "test-blank2";
+                // minConfig.HostHttpIngressPort += 1;
+                // minConfig.HostHttpsIngressPort += 1;
+                // minConfig.HostKubernetesPort += 1;
                 ui = new TestProcessUI();
-                vm = await vmm.CreateLocalVM(minSpec, ui);
+                vm = await vmm.CreateLocalVM(minConfig, ui);
                 Assert.IsNotNull(vm);
                 Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
             }
         }
 
         [TestMethod]
-        public void T02_TestListLocalVMs()
+        public void T03_TestListLocalVMs()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
@@ -125,7 +110,7 @@ namespace wordslab.manager.test.vm
         }
 
         [TestMethod]
-        public void T03_TestTryFindLocalVM()
+        public void T04_TestTryFindLocalVM()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
@@ -151,7 +136,7 @@ namespace wordslab.manager.test.vm
         }
 
         [TestMethod]
-        public async Task T04_TestDeleteLocalVM()
+        public async Task T05_TestDeleteLocalVM()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())

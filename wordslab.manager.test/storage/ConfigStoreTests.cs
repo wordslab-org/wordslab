@@ -65,8 +65,7 @@ namespace wordslab.manager.test.storage
 
                 // Intialize host machine config
                 var machineConfig = new HostMachineConfig(OS.GetMachineName(), hostStorage,
-                    2, 4, true, hostStorage.VirtualMachineClusterDirectory, 5, hostStorage.VirtualMachineDataDirectory, 10, hostStorage.BackupDirectory, 20,
-                    21..23, 6433..6455, 80..82, false, 443..445, true);
+                    2, 4, true, 5, 10, 20, 21, 6443, 80, false, 443, true);
                 configStore.InitializeHostMachineConfig(machineConfig);
 
                 // Test host machine config
@@ -81,11 +80,11 @@ namespace wordslab.manager.test.storage
                 Assert.IsTrue(machineConfig.VirtualMachineDataSizeGB == 10);
                 Assert.IsTrue(machineConfig.BackupPath == hostStorage.BackupDirectory);
                 Assert.IsTrue(machineConfig.BackupSizeGB == 20);
-                Assert.IsTrue(machineConfig.SSHPorts.Start.Value == 21);
-                Assert.IsTrue(machineConfig.KubernetesPorts.End.Value == 6455);
-                Assert.IsTrue(machineConfig.HttpPorts.Start.Value == 80);
+                Assert.IsTrue(machineConfig.SSHPort == 21);
+                Assert.IsTrue(machineConfig.KubernetesPort == 6443);
+                Assert.IsTrue(machineConfig.HttpPort == 80);
                 Assert.IsTrue(machineConfig.CanExposeHttpOnLAN == false);
-                Assert.IsTrue(machineConfig.HttpsPorts.End.Value == 445);
+                Assert.IsTrue(machineConfig.HttpsPort == 443);
                 Assert.IsTrue(machineConfig.CanExposeHttpsOnLAN == true);
             }
         }
@@ -291,14 +290,11 @@ namespace wordslab.manager.test.storage
                 var instance1_1 = GetVMInstance1(configStore, true);                
                 configStore.AddVirtualMachineInstance(instance1_1);
                 Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 1);
-                Assert.IsTrue(instance1_1.Id > 0); 
 
                 var instance1_2 = GetVMInstance1(configStore, false);
                 configStore.AddVirtualMachineInstance(instance1_2);
-                instance1_2.ExecutionMessages = "This is the last one";
                 Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 2);
-                Assert.IsTrue(instance1_2.Id > 0);
-                Assert.IsTrue(instance1_1.Id != instance1_2.Id);
+                Assert.AreNotEqual(instance1_1.StartTimestamp, instance1_2.StartTimestamp);
 
                 var instance2 = GetVMInstance2(configStore);
                 configStore.AddVirtualMachineInstance(instance2);
@@ -330,6 +326,8 @@ namespace wordslab.manager.test.storage
             var vmConfig2 = configStore.TryGetVirtualMachineConfig("vm2");
             var vmInstance2 = new VirtualMachineInstance(vmConfig2.Name, vmConfig2, 
                 new ComputeSpec() { Processors = 1, MemoryGB = 1 }, new GPUSpec() { GPUCount = 2, ModelName = "RTX 3090", MemoryGB = 24 }, new List<string>(new string[] { "One message", "Two messages" }));
+            vmInstance2.Started(45, "127.0.0.13", "kubeconfig content3", "Everything OK3");
+            vmInstance2.StartTimestamp = new DateTime(2022, 10, 10, 1, 15, 54);            
             return vmInstance2;
         }
 
@@ -343,6 +341,7 @@ namespace wordslab.manager.test.storage
                 Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 3);
             }
         }
+
         [TestMethod]
         public void T07_TestTryGetVirtualMachineInstance()
         {
@@ -350,7 +349,7 @@ namespace wordslab.manager.test.storage
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
             {
                 var configStore = serviceProvider.GetService<ConfigStore>();
-                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 2);
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 3);
 
                 var instanceRef1 = GetVMInstance1(configStore, false);
                 var instance1 = configStore.TryGetLastVirtualMachineInstance(instanceRef1.Name);
@@ -373,6 +372,7 @@ namespace wordslab.manager.test.storage
             {
                 var configStore = serviceProvider.GetService<ConfigStore>();
                 Assert.IsTrue(configStore.VirtualMachines.Count() == 2);
+                Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 3);
 
                 var vmRef1 = GetVMConfig1();
                 configStore.RemoveVirtualMachineConfig(vmRef1.Name);
@@ -381,7 +381,7 @@ namespace wordslab.manager.test.storage
 
                 var vmRef2 = GetVMConfig2();
                 configStore.RemoveVirtualMachineConfig(vmRef2.Name);
-                Assert.IsTrue(configStore.VirtualMachines.Count() == 0); ;
+                Assert.IsTrue(configStore.VirtualMachines.Count() == 0);
                 Assert.IsTrue(configStore.VirtualMachineInstances.Count() == 0);
             }
         }

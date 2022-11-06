@@ -4,6 +4,7 @@ namespace wordslab.manager.config
 {
     public enum VirtualMachineProvider
     {
+        Unspecified,
         Wsl,
         Qemu,
         GoogleCloud
@@ -13,10 +14,11 @@ namespace wordslab.manager.config
     {
         private VirtualMachineConfig() { }
 
-        public VirtualMachineConfig(string name, 
-            VirtualMachineSpec spec, VirtualMachineProvider vmProvider, string vmModelName, bool isPreemptible,
-            bool forwardSSHPortOnLocalhost, int hostSSHPort, bool forwardKubernetesPortOnLocalhost, int hostKubernetesPort, 
-            bool forwardHttpIngressPortOnLocalhost, int hostHttpIngressPort, bool allowHttpAccessFromLAN, bool forwardHttpsIngressPortOnLocalhost, int hostHttpsIngressPort, bool allowHttpsAccessFromLAN)
+        public VirtualMachineConfig(string name, VirtualMachineSpec spec, 
+            VirtualMachineProvider vmProvider = VirtualMachineProvider.Unspecified, string vmModelName = null, bool isPreemptible = false,
+            bool forwardSSHPortOnLocalhost = false, int hostSSHPort = 0, bool forwardKubernetesPortOnLocalhost = false, int hostKubernetesPort = 0, 
+            bool forwardHttpIngressPortOnLocalhost = false, int hostHttpIngressPort = 0, bool allowHttpAccessFromLAN = false,
+            bool forwardHttpsIngressPortOnLocalhost = false, int hostHttpsIngressPort = 0, bool allowHttpsAccessFromLAN = false)
         {
             Name = name;
             Spec = spec;
@@ -46,7 +48,7 @@ namespace wordslab.manager.config
 
         public VirtualMachineProvider VmProvider { get; set; }    
 
-        public string VmModelName { get; set; }
+        public string? VmModelName { get; set; }
 
         public bool IsPreemptible { get; set; }
 
@@ -75,7 +77,7 @@ namespace wordslab.manager.config
 
             var equals = true;
             equals = equals && vm.Name == Name;
-            equals = equals && vm.Spec == Spec;
+            equals = equals && vm.Spec.Equals(Spec);
             equals = equals && vm.VmProvider == VmProvider;
             equals = equals && vm.VmModelName == VmModelName;
             equals = equals && vm.IsPreemptible == IsPreemptible;

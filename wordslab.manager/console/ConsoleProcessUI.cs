@@ -92,6 +92,12 @@ namespace wordslab.manager.console
             return Task.FromResult(answer);
         }
 
+        public Task<string> DisplayInputQuestion(string question, string defaultValue)
+        {
+            var answer = AnsiConsole.Ask(question, defaultValue);
+            AnsiConsole.WriteLine();
+            return Task.FromResult(answer);
+        }
 
         public void DisplayCommandError(string errorMessage)
         {

@@ -63,17 +63,17 @@ namespace wordslab.manager.config
         public string Name { get; set; }
 
         [Key]
-        public int Id { get; set; }
+        public DateTime StartTimestamp { get; set; }
 
         // Config and start arguments overrides
 
         public VirtualMachineConfig Config { get; set; }
 
-        public ComputeSpec ComputeStartArguments { get; set; }
+        public ComputeSpec? ComputeStartArguments { get; set; }
 
-        public GPUSpec GPUStartArguments { get; set; }
+        public GPUSpec? GPUStartArguments { get; set; }
 
-        public string StartArgumentsMessages { get; set; }
+        public string? StartArgumentsMessages { get; set; }
 
         // Execution state
 
@@ -81,15 +81,13 @@ namespace wordslab.manager.config
 
         public int VmProcessId { get; set; }
 
-        public string VmIPAddress { get; set; }
+        public string? VmIPAddress { get; set; }
 
-        public string Kubeconfig { get; set; }
+        public string? Kubeconfig { get; set; }
 
-        public DateTime StartTimestamp { get; set; }
+        public DateTime? StopTimestamp { get; set; }
 
-        public DateTime StopTimestamp { get; set; }
-
-        public string ExecutionMessages { get; set; }
+        public string? ExecutionMessages { get; set; }
 
         // Comparison
 
@@ -100,9 +98,9 @@ namespace wordslab.manager.config
 
             var equals = true;
             equals = equals && instance.Name == Name;
-            equals = equals && instance.Config == Config;
-            equals = equals && instance.ComputeStartArguments == ComputeStartArguments;
-            equals = equals && instance.GPUStartArguments == GPUStartArguments;
+            equals = equals && instance.Config.Equals(Config);
+            equals = equals && ((instance.ComputeStartArguments == null && ComputeStartArguments == null) || instance.ComputeStartArguments.Equals(ComputeStartArguments));
+            equals = equals && ((instance.GPUStartArguments == null && GPUStartArguments == null) || instance.GPUStartArguments.Equals(GPUStartArguments));
             equals = equals && instance.StartArgumentsMessages == StartArgumentsMessages;
             equals = equals && instance.State == State;
             equals = equals && instance.VmProcessId == VmProcessId;

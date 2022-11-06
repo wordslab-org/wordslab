@@ -135,7 +135,7 @@ namespace wordslab.manager.test.os
             Assert.IsFalse(Wsl.list().Any(d => d.Distribution == "Ubuntu-20.04" && d.IsDefault));
             Wsl.setDefaultDistribution("Ubuntu-20.04");
             Assert.IsTrue(Wsl.list().Any(d => d.Distribution == "Ubuntu-20.04" && d.IsDefault));
-            Wsl.setDefaultDistribution("Ubuntu-18.04");
+            Wsl.setDefaultDistribution("Ubuntu");
         }
 
         [TestMethodOnWindows]
@@ -167,17 +167,17 @@ namespace wordslab.manager.test.os
         [TestMethodOnWindows]
         public void T17_Testterminate()
         {
-            Wsl.exec("echo 0", "Ubuntu-18.04");
+            Wsl.exec("echo 0", "Ubuntu-20.04");
             Assert.IsTrue(Wsl.list().Where(d => d.IsRunning).Count() == 1);
 
-            Wsl.terminate("Ubuntu-18.04");
+            Wsl.terminate("Ubuntu-20.04");
             Assert.IsTrue(Wsl.list().Where(d => d.IsRunning).Count() == 0);
         }
 
         [TestMethodOnWindows]
         public void T18_Testshutdown()
         {
-            Wsl.exec("echo 0", "Ubuntu-18.04");
+            Wsl.exec("echo 0", "Ubuntu");
             Wsl.exec("echo 0", "Ubuntu-20.04");
             Assert.IsTrue(Wsl.list().Where(d => d.IsRunning).Count() == 2);
 

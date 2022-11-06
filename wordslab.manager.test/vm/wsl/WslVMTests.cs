@@ -98,7 +98,7 @@ namespace wordslab.manager.test.vm.wsl
                 var vm = WslVM.FindByName("test-blank", configStore, storage);
                 Assert.IsFalse(vm.IsRunning());
 
-                var vmSpecs = VMRequirements.GetRecommendedVMSpecs(storage);
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
                 var minSpec = vmSpecs.MinimumVMSpec;
                 vm.Start(minSpec.Compute, minSpec.GPU);
 

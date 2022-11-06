@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.config;
 
@@ -118,7 +119,7 @@ namespace wordslab.manager.storage
         /// </summary>
         public VirtualMachineInstance TryGetLastVirtualMachineInstance(string vmName)
         {
-            return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderByDescending(instance => instance.Id).FirstOrDefault();
+            return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderByDescending(instance => instance.StartTimestamp).FirstOrDefault();
         }
 
         // Configure table name
@@ -127,7 +128,7 @@ namespace wordslab.manager.storage
             modelBuilder.Entity<HostMachineConfig>().ToTable("HostMachine");
             modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
-            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.Id }); ;
+            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.DateTimeCreated });
         }
 
         // Bootstrap the config database

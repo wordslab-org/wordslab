@@ -33,7 +33,7 @@ namespace wordslab.manager.os
                                     driveInfo.DiskId = keyValue.Value;
                                     break;
                                 case "DiskSN":
-                                    serialNumber = keyValue.Value;
+                                    serialNumber = keyValue.Value.Trim();
                                     break;
                                 case "DiskSize":
                                     driveInfo.DiskSizeMB = (uint)(ulong.Parse(keyValue.Value) / MEGA);
@@ -60,7 +60,7 @@ namespace wordslab.manager.os
                                     driveInfo.FreeSpaceMB = (uint)(ulong.Parse(keyValue.Value) / MEGA);
                                     break;
                             }
-                            if (i < 9) disksPropEnum.MoveNext();
+                            if (keyValue.Key == "DiskId") { break; } else { disksPropEnum.MoveNext(); }
                         }
 
                         var wmiMediaTypeRequest = $"Get-WmiObject -Class MSFT_PhysicalDisk -Namespace root\\Microsoft\\Windows\\Storage | Where-Object {{$_.SerialNumber -eq \"{serialNumber}\"}} | Select -ExpandProperty MediaType";

@@ -24,9 +24,9 @@ namespace wordslab.manager.storage
 
         public string ScriptsDirectory { get; init; }
 
-        public string DownloadCacheDirectory { get; private set; }
-
         public string VirtualMachineClusterDirectory { get; private set; }
+
+        public string DownloadCacheDirectory { get { return Path.Combine(VirtualMachineClusterDirectory, DOWNLOAD); } }
 
         public string VirtualMachineDataDirectory { get; private set; }
 
@@ -37,15 +37,13 @@ namespace wordslab.manager.storage
             // The users can choose the base directory where they install wordslab manager
             AppDirectory = AppContext.BaseDirectory;
 
-            // The config, download, logs, and scripts subdirectories are fixed inside this install directory
+            // The config, logs, and scripts subdirectories are fixed inside this install directory
             ConfigDirectory = Path.Combine(AppDirectory, CONFIG);
-            DownloadCacheDirectory = Path.Combine(AppDirectory, DOWNLOAD);
             LogsDirectory = Path.Combine(AppDirectory, LOGS);
             ScriptsDirectory = Path.Combine(AppDirectory, SCRIPTS);
 
-            // The config, download and logs subdirectories must be created during the first launch
+            // The config and logs subdirectories must be created during the first launch
             if (!Directory.Exists(ConfigDirectory)) Directory.CreateDirectory(ConfigDirectory);
-            if (!Directory.Exists(DownloadCacheDirectory)) Directory.CreateDirectory(DownloadCacheDirectory);
             if (!Directory.Exists(LogsDirectory)) Directory.CreateDirectory(LogsDirectory);
             // The scripts directory is included in the installation package
 
@@ -57,6 +55,8 @@ namespace wordslab.manager.storage
 
             // The configurable data directories must also be created during the first launch
             if (!Directory.Exists(VirtualMachineClusterDirectory)) Directory.CreateDirectory(VirtualMachineClusterDirectory);
+            // The download cache directory is always a subdirectory of the cluster data directory
+            if (!Directory.Exists(DownloadCacheDirectory)) Directory.CreateDirectory(DownloadCacheDirectory);
             if (!Directory.Exists(VirtualMachineDataDirectory)) Directory.CreateDirectory(VirtualMachineDataDirectory);
             if (!Directory.Exists(BackupDirectory)) Directory.CreateDirectory(BackupDirectory);
         }
@@ -69,28 +69,39 @@ namespace wordslab.manager.storage
             BackupDirectory = backupDirectory;
         }
 
+        internal static string GetSubdirectoryFor(StorageLocation storageLocation)
+        {
+            switch (storageLocation)
+            {
+                case StorageLocation.VirtualMachineCluster:
+                    return Path.Combine(APP, VM, VM_CLUSTER);
+                case StorageLocation.VirtualMachineData:
+                    return Path.Combine(APP, VM, VM_DATA);
+                case StorageLocation.Backup:
+                    return Path.Combine(APP, BACKUP);
+            }
+            return null;
+        }
+
         // Move configurable directories - Use the public method on ConfigStore to ensure persistence
         internal void MoveConfigurableDirectoryTo(StorageLocation storageLocation, string destinationBaseDir)
         {
             if (!Directory.Exists(destinationBaseDir)) Directory.CreateDirectory(destinationBaseDir);
 
             string sourcePath = null;
-            string destinationPath = null;
+            string destinationPath = Path.Combine(destinationBaseDir, GetSubdirectoryFor(storageLocation));
             switch (storageLocation)
             {                
                 case StorageLocation.VirtualMachineCluster:
                     sourcePath = VirtualMachineClusterDirectory;
-                    destinationPath = Path.Combine(destinationBaseDir, APP, VM, VM_CLUSTER);
                     VirtualMachineClusterDirectory = destinationPath;
                     break;
                 case StorageLocation.VirtualMachineData:
                     sourcePath = VirtualMachineDataDirectory;
-                    destinationPath = Path.Combine(destinationBaseDir, APP, VM, VM_DATA);
                     VirtualMachineDataDirectory = destinationPath;
                     break;
                 case StorageLocation.Backup:
                     sourcePath = BackupDirectory;
-                    destinationPath = Path.Combine(destinationBaseDir, APP, BACKUP);
                     BackupDirectory = destinationPath;
                     break;
             }
@@ -156,7 +167,6 @@ namespace wordslab.manager.storage
         {
             if (Directory.Exists(ConfigDirectory)) Directory.Delete(ConfigDirectory, true);
             if (Directory.Exists(LogsDirectory)) Directory.Delete(LogsDirectory, true);
-            if (Directory.Exists(DownloadCacheDirectory)) Directory.Delete(DownloadCacheDirectory, true);
             if (Directory.Exists(VirtualMachineClusterDirectory)) Directory.Delete(VirtualMachineClusterDirectory, true);
             if (Directory.Exists(VirtualMachineDataDirectory)) Directory.Delete(VirtualMachineDataDirectory, true);
             if (Directory.Exists(BackupDirectory)) Directory.Delete(BackupDirectory, true);

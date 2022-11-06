@@ -8,10 +8,12 @@ namespace wordslab.manager.vm
     {
         // Recommended Virtual Machine specs
 
-        public const int MIN_HOST_PROCESSORS = 2;
-        public const int MIN_HOST_MEMORY_GB = 2;
-        public const int MIN_HOST_DISK_GB = 5;
-        public const int MIN_HOST_DOWNLOADDIR_GB = 2;
+        public const int MIN_HOST_RESERVED_PROCESSORS = 2;
+        public const int MIN_HOST_RESERVED_MEMORY_GB = 2;
+        public const int MIN_HOST_RESERVED_STORAGE_GB = 2;
+
+        public const int MIN_HOST_DOWNLOADDIR_GB = 1;
+        public const int MIN_HOST_BACKUPDIR_GB = 2;
 
         public const int MIN_VM_PROCESSORS = 2;
         public const int MIN_VM_MEMORY_GB = 4;
@@ -34,89 +36,80 @@ namespace wordslab.manager.vm
 
         public static bool CheckCPURequirements(VirtualMachineSpec vmSpec, Compute.CPUInfo cpuInfo, out string cpuErrorMessage)
         {
-            var cpuSpecOK = cpuInfo.NumberOfLogicalProcessors >= (MIN_HOST_PROCESSORS + vmSpec.Compute.Processors);
+            var cpuSpecOK = cpuInfo.NumberOfLogicalProcessors >= (MIN_HOST_RESERVED_PROCESSORS + vmSpec.Compute.Processors);
             if (cpuSpecOK)
             {
                 cpuErrorMessage = "";
             }
             else
             {
-                cpuErrorMessage = $"The CPU is not powerful enough: {MIN_HOST_PROCESSORS + vmSpec.Compute.Processors} logical processors are required, {cpuInfo.NumberOfLogicalProcessors} are available.";
+                cpuErrorMessage = $"The CPU is not powerful enough: {MIN_HOST_RESERVED_PROCESSORS + vmSpec.Compute.Processors} logical processors are required, {cpuInfo.NumberOfLogicalProcessors} are available.";
             }
             return cpuSpecOK;
         }
 
         public static bool CheckMemoryRequirements(VirtualMachineSpec vmSpec, Memory.MemoryInfo memInfo, out string memoryErrorMessage)
         {
-            var memorySpecOK = memInfo.TotalPhysicalMB >= (ulong)((MIN_HOST_MEMORY_GB + vmSpec.Compute.MemoryGB) * 1000);
+            var memorySpecOK = memInfo.TotalPhysicalMB >= (ulong)((MIN_HOST_RESERVED_MEMORY_GB + vmSpec.Compute.MemoryGB) * 1000);
             if (memorySpecOK)
             {
                 memoryErrorMessage = "";
             }
             else
             {
-                memoryErrorMessage = $"Not enough physical memory: {MIN_HOST_MEMORY_GB + vmSpec.Compute.MemoryGB} GBs are required, {memInfo.TotalPhysicalMB/1024f:F1} GB are available.";
+                memoryErrorMessage = $"Not enough physical memory: {MIN_HOST_RESERVED_MEMORY_GB + vmSpec.Compute.MemoryGB} GBs are required, {memInfo.TotalPhysicalMB/1024f:F1} GB are available.";
             }
             return memorySpecOK;
         }
 
-        public static bool CheckStorageRequirements(VirtualMachineSpec vmSpec, HostStorage hostStorage, out Dictionary<os.DriveInfo, int> storageReqsGB, out string storageErrorMessage)
+        public static bool CheckStorageRequirements(VirtualMachineSpec vmSpec, Dictionary<string, os.DriveInfo> drivesInfo, out string storageErrorMessage)
         {
-            storageReqsGB = new Dictionary<os.DriveInfo, int>();
-
-            var userProfileDrive = Storage.GetDriveInfoForUserProfile();
-            storageReqsGB.Add(userProfileDrive, MIN_HOST_DISK_GB);
-            var downloadCacheDrive = Storage.GetDriveInfoFromPath(hostStorage.DownloadCacheDirectory);
-            if (!storageReqsGB.ContainsKey(downloadCacheDrive))
+            // Disk space requirements
+            var ssdStorageReqs = 0;
+            var anyStorageReqs = MIN_HOST_BACKUPDIR_GB;
+            if (vmSpec.Storage.ClusterDiskIsSSD)
             {
-                storageReqsGB.Add(downloadCacheDrive, MIN_HOST_DOWNLOADDIR_GB);
+                ssdStorageReqs += vmSpec.Storage.ClusterDiskSizeGB + MIN_HOST_DOWNLOADDIR_GB;
             }
             else
             {
-                storageReqsGB[downloadCacheDrive] += MIN_HOST_DOWNLOADDIR_GB;
+                anyStorageReqs += vmSpec.Storage.ClusterDiskSizeGB + MIN_HOST_DOWNLOADDIR_GB;
             }
-
-            var vmDrives = new os.DriveInfo[] {
-                    Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineClusterDirectory),
-                    Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineDataDirectory) };
-
-            var vmStorageReqs = new int[] {
-                vmSpec.Storage.ClusterDiskSizeGB,
-                vmSpec.Storage.DataDiskSizeGB };
-
-            var vmSSDReqs = new bool[] {
-                vmSpec.Storage.ClusterDiskIsSSD,
-                vmSpec.Storage.DataDiskIsSSD };
-
-            bool storageSpecOK = true;
-            storageErrorMessage = "";
-
-            foreach (var tuple in vmDrives.Zip(vmStorageReqs, vmSSDReqs))
+            if(vmSpec.Storage.DataDiskIsSSD)
             {
-                var (vmDrive, vmStorageReq, vmSSDReq) = tuple;
-                if (storageReqsGB.ContainsKey(vmDrive))
-                {
-                    storageReqsGB[vmDrive] += vmStorageReq;
-                }
-                else
-                {
-                    storageReqsGB.Add(vmDrive, vmStorageReq);
-                }
-                if (vmSSDReq && !vmDrive.IsSSD)
-                {
-                    storageSpecOK = false;
-                    storageErrorMessage += $"The volume {vmDrive.VolumeName} is not an SSD. ";
-                }
+                ssdStorageReqs += vmSpec.Storage.DataDiskSizeGB;
             }
-            foreach (var drive in storageReqsGB.Keys)
+            else
             {
-                if (drive.FreeSpaceMB < (storageReqsGB[drive] * 1000))
-                {
-                    storageSpecOK = false;
-                    storageErrorMessage += $"Not enough free storage space on {drive.VolumeName}: {(int)(drive.FreeSpaceMB / 1000)} GB avaible but {storageReqsGB[drive]} GB required. ";
-                }
+                anyStorageReqs += vmSpec.Storage.DataDiskSizeGB;
             }
 
+            // Available disk space
+            var ssdStorageSpace = drivesInfo.Values.Where(di => di.IsSSD).Sum(di => di.FreeSpaceMB / 1000f);
+            var anyStorageSpace = drivesInfo.Values.Where(di => !di.IsSSD).Sum(di => di.FreeSpaceMB / 1000f);
+            var osdirInfo = Storage.GetDriveInfoForUserProfile();
+            if (osdirInfo.IsSSD)
+            {
+                ssdStorageSpace -= MIN_HOST_RESERVED_STORAGE_GB;
+            }
+            else
+            {
+                anyStorageSpace -= MIN_HOST_RESERVED_STORAGE_GB;
+            }
+
+            // Compare
+            bool storageSpecOK;
+            if (ssdStorageSpace >= (ssdStorageReqs + anyStorageReqs) ||
+                (ssdStorageSpace >= ssdStorageReqs && anyStorageSpace >= anyStorageReqs))
+            {
+                storageSpecOK = true;
+                storageErrorMessage = null;
+            }
+            else
+            { 
+                storageSpecOK = false;
+                storageErrorMessage = $"Not enough free storage space. Storage required: {ssdStorageReqs} GB of SSD and {anyStorageReqs} GB of any kind. Free storage space available: {ssdStorageSpace:F1} GB of SSD and {anyStorageSpace:F1} of HDD";
+            }
             return storageSpecOK;
         }
 
@@ -162,15 +155,15 @@ namespace wordslab.manager.vm
             return minVMSpec;
         }
 
-        public static RecommendedVMSpecs GetRecommendedVMSpecs(HostStorage hostStorage)
+        public static RecommendedVMSpecs GetRecommendedVMSpecs()
         {
             var cpuInfo = Compute.GetCPUInfo();
             var memInfo = Memory.GetMemoryInfo();
             var gpusInfo = Compute.GetNvidiaGPUsInfo();
+            var drivesInfo = Storage.GetDrivesInfo();
 
             var minVMSpec = GetMinimumVMSpec();
 
-            Dictionary<os.DriveInfo, int> minStorageReqsGB = null;
             string minCPUErrorMessage = null;
             string minMemoryErrorMessage = null;
             string minStorageErrorMessage = null;
@@ -178,7 +171,7 @@ namespace wordslab.manager.vm
             var minRequirementsOK =
                CheckCPURequirements(minVMSpec, cpuInfo, out minCPUErrorMessage) &&
                CheckMemoryRequirements(minVMSpec, memInfo, out minMemoryErrorMessage) &&
-               CheckStorageRequirements(minVMSpec, hostStorage, out minStorageReqsGB, out minStorageErrorMessage) && 
+               CheckStorageRequirements(minVMSpec, drivesInfo, out minStorageErrorMessage) && 
                CheckGPURequirements(minVMSpec, gpusInfo, out minGPUErrorMessage);
             string minVMSpecErrorMessage = null;
             if (!minRequirementsOK)
@@ -195,7 +188,6 @@ namespace wordslab.manager.vm
             recVMSpec.Storage.DataDiskSizeGB = REC_VM_DATADISK_GB;
             recVMSpec.Storage.DataDiskIsSSD = true;
 
-            Dictionary<os.DriveInfo, int> recStorageReqsGB = null;
             string recCPUErrorMessage = null;
             string recMemoryErrorMessage = null;
             string recStorageErrorMessage = null;
@@ -203,7 +195,7 @@ namespace wordslab.manager.vm
             var recRequirementsOK =
                CheckCPURequirements(recVMSpec, cpuInfo, out recCPUErrorMessage) &&
                CheckMemoryRequirements(recVMSpec, memInfo, out recMemoryErrorMessage) &&
-               CheckStorageRequirements(recVMSpec, hostStorage, out recStorageReqsGB, out recStorageErrorMessage) &&
+               CheckStorageRequirements(recVMSpec, drivesInfo, out recStorageErrorMessage) &&
                CheckGPURequirements(recVMSpec, gpusInfo, out recGPUErrorMessage);
             string recVMSpecErrorMessage = null;
             if (!recRequirementsOK)
@@ -212,33 +204,40 @@ namespace wordslab.manager.vm
             }
 
             var maxVMSpec = new VirtualMachineSpec();
-            maxVMSpec.Compute.Processors = (int)cpuInfo.NumberOfLogicalProcessors - MIN_HOST_PROCESSORS;
-            maxVMSpec.Compute.MemoryGB = (int)(memInfo.TotalPhysicalMB/1024) - MIN_HOST_MEMORY_GB;
+            maxVMSpec.Compute.Processors = (int)cpuInfo.NumberOfLogicalProcessors - MIN_HOST_RESERVED_PROCESSORS;
+            maxVMSpec.Compute.MemoryGB = (int)(memInfo.TotalPhysicalMB/1024) - MIN_HOST_RESERVED_MEMORY_GB;
             var bestGPU = gpusInfo.OrderByDescending(gpu => (int)gpu.Architecture).ThenByDescending(gpu => gpu.MemoryMB).FirstOrDefault();
             if (bestGPU != null)
             {
                 maxVMSpec.GPU = new GPUSpec() { ModelName = bestGPU.ModelName, MemoryGB = bestGPU.MemoryMB / 1024, GPUCount = 1 };
             }
-            
-            var vmClusterDrive = Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineClusterDirectory);
-            var vmDataDrive = Storage.GetDriveInfoFromPath(hostStorage.VirtualMachineDataDirectory);
-            if (recRequirementsOK)
+            // Max disk size = max available storage space
+            var ssdStorageSpace = (int)drivesInfo.Values.Where(di => di.IsSSD).Max(di => di.FreeSpaceMB / 1000f);
+            var anyStorageSpace = (int)drivesInfo.Values.Where(di => !di.IsSSD).Max(di => di.FreeSpaceMB / 1000f);
+            if (ssdStorageSpace > recVMSpec.Storage.ClusterDiskSizeGB ||
+                (minVMSpec.Storage.ClusterDiskIsSSD && ssdStorageSpace > minVMSpec.Storage.ClusterDiskSizeGB) ||
+                ssdStorageSpace > anyStorageSpace)
             {
-                maxVMSpec.Storage.ClusterDiskSizeGB = (int)(vmClusterDrive.TotalSizeMB / 1000) - recStorageReqsGB[vmClusterDrive] + REC_VM_CLUSTERDISK_GB;
-                maxVMSpec.Storage.DataDiskSizeGB = (int)(vmDataDrive.TotalSizeMB / 1000) - recStorageReqsGB[vmDataDrive] + REC_VM_DATADISK_GB;
-            }
-            else if(minRequirementsOK)
-            {
-                maxVMSpec.Storage.ClusterDiskSizeGB = (int)(vmClusterDrive.TotalSizeMB / 1000) - minStorageReqsGB[vmClusterDrive] + MIN_VM_CLUSTERDISK_GB;
-                maxVMSpec.Storage.DataDiskSizeGB = (int)(vmDataDrive.TotalSizeMB / 1000) - minStorageReqsGB[vmDataDrive] + MIN_VM_DATADISK_GB;
+                maxVMSpec.Storage.ClusterDiskSizeGB = ssdStorageSpace;
+                maxVMSpec.Storage.ClusterDiskIsSSD = true;
             }
             else
             {
-                maxVMSpec.Storage.ClusterDiskSizeGB = (int)(vmClusterDrive.TotalSizeMB / 1000);
-                maxVMSpec.Storage.DataDiskSizeGB = (int)(vmDataDrive.TotalSizeMB / 1000);
+                maxVMSpec.Storage.ClusterDiskSizeGB = anyStorageSpace;
+                maxVMSpec.Storage.ClusterDiskIsSSD = false;
             }
-            maxVMSpec.Storage.ClusterDiskIsSSD = vmClusterDrive.IsSSD;
-            maxVMSpec.Storage.DataDiskIsSSD = vmDataDrive.IsSSD;
+            if (ssdStorageSpace > recVMSpec.Storage.DataDiskSizeGB ||
+                (minVMSpec.Storage.DataDiskIsSSD && ssdStorageSpace > minVMSpec.Storage.DataDiskSizeGB) ||
+                ssdStorageSpace > anyStorageSpace)
+            {
+                maxVMSpec.Storage.DataDiskSizeGB = ssdStorageSpace;
+                maxVMSpec.Storage.DataDiskIsSSD = true;
+            }
+            else
+            {
+                maxVMSpec.Storage.DataDiskSizeGB = anyStorageSpace;
+                maxVMSpec.Storage.DataDiskIsSSD = false;
+            }           
 
             return new RecommendedVMSpecs(minVMSpec, minRequirementsOK, minVMSpecErrorMessage, recVMSpec, recRequirementsOK, recVMSpecErrorMessage, maxVMSpec);
         }

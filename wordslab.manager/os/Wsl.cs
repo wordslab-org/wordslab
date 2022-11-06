@@ -224,6 +224,7 @@ namespace wordslab.manager.os
             public bool IsInstalled = false;
             public int DefaultVersion = 0;
             public string DefaultDistribution;
+            public bool IsMicrosoftStoreVersion = false;
             public Version LinuxKernelVersion;
             public string LastWSLUpdate;
         }
@@ -248,6 +249,25 @@ namespace wordslab.manager.os
                 if (!String.IsNullOrEmpty(distrib)) result.DefaultDistribution = distrib;
                 if (!String.IsNullOrEmpty(linuxver)) result.LinuxKernelVersion = new Version(linuxver);
                 if (!String.IsNullOrEmpty(wsldate)) result.LastWSLUpdate = wsldate;
+
+                // Windows 11 - WSL from Microsoft Store
+                if(result.IsInstalled && String.IsNullOrEmpty(linuxver))
+                {
+                    string output = null;
+                    Command.Run("wsl", "--version", unicodeEncoding: true, outputHandler: o => output = o);
+                    var versionInfos = output.Split('\n');
+                    if(versionInfos.Length > 2)
+                    {
+                        var kernelVersionInfo = versionInfos[1];
+                        var versionIndex = kernelVersionInfo.IndexOf(": ");
+                        if(versionIndex > 0)
+                        {
+                            linuxver = kernelVersionInfo.Substring(versionIndex+2).Trim();
+                            result.LinuxKernelVersion = new Version(linuxver);
+                            result.LastWSLUpdate = DateTime.Now.ToShortDateString();
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -627,6 +647,11 @@ namespace wordslab.manager.os
         public static int GetVirtualMachineProcessId()
         {
             var processes = Process.GetProcessesByName("vmmem");
+            // Windows 11 - WSL from Microsoft Store
+            if (processes.Length == 0)
+            {
+                processes = Process.GetProcessesByName("VmmemWSL");
+            }
             if (processes.Length == 0)
             {
                 return -1;
@@ -642,7 +667,12 @@ namespace wordslab.manager.os
         public static uint GetVirtualMachineWorkingSetMB()
         {
             var processes = Process.GetProcessesByName("vmmem");
-            if(processes.Length == 0)
+            // Windows 11 - WSL from Microsoft Store
+            if (processes.Length == 0)
+            {
+                processes = Process.GetProcessesByName("VmmemWSL");
+            }
+            if (processes.Length == 0)
             {
                 return 0;
             }
