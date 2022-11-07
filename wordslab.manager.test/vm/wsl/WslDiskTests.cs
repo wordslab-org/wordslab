@@ -44,11 +44,11 @@ namespace wordslab.manager.test.vm.wsl
             Assert.IsTrue(disk.VMName == "test-blank");
             Assert.IsTrue(disk.Function == VirtualDiskFunction.Data);
             Assert.IsTrue(disk.MaxSizeGB == 256);
-            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-data-disk");
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-data");
             Assert.IsTrue(disk.IsSSD);
             Assert.IsTrue(disk.IsServiceRequired());
             Assert.IsFalse(disk.IsServiceRunnig());
-            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-data-disk\ext4.vhdx"));
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\data\wordslab-test-blank-data\ext4.vhdx"));
 
             Exception expectedEx = null;
             try
@@ -73,11 +73,11 @@ namespace wordslab.manager.test.vm.wsl
             Assert.IsTrue(disk.VMName == "test-blank");
             Assert.IsTrue(disk.Function == VirtualDiskFunction.Data);
             Assert.IsTrue(disk.MaxSizeGB == 256);
-            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-data-disk");
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-data");
             Assert.IsTrue(disk.IsSSD);
             Assert.IsTrue(disk.IsServiceRequired());
             Assert.IsFalse(disk.IsServiceRunnig());
-            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-data-disk\ext4.vhdx"));
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\data\wordslab-test-blank-data\ext4.vhdx"));
 
             disk = WslDisk.TryFindByName("toto", VirtualDiskFunction.Cluster, storage);
             Assert.IsNull(disk);
@@ -113,11 +113,11 @@ namespace wordslab.manager.test.vm.wsl
             Assert.IsTrue(disk.VMName == "test-blank");
             Assert.IsTrue(disk.Function == VirtualDiskFunction.Cluster);
             Assert.IsTrue(disk.MaxSizeGB == 256);
-            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-cluster-disk");
+            Assert.IsTrue(disk.ServiceName == "wordslab-test-blank-cluster");
             Assert.IsTrue(disk.IsSSD);
             Assert.IsFalse(disk.IsServiceRequired());
             Assert.IsFalse(disk.IsServiceRunnig());
-            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\wordslab-test-blank-cluster-disk\ext4.vhdx"));
+            Assert.IsTrue(disk.StoragePath.EndsWith(@"vm\cluster\wordslab-test-blank-cluster\ext4.vhdx"));
 
             Exception expectedEx = null;
             try
@@ -180,13 +180,15 @@ namespace wordslab.manager.test.vm.wsl
             Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineClusterDirectory).Length == 3);
             Assert.IsNotNull(cluster1);
             Assert.IsNotNull(cluster2);
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineDataDirectory).Length == 1);
             Assert.IsNotNull(data);
 
             cluster1.Delete();
             cluster2.Delete();
             data.Delete();
 
-            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineClusterDirectory).Length == 0);
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineClusterDirectory).Length == 1);
+            Assert.IsTrue(Directory.GetFileSystemEntries(storage.VirtualMachineDataDirectory).Length == 0);
 
             cluster1 = WslDisk.TryFindByName("test-blank", VirtualDiskFunction.Cluster, storage);
             cluster2 = WslDisk.TryFindByName("test-blank2", VirtualDiskFunction.Cluster, storage);

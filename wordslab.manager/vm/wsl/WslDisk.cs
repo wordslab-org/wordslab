@@ -207,8 +207,9 @@ namespace wordslab.manager.vm.wsl
 
         // Ubuntu minimum images: https://partner-images.canonical.com/oci/
         internal static readonly string ubuntuRelease   = "focal";
-        internal static readonly string ubuntuVersion   = "20220815";
+        internal static readonly string ubuntuVersion   = "current";
         internal static readonly string ubuntuImageURL  = $"https://partner-images.canonical.com/oci/{ubuntuRelease}/{ubuntuVersion}/ubuntu-{ubuntuRelease}-oci-amd64-root.tar.gz";
+        // WARNING : because we need to point tu "current" version, the sizes below are approximate
         internal static readonly int    ubuntuImageDownloadSize = 27761025;
         internal static readonly int    ubuntuImageDiskSize = 78499840;
         internal static readonly string ubuntuFileName  = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}.tar";

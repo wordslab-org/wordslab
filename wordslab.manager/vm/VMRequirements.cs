@@ -39,7 +39,7 @@ namespace wordslab.manager.vm
             var cpuSpecOK = cpuInfo.NumberOfLogicalProcessors >= (MIN_HOST_RESERVED_PROCESSORS + vmSpec.Compute.Processors);
             if (cpuSpecOK)
             {
-                cpuErrorMessage = "";
+                cpuErrorMessage = null;
             }
             else
             {
@@ -53,7 +53,7 @@ namespace wordslab.manager.vm
             var memorySpecOK = memInfo.TotalPhysicalMB >= (ulong)((MIN_HOST_RESERVED_MEMORY_GB + vmSpec.Compute.MemoryGB) * 1000);
             if (memorySpecOK)
             {
-                memoryErrorMessage = "";
+                memoryErrorMessage = null;
             }
             else
             {
@@ -108,7 +108,7 @@ namespace wordslab.manager.vm
             else
             { 
                 storageSpecOK = false;
-                storageErrorMessage = $"Not enough free storage space. Storage required: {ssdStorageReqs} GB of SSD and {anyStorageReqs} GB of any kind. Free storage space available: {ssdStorageSpace:F1} GB of SSD and {anyStorageSpace:F1} of HDD";
+                storageErrorMessage = $"Not enough free storage space. Storage required: {ssdStorageReqs} GB of SSD and {anyStorageReqs} GB of any kind. Free storage space available: {ssdStorageSpace:F1} GB of SSD and {anyStorageSpace:F1} of other storage";
             }
             return storageSpecOK;
         }
@@ -116,7 +116,7 @@ namespace wordslab.manager.vm
         public static bool CheckGPURequirements(VirtualMachineSpec vmSpec, List<Compute.GPUInfo> gpusInfo, out string gpuErrorMessage)
         {
             bool gpuSpecOK = true;
-            gpuErrorMessage = "";
+            gpuErrorMessage = null;
             if (vmSpec.GPU != null)
             {
                 var gpuArchitecture = Compute.GPUInfo.GetArchitecture(vmSpec.GPU.ModelName);
@@ -124,6 +124,10 @@ namespace wordslab.manager.vm
                 if(availableGPU == null)
                 {
                     availableGPU = gpusInfo.Where(gpu => Compute.GPUInfo.GetArchitecture(gpu.ModelName) == gpuArchitecture).OrderByDescending(gpu => gpu.MemoryMB).FirstOrDefault();
+                    if (availableGPU != null)
+                    {
+                        gpuErrorMessage = $"Could not find the required Nvidia GPU (\"{vmSpec.GPU.ModelName}\"), but found a GPU of the same architecture or more recent (\"{availableGPU.ModelName}\").";
+                    }
                 }
                 if (availableGPU != null)
                 {
@@ -132,11 +136,14 @@ namespace wordslab.manager.vm
                 else
                 {
                     gpuSpecOK = false;
-
                 }
                 if (!gpuSpecOK)
                 {
-                    gpuErrorMessage = $"Could not find the required Nvidia GPU (\"{vmSpec.GPU.ModelName}\" with {vmSpec.GPU.MemoryGB} GB memory) on the host machine. If the card is physically installed in the machine, you can try to update your Nvidia drivers and to install nvidia-smi.";
+                    gpuErrorMessage = $"Could not find the required Nvidia GPU (\"{vmSpec.GPU.ModelName}\" with {vmSpec.GPU.MemoryGB} GB memory) on the host machine.";
+                    if (gpusInfo.Count == 0)
+                    {
+                        gpuErrorMessage += " If the card is physically installed in the machine, you can try to update your Nvidia drivers and to install nvidia-smi.";
+                    }
                 }
             }
             return gpuSpecOK;
@@ -168,11 +175,10 @@ namespace wordslab.manager.vm
             string minMemoryErrorMessage = null;
             string minStorageErrorMessage = null;
             string minGPUErrorMessage = null;
-            var minRequirementsOK =
-               CheckCPURequirements(minVMSpec, cpuInfo, out minCPUErrorMessage) &&
-               CheckMemoryRequirements(minVMSpec, memInfo, out minMemoryErrorMessage) &&
-               CheckStorageRequirements(minVMSpec, drivesInfo, out minStorageErrorMessage) && 
-               CheckGPURequirements(minVMSpec, gpusInfo, out minGPUErrorMessage);
+            var minRequirementsOK = CheckCPURequirements(minVMSpec, cpuInfo, out minCPUErrorMessage);
+            minRequirementsOK = CheckMemoryRequirements(minVMSpec, memInfo, out minMemoryErrorMessage) && minRequirementsOK;
+            minRequirementsOK = CheckStorageRequirements(minVMSpec, drivesInfo, out minStorageErrorMessage) && minRequirementsOK;
+            minRequirementsOK = CheckGPURequirements(minVMSpec, gpusInfo, out minGPUErrorMessage) && minRequirementsOK;
             string minVMSpecErrorMessage = null;
             if (!minRequirementsOK)
             {
@@ -192,11 +198,10 @@ namespace wordslab.manager.vm
             string recMemoryErrorMessage = null;
             string recStorageErrorMessage = null;
             string recGPUErrorMessage = null;
-            var recRequirementsOK =
-               CheckCPURequirements(recVMSpec, cpuInfo, out recCPUErrorMessage) &&
-               CheckMemoryRequirements(recVMSpec, memInfo, out recMemoryErrorMessage) &&
-               CheckStorageRequirements(recVMSpec, drivesInfo, out recStorageErrorMessage) &&
-               CheckGPURequirements(recVMSpec, gpusInfo, out recGPUErrorMessage);
+            var recRequirementsOK = CheckCPURequirements(recVMSpec, cpuInfo, out recCPUErrorMessage);
+            recRequirementsOK = CheckMemoryRequirements(recVMSpec, memInfo, out recMemoryErrorMessage) && recRequirementsOK;
+            recRequirementsOK = CheckStorageRequirements(recVMSpec, drivesInfo, out recStorageErrorMessage) && recRequirementsOK;
+            recRequirementsOK = CheckGPURequirements(recVMSpec, gpusInfo, out recGPUErrorMessage) && recRequirementsOK;
             string recVMSpecErrorMessage = null;
             if (!recRequirementsOK)
             {
@@ -205,37 +210,45 @@ namespace wordslab.manager.vm
 
             var maxVMSpec = new VirtualMachineSpec();
             maxVMSpec.Compute.Processors = (int)cpuInfo.NumberOfLogicalProcessors - MIN_HOST_RESERVED_PROCESSORS;
-            maxVMSpec.Compute.MemoryGB = (int)(memInfo.TotalPhysicalMB/1024) - MIN_HOST_RESERVED_MEMORY_GB;
+            maxVMSpec.Compute.MemoryGB = (int)(memInfo.TotalPhysicalMB/1000) - MIN_HOST_RESERVED_MEMORY_GB;
             var bestGPU = gpusInfo.OrderByDescending(gpu => (int)gpu.Architecture).ThenByDescending(gpu => gpu.MemoryMB).FirstOrDefault();
             if (bestGPU != null)
             {
                 maxVMSpec.GPU = new GPUSpec() { ModelName = bestGPU.ModelName, MemoryGB = bestGPU.MemoryMB / 1024, GPUCount = 1 };
             }
             // Max disk size = max available storage space
-            var ssdStorageSpace = (int)drivesInfo.Values.Where(di => di.IsSSD).Max(di => di.FreeSpaceMB / 1000f);
-            var anyStorageSpace = (int)drivesInfo.Values.Where(di => !di.IsSSD).Max(di => di.FreeSpaceMB / 1000f);
-            if (ssdStorageSpace > recVMSpec.Storage.ClusterDiskSizeGB ||
-                (minVMSpec.Storage.ClusterDiskIsSSD && ssdStorageSpace > minVMSpec.Storage.ClusterDiskSizeGB) ||
-                ssdStorageSpace > anyStorageSpace)
+            var maxSSDStorageSpace = 0;
+            if (drivesInfo.Values.Any(di => di.IsSSD))
             {
-                maxVMSpec.Storage.ClusterDiskSizeGB = ssdStorageSpace;
+                maxSSDStorageSpace = (int)drivesInfo.Values.Where(di => di.IsSSD).Max(di => di.FreeSpaceMB / 1000f);
+            }
+            var maxAnyStorageSpace = 0;
+            if (drivesInfo.Values.Any(di => !di.IsSSD))
+            {
+                maxAnyStorageSpace = (int)drivesInfo.Values.Where(di => !di.IsSSD).Max(di => di.FreeSpaceMB / 1000f);
+            }
+            if (maxSSDStorageSpace > recVMSpec.Storage.ClusterDiskSizeGB ||
+                (minVMSpec.Storage.ClusterDiskIsSSD && maxSSDStorageSpace > minVMSpec.Storage.ClusterDiskSizeGB) ||
+                maxSSDStorageSpace > maxAnyStorageSpace)
+            {
+                maxVMSpec.Storage.ClusterDiskSizeGB = maxSSDStorageSpace;
                 maxVMSpec.Storage.ClusterDiskIsSSD = true;
             }
             else
             {
-                maxVMSpec.Storage.ClusterDiskSizeGB = anyStorageSpace;
+                maxVMSpec.Storage.ClusterDiskSizeGB = maxAnyStorageSpace;
                 maxVMSpec.Storage.ClusterDiskIsSSD = false;
             }
-            if (ssdStorageSpace > recVMSpec.Storage.DataDiskSizeGB ||
-                (minVMSpec.Storage.DataDiskIsSSD && ssdStorageSpace > minVMSpec.Storage.DataDiskSizeGB) ||
-                ssdStorageSpace > anyStorageSpace)
+            if (maxSSDStorageSpace > recVMSpec.Storage.DataDiskSizeGB ||
+                (minVMSpec.Storage.DataDiskIsSSD && maxSSDStorageSpace > minVMSpec.Storage.DataDiskSizeGB) ||
+                maxSSDStorageSpace > maxAnyStorageSpace)
             {
-                maxVMSpec.Storage.DataDiskSizeGB = ssdStorageSpace;
+                maxVMSpec.Storage.DataDiskSizeGB = maxSSDStorageSpace;
                 maxVMSpec.Storage.DataDiskIsSSD = true;
             }
             else
             {
-                maxVMSpec.Storage.DataDiskSizeGB = anyStorageSpace;
+                maxVMSpec.Storage.DataDiskSizeGB = maxAnyStorageSpace;
                 maxVMSpec.Storage.DataDiskIsSSD = false;
             }           
 

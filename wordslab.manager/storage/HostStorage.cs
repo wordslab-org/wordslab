@@ -1,5 +1,4 @@
 ﻿using System.IO.Compression;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace wordslab.manager.storage
@@ -50,9 +49,9 @@ namespace wordslab.manager.storage
 
             // The configurable data directories are initialized as direct subdirectories of the install directory
             // The users can then move them to other locations of their choice with MoveConfigurableDirectoryTo()
-            VirtualMachineClusterDirectory = Path.Combine(AppDirectory, VM, VM_CLUSTER);
-            VirtualMachineDataDirectory = Path.Combine(AppDirectory, VM, VM_DATA);
-            BackupDirectory = Path.Combine(AppDirectory, BACKUP);
+            VirtualMachineClusterDirectory = Path.Combine(AppDirectory, GetSubdirectoryFor(StorageLocation.VirtualMachineCluster));
+            VirtualMachineDataDirectory = Path.Combine(AppDirectory, GetSubdirectoryFor(StorageLocation.VirtualMachineData));
+            BackupDirectory = Path.Combine(AppDirectory, GetSubdirectoryFor(StorageLocation.Backup));
 
             // The configurable data directories must also be created during the first launch
             if (!Directory.Exists(VirtualMachineClusterDirectory)) Directory.CreateDirectory(VirtualMachineClusterDirectory);
@@ -75,11 +74,11 @@ namespace wordslab.manager.storage
             switch (storageLocation)
             {
                 case StorageLocation.VirtualMachineCluster:
-                    return Path.Combine(APP, VM, VM_CLUSTER);
+                    return Path.Combine(VM, VM_CLUSTER);
                 case StorageLocation.VirtualMachineData:
-                    return Path.Combine(APP, VM, VM_DATA);
+                    return Path.Combine(VM, VM_DATA);
                 case StorageLocation.Backup:
-                    return Path.Combine(APP, BACKUP);
+                    return Path.Combine(BACKUP);
             }
             return null;
         }
@@ -90,7 +89,12 @@ namespace wordslab.manager.storage
             if (!Directory.Exists(destinationBaseDir)) Directory.CreateDirectory(destinationBaseDir);
 
             string sourcePath = null;
-            string destinationPath = Path.Combine(destinationBaseDir, GetSubdirectoryFor(storageLocation));
+            string destinationPath = destinationBaseDir;
+            string subdirectory = GetSubdirectoryFor(storageLocation);
+            if(!destinationPath.EndsWith(subdirectory))
+            {
+                destinationPath = Path.Combine(destinationPath, subdirectory);
+            }
             switch (storageLocation)
             {                
                 case StorageLocation.VirtualMachineCluster:

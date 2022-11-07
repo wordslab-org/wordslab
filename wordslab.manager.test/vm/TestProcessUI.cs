@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using wordslab.manager.vm;
 
@@ -9,6 +7,20 @@ namespace wordslab.manager.test.vm
 {
     public class TestProcessUI : InstallProcessUI
     {
+        public Queue<string> Answers;
+
+        public TestProcessUI(string[] answers = null)
+        {
+            if(answers != null)
+            {
+                Answers = new Queue<string>(answers);
+            }
+            else
+            {
+                Answers = new Queue<string>();
+            }
+        }
+
         public List<string> Messages = new List<string>();
 
         public void DisplayInstallStep(int stepNumber, int totalSteps, string stepDescription)
@@ -77,6 +89,10 @@ namespace wordslab.manager.test.vm
         {
             Messages.Add(question);
             var answer = true; 
+            if(Answers.Count > 0)
+            {
+                answer = Boolean.Parse(Answers.Dequeue());
+            }
             return Task.FromResult(answer);
         }
 
@@ -88,13 +104,22 @@ namespace wordslab.manager.test.vm
             Messages.Add("---");
             Messages.Add("OK to execute this script as admin?");
             var answer = true;
+            if (Answers.Count > 0)
+            {
+                answer = Boolean.Parse(Answers.Dequeue());
+            }
             return Task.FromResult(answer);
         }
 
         public Task<string> DisplayInputQuestion(string question, string defaultValue)
         {
-            Messages.Add($"{question} [{defaultValue}] ?");
+            Messages.Add($"{question}");
+            Messages.Add($"Default value: {defaultValue}");
             var answer = defaultValue;
+            if (Answers.Count > 0)
+            {
+                answer = Answers.Dequeue();
+            }
             return Task.FromResult(answer);
         }
 

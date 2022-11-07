@@ -220,17 +220,22 @@ namespace wordslab.manager.vm.wsl
                 var candidateVolumesArray = new List<os.DriveInfo>[] { candidateVolumesForCluster, candidateVolumesForData, candidateVolumesForBackup };
                 foreach (var (storageLocation,currentDirectory,candidateVolumes) in storageLocations.Zip(currentDirectories,candidateVolumesArray))
                 {                    
-                    var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} [{(di.IsSSD ? "SDD" : "HDD")}] [{di.FreeSpaceMB / 1000f:F1} GB free]"));
+                    var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} {di.FreeSpaceMB / 1000f:F1} GB free {(di.IsSSD ? "(SDD)" : "")}"));
+                    var subdirectory = HostStorage.GetSubdirectoryFor(storageLocation);
+                    string defaultPath = null;
                     var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));
-                    var defaultPath = currentPathIsOK ? currentDirectory : null;
+                    if (currentPathIsOK) 
+                    {
+                        defaultPath = currentDirectory.Substring(0, currentDirectory.Length - subdirectory.Length);
+                    }
                     var storageDescription = storageDescriptions[(int)storageLocation];
-                    var targetPath = await ui.DisplayInputQuestion($"Choose a base directory to store the {storageDescription} (a subdirectory {HostStorage.GetSubdirectoryFor(StorageLocation.VirtualMachineCluster)} will be created). Candidate volumes: ${volumeCandidates})", defaultPath);
-                    if (!targetPath.Equals(currentDirectory))
+                    var targetPath = await ui.DisplayInputQuestion($"Choose a base directory to store the {storageDescription} (a subdirectory '{subdirectory}' will be created). Candidate volumes: {volumeCandidates}", defaultPath);
+                    if (!targetPath.Equals(defaultPath))
                     {
                         hostStorage.MoveConfigurableDirectoryTo(storageLocation, targetPath);
                     }
                 }
-                machineConfig.VirtualMachineClusterPath = hostStorage.VirtualMachineDataDirectory;
+                machineConfig.VirtualMachineClusterPath = hostStorage.VirtualMachineClusterDirectory;
                 machineConfig.VirtualMachineDataPath = hostStorage.VirtualMachineDataDirectory;
                 machineConfig.BackupPath = hostStorage.BackupDirectory;
 
@@ -282,7 +287,7 @@ namespace wordslab.manager.vm.wsl
                     displayResult =>
                     {
                         var ubuntuFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName));
-                        ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == WslDisk.ubuntuImageDiskSize;
+                        ubuntuImageOK = ubuntuFile.Exists && Math.Abs((ubuntuFile.Length - WslDisk.ubuntuImageDiskSize) / (float)WslDisk.ubuntuImageDiskSize) <= 0.1;
                         displayResult(ubuntuImageOK);
                     });
 

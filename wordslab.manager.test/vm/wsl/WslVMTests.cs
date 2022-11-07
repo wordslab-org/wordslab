@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
@@ -21,27 +22,43 @@ namespace wordslab.manager.test.vm.wsl
                 var storage = serviceProvider.GetService<HostStorage>();
                 var configStore = serviceProvider.GetService<ConfigStore>();
 
-                var vm = WslVM.FindByName("test-blank", configStore, storage);
-                Assert.IsNull(vm);
-
-                var osImagePath = Path.Combine(storage.DownloadCacheDirectory, WslDisk.ubuntuFileName);
-                WslDisk.CreateFromOSImage("test-blank", osImagePath, storage);
-
+                VirtualMachine vm = null;
                 Exception expectedEx = null;
                 try
                 {
-                    WslVM.FindByName("test-blank", configStore, storage);
+                    vm = WslVM.FindByName("test-blank", configStore, storage);
+                }
+                catch(Exception e)
+                {
+                    expectedEx = e;
+                }
+                Assert.IsNull(vm);
+                Assert.IsNotNull(expectedEx);
+                Assert.IsTrue(expectedEx is FileNotFoundException);
+                Assert.IsTrue(expectedEx.Message.Contains("Could not find virtual disks"));
+
+                var osImagePath = Path.Combine(storage.DownloadCacheDirectory, WslDisk.ubuntuFileName);
+                var clusterDisk = WslDisk.CreateFromOSImage("test-blank", osImagePath, storage);
+                var dataDisk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+
+                expectedEx = null;
+                try
+                {
+                    vm = WslVM.FindByName("test-blank", configStore, storage);
                 }
                 catch (Exception ex)
                 {
                     expectedEx = ex;
                 }
+                Assert.IsNull(vm);
                 Assert.IsNotNull(expectedEx);
-                Assert.IsTrue(expectedEx is FileNotFoundException);
-                Assert.IsTrue(expectedEx.Message.Contains("Could not find virtual disks"));
+                Assert.IsTrue(expectedEx is Exception);
+                Assert.IsTrue(expectedEx.Message.Contains("Could not find a configuration"));
 
-                WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Cluster, storage);
-                WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+                clusterDisk.Delete();
+                dataDisk.Delete();
+
+                // Create a virtual machine here
 
                 vm = WslVM.FindByName("test-blank", configStore, storage);
                 Assert.IsNotNull(vm);

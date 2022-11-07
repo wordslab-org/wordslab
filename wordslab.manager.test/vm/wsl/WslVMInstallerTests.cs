@@ -22,7 +22,7 @@ namespace wordslab.manager.test.vm.wsl
             var hostMachineConfig = await WslVMInstaller.ConfigureHostMachine(storage, ui);
 
             Assert.IsNotNull(hostMachineConfig);
-            Assert.IsTrue(hostMachineConfig.Processors == 4);
+            Assert.IsTrue(hostMachineConfig.Processors == 6);
         }
 
         [TestMethodOnWindows]
