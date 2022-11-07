@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace wordslab.manager.storage
