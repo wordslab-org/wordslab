@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using wordslab.manager.config;
@@ -7,6 +8,7 @@ using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.test.storage;
 using wordslab.manager.vm;
+using wordslab.manager.vm.wsl;
 
 namespace wordslab.manager.test.vm
 {
@@ -27,12 +29,11 @@ namespace wordslab.manager.test.vm
 
                 Assert.IsNull(configStore.HostMachineConfig);
 
-                var userWantsGPU = true;
                 var ui = new TestProcessUI();
-                var machineConfig = await vmm.ConfigureHostMachine(userWantsGPU, ui);
-                Assert.IsNotNull(machineConfig);
+                var hostMachineConfig = await vmm.ConfigureHostMachine(ui);
 
-                Assert.IsNotNull(configStore.HostMachineConfig);
+                Assert.IsNotNull(hostMachineConfig);
+                Assert.IsTrue(hostMachineConfig.Processors == 6);
             }
         }
 
@@ -48,28 +49,70 @@ namespace wordslab.manager.test.vm
                 var vmm = new VirtualMachinesManager(storage, configStore);
                 Assert.IsNotNull(vmm);
 
-                var minSpec = VMRequirements.GetMinimumVMSpec();
-                var gpus = Compute.GetNvidiaGPUsInfo();
-                if (gpus.Count > 0)
-                {
-                    minSpec.GPU.ModelName = gpus[0].ModelName;
-                    minSpec.GPU.MemoryGB = gpus[0].MemoryMB / 1024;
-                }
-                var minConfig = new VirtualMachineConfig("test-blank1", minSpec);
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
+
+                // Hardware requirements KO
+                var vmName = "test-blank";
+                var recSpec = vmSpecs.RecommendedVMSpec;
+                recSpec.Compute.MemoryGB = 128;
+                var config1 = new VirtualMachineConfig(vmName, recSpec,
+                    VirtualMachineProvider.Wsl, null, false,
+                    false, 0, false, 0, true, 80, false, true, 443, false);
 
                 var ui = new TestProcessUI();
-                var vm = await vmm.CreateLocalVM(minConfig, ui);
+                Exception expectedEx = null;
+                try
+                {
+                    await vmm.CreateLocalVM(config1, ui);
+                }
+                catch(Exception e)
+                {
+                    expectedEx = e;
+                }
+                Assert.IsNotNull(expectedEx);
+                Assert.IsTrue(expectedEx.Message.Contains("GB memory are requested to create the VM but"));
+
+                var localvms = vmm.ListLocalVMs();
+                Assert.IsTrue(localvms.Count == 0);
+
+                // Hardware requirements OK
+                var maxSpec = vmSpecs.MaximumVMSpecOnThisMachine;
+                var config2 = new VirtualMachineConfig(vmName, maxSpec,
+                    VirtualMachineProvider.Wsl, null, false,
+                    false, 0, false, 0, true, 80, false, true, 443, false);
+
+                ui = new TestProcessUI();
+                var vm = await vmm.CreateLocalVM(config2, ui);
                 Assert.IsNotNull(vm);
+
+                vm.Start();
+                Assert.IsTrue(vm.IsRunning());
+
+                localvms = vmm.ListLocalVMs();
+                Assert.IsTrue(localvms.Count == 1);
+
+                // Virtual machine already exists
+                ui = new TestProcessUI();
+                vm = await vmm.CreateLocalVM(config2, ui);
+                Assert.IsNull(vm);
+                vm.Start();
                 Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
 
-                minConfig.Name = "test-blank2";
-                // minConfig.HostHttpIngressPort += 1;
-                // minConfig.HostHttpsIngressPort += 1;
-                // minConfig.HostKubernetesPort += 1;
+                // 2nd virtual machine - ports conflict
+                vmName = "test-blank2";
+                var minSpec = vmSpecs.MaximumVMSpecOnThisMachine;
+                var config3 = new VirtualMachineConfig(vmName, minSpec,
+                    VirtualMachineProvider.Wsl, null, false,
+                    false, 0, false, 0, true, 80, false, true, 443, false);
+
                 ui = new TestProcessUI();
-                vm = await vmm.CreateLocalVM(minConfig, ui);
+                vm = await vmm.CreateLocalVM(config3, ui);
                 Assert.IsNotNull(vm);
+                vm.Start();
                 Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+
+                localvms = vmm.ListLocalVMs();
+                Assert.IsTrue(localvms.Count == 2);
             }
         }
 
@@ -147,17 +190,26 @@ namespace wordslab.manager.test.vm
                 var vmm = new VirtualMachinesManager(storage, configStore);
                 Assert.IsNotNull(vmm);
 
+                var localvms = vmm.ListLocalVMs();
+                Assert.IsTrue(localvms.Count == 2);
+
                 var ui = new TestProcessUI();
-                var vmName = "test-blank1";
+                var vmName = "test-blank";
                 var success = await vmm.DeleteLocalVM(vmName, ui);
                 Assert.IsTrue(success);
                 Assert.IsTrue(ui.Messages.Last().Contains("OK"));
+
+                localvms = vmm.ListLocalVMs();
+                Assert.IsTrue(localvms.Count == 1);
 
                 ui = new TestProcessUI();
                 vmName = "test-blank2";
                 success = await vmm.DeleteLocalVM(vmName, ui);
                 Assert.IsTrue(success);
                 Assert.IsTrue(ui.Messages.Last().Contains("OK"));
+
+                localvms = vmm.ListLocalVMs();
+                Assert.IsTrue(localvms.Count == 0);
             }
         }
     }

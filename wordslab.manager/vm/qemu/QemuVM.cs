@@ -6,40 +6,22 @@ namespace wordslab.manager.vm.qemu
 {
     public class QemuVM : VirtualMachine
     {
-        public static List<VirtualMachine> ListLocalVMs(ConfigStore configStore, HostStorage storage)
+        public static List<string> ListLocalVMs(HostStorage storage)
         {
-            var vms = new List<VirtualMachine>();
-            try
-            {
-                var vmNames = QemuDisk.ListVMNamesFromClusterDisks(storage);                
-                foreach (var vmName in vmNames)
-                {
-                    vms.Add(FindByName(vmName, configStore, storage));
-                }
-            }
-            catch(Exception e) 
-            {
-                throw new Exception($"Could not list the local virtual machines because one of them is in an inconsistent state : {e.Message}");
-            }
-
-            return vms;
+            // A Qemu VM is only materialized by a virtual file on disk
+            return QemuDisk.ListVMNamesFromClusterDisks(storage);
         }
 
-        public static VirtualMachine FindByName(string vmName, ConfigStore configStore, HostStorage storage)
+        public static VirtualMachine TryFindByName(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage storage)
         {
+            var vmName = vmConfig.Name;
+
             // Find the the virtual machine virtual disks files in host storage
             var clusterDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
             var dataDisk = QemuDisk.TryFindByName(vmName, VirtualDiskFunction.Data, storage);
             if (clusterDisk == null || dataDisk == null)
             {
                 throw new Exception($"Could not find virtual disks for a local virtual machine named {vmName}");
-            }
-            
-            // Find the virtual machine configuration in the database
-            var vmConfig = configStore.TryGetVirtualMachineConfig(vmName);
-            if(vmConfig == null)
-            {
-                throw new Exception($"Could not find a configuration record for a local virtual machine named {vmName}");
             }
             
             // Initialize the virtual machine and its running state

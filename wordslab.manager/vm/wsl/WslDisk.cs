@@ -175,8 +175,9 @@ namespace wordslab.manager.vm.wsl
             var startupScript = GetDiskStartupScript();
             if (startupScript != null)
             {
-                var startupScriptPath = $"/root/{startupScript} {ServiceName}";            
-                Wsl.execShell(startupScriptPath, ServiceName);
+                var dataServiceName = GetServiceName(VMName, VirtualDiskFunction.Data);
+                var startupScriptCommand = $"/root/{startupScript} {dataServiceName}";            
+                Wsl.execShell(startupScriptCommand, ServiceName);
             }
         }
 

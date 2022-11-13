@@ -348,20 +348,22 @@ namespace wordslab.manager.vm.wsl
             }
         }
 
-        public static async Task<VirtualMachine> CreateVirtualMachine(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
+                var vmName = vmConfig.Name;
+
                 // 1. Create VM disks
                 bool virtualDiskClusterOK = true;
                 bool virtualDiskDataOK = true;
 
-                ui.DisplayInstallStep(1, 2, "Initialize wordslab VM virtual disks");
+                ui.DisplayInstallStep(1, 2, "Initialize local virtual machine disks");
 
                 var clusterDisk = WslDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Cluster, hostStorage);
                 if (clusterDisk == null)
                 {
-                    var c24 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
+                    var c24 = ui.DisplayCommandLaunch($"Initializing '{vmName}' cluster virtual disk");
                     clusterDisk = WslDisk.CreateFromOSImage(vmConfig.Name, Path.Combine(hostStorage.DownloadCacheDirectory, WslDisk.ubuntuFileName), hostStorage);
                     virtualDiskClusterOK = clusterDisk != null;
                     ui.DisplayCommandResult(c24, virtualDiskClusterOK);
@@ -378,19 +380,18 @@ namespace wordslab.manager.vm.wsl
                 var dataDisk = WslDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Data, hostStorage);
                 if (dataDisk == null)
                 {
-                    var c22 = ui.DisplayCommandLaunch("Initializing wordslab data virtual disk");
+                    var c22 = ui.DisplayCommandLaunch($"Initializing '{vmName}' data virtual disk");
                     dataDisk = WslDisk.CreateBlank(vmConfig.Name, VirtualDiskFunction.Data, hostStorage);
                     virtualDiskDataOK = dataDisk != null;
                     ui.DisplayCommandResult(c22, virtualDiskDataOK);
                 }
-                if(!virtualDiskDataOK) { return null; }                
+                if (!virtualDiskDataOK) { return null; }
 
-                // 6. Configure and start local Virtual Machine
-                
-                ui.DisplayInstallStep(2, 2, "Configure and start wordslab Virtual Machine");
-                                
+                // 2. Configure local Virtual Machine
+
+                ui.DisplayInstallStep(2, 2, "Configure local virtual machine");
+
                 var wslConfig = Wsl.Read_wslconfig();
-                var hostConfig = configStore.HostMachineConfig; 
                 var needToUpdateWslConfig = wslConfig.NeedsToBeUpdatedForVmSpec(hostConfig.Processors, hostConfig.MemoryGB);
 
                 var updateWslConfig = false;
@@ -401,7 +402,7 @@ namespace wordslab.manager.vm.wsl
                 if (updateWslConfig && Wsl.IsRunning())
                 {
                     updateWslConfig = await ui.DisplayQuestionAsync("All WSL distributions currently running will be stopped: please make sure you take all the necessary measures for a graceful shutdown before continuing. Are you ready now ?");
-                }               
+                }
                 if (updateWslConfig)
                 {
                     var c26 = ui.DisplayCommandLaunch($"Updating Windows Subsystem for Linux configuration to match your host sandbox configuration: {hostConfig.Processors} processors, {hostConfig.MemoryGB} GB memory");
@@ -409,57 +410,13 @@ namespace wordslab.manager.vm.wsl
                     ui.DisplayCommandResult(c26, true);
                 }
 
-                var localVM = WslVM.FindByName(vmConfig.Name, configStore, hostStorage);
-
-                var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
-                if (!localVM.IsRunning())
-                {
-                    localVM.Start();
-                }
-
-                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVM.RunningInstance}, HTTP port = {localVM.Config.HostHttpIngressPort}, HTTPS port = {localVM.Config.HostHttpsIngressPort}");
-
-                return localVM;
+                return vmConfig;
             }
             catch (Exception ex)
             {
                 ui.DisplayCommandError(ex.Message);
                 return null;
             }
-        }
-
-        public static async Task<bool> DeleteVirtualMachine(string vmName, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
-        {
-            try
-            {
-                var localVM = WslVM.FindByName(vmName, configStore, hostStorage);
-                if (localVM == null) return true;
-
-                var c1 = ui.DisplayCommandLaunch("Stopping wordslab virtual machine and local k3s cluster");
-                localVM.Stop();
-                ui.DisplayCommandResult(c1, true);
-
-                var confirm = await ui.DisplayQuestionAsync("Are you sure you want to delete the virtual machine: ALL DATA WILL BE LOST !!");
-                if (confirm)
-                {
-                    var c2 = ui.DisplayCommandLaunch("Deleting wordslab virtual machine and local k3s cluster");
-                    localVM.ClusterDisk.Delete();
-                    localVM.DataDisk.Delete();
-                    ui.DisplayCommandResult(c2, true);
-
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-
-            }
-            catch (Exception ex)
-            {
-                ui.DisplayCommandError(ex.Message);
-                return false;
-            }
-        }
+        }            
     }
 }

@@ -374,27 +374,29 @@ namespace wordslab.manager.vm.qemu
             }
         }
 
-        public static async Task<VirtualMachine> CreateVirtualMachine(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
         {
             try
             {
-                // 5. Create VM disks
+                var vmName = vmConfig.Name;
+
+                // 1. Create VM disks
                 bool virtualDiskClusterOK = true;
                 bool virtualDiskDataOK = true;
 
-                ui.DisplayInstallStep(5, 6, "Initialize wordslab VM virtual disks");
+                ui.DisplayInstallStep(1, 1, "Initialize local virtual machine disks");
 
                 var clusterDisk = QemuDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Cluster, hostStorage);
                 if (clusterDisk == null)
                 {
-                    var c24 = ui.DisplayCommandLaunch("Initializing wordslab cluster virtual disk");
+                    var c24 = ui.DisplayCommandLaunch($"Initializing '{vmName}' cluster virtual disk");
                     clusterDisk = QemuDisk.CreateFromOSImage(vmConfig.Name, Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName), vmConfig.Spec.Storage.ClusterDiskSizeGB, hostStorage);
                     virtualDiskClusterOK = clusterDisk != null;
                     ui.DisplayCommandResult(c24, virtualDiskClusterOK);
                 }
                 if (!virtualDiskClusterOK) { return null; }
 
-                // Nvidia GPU not yet supported with qmeu on Linux
+                // Nvidia GPU not yet supported with qemu on Linux
                 /*if (createVMWithGPUSupport)
                 {
                     var c25 = ui.DisplayCommandLaunch("Installing nvidia GPU software on cluster virtual disk");
@@ -405,68 +407,19 @@ namespace wordslab.manager.vm.qemu
                 var dataDisk = QemuDisk.TryFindByName(vmConfig.Name, VirtualDiskFunction.Data, hostStorage);
                 if (dataDisk == null)
                 {
-                    var c22 = ui.DisplayCommandLaunch("Initializing wordslab data virtual disk");
+                    var c22 = ui.DisplayCommandLaunch($"Initializing '{vmName}' data virtual disk");
                     dataDisk = QemuDisk.CreateBlank(vmConfig.Name, vmConfig.Spec.Storage.DataDiskSizeGB, hostStorage);
                     virtualDiskDataOK = dataDisk != null;
                     ui.DisplayCommandResult(c22, virtualDiskDataOK);
                 }
                 if (!virtualDiskDataOK) { return null; }
 
-                // 6. Configure and start local Virtual Machine
-                bool vmConfigOK = true;
-                bool vmInitOK = true;
-
-                ui.DisplayInstallStep(6, 6, "Configure and start wordslab Virtual Machine");
-
-                var localVM = QemuVM.FindByName(vmConfig.Name, configStore, hostStorage);
-
-                var c27 = ui.DisplayCommandLaunch("Launching wordslab virtual machine and k3s cluster");
-                if (!localVM.IsRunning())
-                {
-                    localVM.Start();
-                }
-
-                ui.DisplayCommandResult(c27, true, $"Virtual machine started : IP = {localVM.RunningInstance.VmIPAddress}, HTTP port = {localVM.Config.HostHttpIngressPort}, HTTPS port = {localVM.Config.HostHttpsIngressPort}");
-
-                return localVM;
+                return vmConfig;
             }
             catch (Exception ex)
             {
                 ui.DisplayCommandError(ex.Message);
                 return null;
-            }
-        }
-
-        public static async Task<bool> DeleteVirtualMachine(string vmName, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
-        {
-            try
-            {
-                var localVM = QemuVM.FindByName(vmName, configStore, hostStorage);
-
-                var c1 = ui.DisplayCommandLaunch("Stopping wordslab virtual machine and local k3s cluster");
-                localVM.Stop();
-                ui.DisplayCommandResult(c1, true);
-
-                var confirm = await ui.DisplayQuestionAsync("Are you sure you want to delete the virtual machine: ALL DATA WILL BE LOST !!");
-                if (confirm)
-                {
-                    var c2 = ui.DisplayCommandLaunch("Deleting wordslab virtual machine and local k3s cluster");
-                    localVM.ClusterDisk.Delete();
-                    localVM.DataDisk.Delete();
-                    ui.DisplayCommandResult(c2, true);
-
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-
-            }
-            catch (Exception ex)
-            {
-                ui.DisplayCommandError(ex.Message);
-                return false;
             }
         }
     }

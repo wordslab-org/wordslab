@@ -6,42 +6,24 @@ namespace wordslab.manager.vm.wsl
 {
     public class WslVM : VirtualMachine
     {
-        public static List<VirtualMachine> ListLocalVMs(ConfigStore configStore, HostStorage storage)
+        public static List<string> ListLocalVMs(HostStorage storage)
         {
-            var vms = new List<VirtualMachine>();
-            try
-            {
-                var vmNames = WslDisk.ListVMNamesFromClusterDisks(storage);
-                var wslDistribs = Wsl.list();
-                foreach (var vmName in wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.Cluster), (d, n) => n).OrderBy(s => s))
-                {
-                    var vm = FindByName(vmName, configStore, storage);
-                    vms.Add(vm);
-                }
-            }
-            catch (Exception e)
-            {
-                throw new Exception($"Could not list the local virtual machines because one of them is in an inconsistent state : {e.Message}");
-            }
+            var vmNames = WslDisk.ListVMNamesFromClusterDisks(storage);
+            var wslDistribs = Wsl.list();
+            // A WSL VM is composed of a virtual disk file AND a WSL distribution
+            return wslDistribs.Join(vmNames, d => d.Distribution, name => VirtualDisk.GetServiceName(name, VirtualDiskFunction.Cluster), (d, n) => n).OrderBy(s => s).ToList();
+        }           
 
-            return vms;
-        }
-
-        public static VirtualMachine FindByName(string vmName, ConfigStore configStore, HostStorage storage)
+        public static VirtualMachine TryFindByName(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage storage)
         {
+            var vmName = vmConfig.Name;
+
             // Find the the virtual machine virtual disks files in host storage
             var clusterDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
             var dataDisk = WslDisk.TryFindByName(vmName, VirtualDiskFunction.Data, storage);
             if (clusterDisk == null | dataDisk == null)
             {
-                throw new FileNotFoundException($"Could not find virtual disks for a local virtual machine named {vmName}");
-            }
-
-            // Find the virtual machine configuration in the database
-            var vmConfig = configStore.TryGetVirtualMachineConfig(vmName);
-            if (vmConfig == null)
-            {
-                throw new Exception($"Could not find a configuration record for a local virtual machine named {vmName}");
+                return null;
             }
 
             // Initialize the virtual machine and its running state
@@ -87,7 +69,7 @@ namespace wordslab.manager.vm.wsl
             }
             if (!wslDistribFound && RunningInstance != null)
             {
-                RunningInstance.Killed($"A running WSL distribution for virtual machine {Name} was not found: it was killed outside of wordslab manager");
+                RunningInstance.Killed($"A running WSL distribution for virtual machine '{Name}' was not found: it was killed outside of wordslab manager");
                 configStore.SaveChanges();
                 RunningInstance = null;
             }
@@ -106,21 +88,6 @@ namespace wordslab.manager.vm.wsl
             // Check start arguments and create a VM instance (state = Starting)
             var vmInstance = CheckStartArgumentsAndCreateInstance(computeStartArguments, gpuStartArguments);
 
-            // Update machine-wide WSL config if needed and allowed
-            var wslConfig = Wsl.Read_wslconfig();
-            var hostConfig = configStore.HostMachineConfig;
-            if (hostConfig.Processors != wslConfig.processors || hostConfig.MemoryGB != wslConfig.memoryMB * 1024)
-            {
-                if (!Wsl.IsRunning())
-                {
-                    wslConfig.UpdateToVMSpec(hostConfig.Processors, hostConfig.MemoryGB);
-                }
-                else
-                {
-                    throw new Exception("Could not update machine-wide WSL configuration to match the current host machine sandbox params: another WSL virtual machine is already running");
-                }
-            }
-
             // Start the virtual machine
             try
             {
@@ -129,7 +96,7 @@ namespace wordslab.manager.vm.wsl
                 ClusterDisk.StartService();
 
                 // Start k3s inside the virtual machine
-                Wsl.execShell($"/root/{WslDisk.clusterDiskStartupScript} {DataDisk.ServiceName}", ClusterDisk.ServiceName, ignoreError: "screen size is bogus");
+                Wsl.execShell($"/root/{WslDisk.clusterDiskStartupScript} {DataDisk.ServiceName}", ClusterDisk.ServiceName, timeoutSec:180, ignoreError: "screen size is bogus");
 
                 // Here's an example PowerShell command to add a port proxy that listens on port 4000 on the host and connects it to port 4000 to the WSL 2 VM with IP address 192.168.101.100.
                 // netsh interface portproxy add v4tov4 listenport=4000 listenaddress=0.0.0.0 connectport=4000 connectaddress=192.168.101.100

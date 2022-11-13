@@ -13,7 +13,8 @@ k3s --version | grep -o "v[0-9].*\s" > /var/lib/rancher/k3s/version
 mkdir -p /var/log/rancher/k3s
 mkdir -p /var/volume/rancher/k3s
 
-echo <<EOF > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+mkdir -p /var/lib/rancher/k3s/server/manifests/
+cat << EOF > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:

@@ -39,7 +39,7 @@ namespace wordslab.manager.test.vm.wsl
         public void T01_TestCreateBlank()
         {
             var storage = new HostStorage();
-            var disk = WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+            var disk = WslDisk.CreateBlank("test-blank", VirtualDiskFunction.Data, storage);
             Assert.IsNotNull(disk);
             Assert.IsTrue(disk.VMName == "test-blank");
             Assert.IsTrue(disk.Function == VirtualDiskFunction.Data);
@@ -53,7 +53,7 @@ namespace wordslab.manager.test.vm.wsl
             Exception expectedEx = null;
             try
             {
-                WslDisk.CreateBlank("test-blank", manager.vm.VirtualDiskFunction.Data, storage);
+                WslDisk.CreateBlank("test-blank", VirtualDiskFunction.Data, storage);
             }
             catch (Exception ex)
             {
