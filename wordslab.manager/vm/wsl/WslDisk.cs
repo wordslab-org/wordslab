@@ -49,18 +49,27 @@ namespace wordslab.manager.vm.wsl
 
             var serviceName = GetServiceName(vmName, VirtualDiskFunction.Cluster);
             var storageDirectory = GetHostStorageDirectory(vmName, VirtualDiskFunction.Cluster, storage);
-
-            string cacheDirectory = storage.DownloadCacheDirectory;
-            string scriptsDirectory = GetScriptsDirectory(storage);
-            var diskInitAndStartScripts = GetDiskInitAndStartScripts(VirtualDiskFunction.Cluster);
-
             Wsl.import(serviceName, storageDirectory, osImagePath, 2);
+
+            string scriptsDirectory = GetWslScriptsPath(storage);
+            var diskInitAndStartScripts = GetDiskInitAndStartScripts(VirtualDiskFunction.Cluster);
             foreach (var diskScript in diskInitAndStartScripts)
             {
                 Wsl.execShell($"cp $(wslpath '{scriptsDirectory}')/{diskScript} /root/{diskScript}", serviceName);
                 Wsl.execShell($"chmod a+x /root/{diskScript}", serviceName);
             }
+
+            string k3sScriptsDirectory = GetK3sScriptsPath(storage);
+            Wsl.execShell($"cp $(wslpath '{k3sScriptsDirectory}')/{VirtualDisk.k3sInstallScript} /root/{VirtualDisk.k3sInstallScript}", serviceName);
+            Wsl.execShell($"chmod a+x /root/{VirtualDisk.k3sInstallScript}", serviceName);
+            Wsl.execShell($"cp $(wslpath '{k3sScriptsDirectory}')/{VirtualDisk.k3sStartupScript} /root/{VirtualDisk.k3sStartupScript}", serviceName);
+            Wsl.execShell($"chmod a+x /root/{VirtualDisk.k3sStartupScript}", serviceName);
+
+            string cacheDirectory = storage.DownloadCacheDirectory;
             Wsl.execShell($"/root/{diskInitAndStartScripts[0]} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.k3sImagesFileName}' '{VirtualMachine.helmFileName}'", serviceName, timeoutSec: 60, ignoreError: "perl: warning");
+                       
+            Wsl.execShell($"/root/{VirtualDisk.k3sInstallScript}", serviceName, timeoutSec:30);
+
             Wsl.terminate(serviceName);
 
             return TryFindByName(vmName, VirtualDiskFunction.Cluster, storage);
@@ -70,7 +79,7 @@ namespace wordslab.manager.vm.wsl
         {
             if (Function == VirtualDiskFunction.Cluster)
             {
-                string scriptsDirectory = GetScriptsDirectory(storage);
+                string scriptsDirectory = GetWslScriptsPath(storage);
 
                 try
                 {
@@ -107,7 +116,7 @@ namespace wordslab.manager.vm.wsl
             var storageDirectory = GetHostStorageDirectory(vmName, function, storage);
 
             string cacheDirectory = storage.DownloadCacheDirectory;
-            string scriptsDirectory = GetScriptsDirectory(storage);
+            string scriptsDirectory = GetWslScriptsPath(storage);
             var diskInitAndStartScripts = GetDiskInitAndStartScripts(function);
 
             Wsl.import(serviceName, storageDirectory, Path.Combine(cacheDirectory, alpineFileName), 2);
@@ -158,26 +167,18 @@ namespace wordslab.manager.vm.wsl
             return Function != VirtualDiskFunction.Cluster;
         }
 
-        private string GetDiskStartupScript()
+        public override void StartService()
         {
             switch (Function)
             {
                 case VirtualDiskFunction.Cluster:
-                    return clusterDiskStartupScript;
+                    return;
                 case VirtualDiskFunction.Data:
-                    return dataDiskStartupScript;
-            }
-            return null;
-        }
-
-        public override void StartService()
-        {
-            var startupScript = GetDiskStartupScript();
-            if (startupScript != null)
-            {
-                var dataServiceName = GetServiceName(VMName, VirtualDiskFunction.Data);
-                var startupScriptCommand = $"/root/{startupScript} {dataServiceName}";            
-                Wsl.execShell(startupScriptCommand, ServiceName);
+                    var startupScript = dataDiskStartupScript;
+                    var dataServiceName = GetServiceName(VMName, VirtualDiskFunction.Data);
+                    var startupScriptCommand = $"/root/{startupScript} {dataServiceName}";
+                    Wsl.execShell(startupScriptCommand, ServiceName);
+                    break;
             }
         }
 
@@ -217,21 +218,20 @@ namespace wordslab.manager.vm.wsl
 
         // --- wordslab virtual machine scripts ---
 
-        internal static string GetScriptsDirectory(HostStorage storage) { return Path.Combine(storage.ScriptsDirectory, "vm", "wsl"); }
+        internal static string GetWslScriptsPath(HostStorage storage) { return Path.Combine(storage.ScriptsDirectory, "vm", "wsl"); }
 
         internal static readonly string clusterDiskInitScript = "wordslab-cluster-init.sh";
         internal static readonly string clusterGPUInitScript  = "wordslab-gpu-init.sh";
-        internal static readonly string dataDiskInitScript    = "wordslab-data-init.sh";
 
-        internal static readonly string clusterDiskStartupScript = "wordslab-cluster-start.sh";
-        internal static readonly string dataDiskStartupScript    = "wordslab-data-start.sh";
+        internal static readonly string dataDiskInitScript    = "wordslab-data-init.sh";
+        internal static readonly string dataDiskStartupScript = "wordslab-data-start.sh";
 
         private static string[] GetDiskInitAndStartScripts(VirtualDiskFunction function)
         {
             switch (function)
             {
                 case VirtualDiskFunction.Cluster:
-                    return new string[] { clusterDiskInitScript, clusterGPUInitScript, clusterDiskStartupScript };
+                    return new string[] { clusterDiskInitScript, clusterGPUInitScript };
                 case VirtualDiskFunction.Data:
                     return new string[] { dataDiskInitScript, dataDiskStartupScript };
             }

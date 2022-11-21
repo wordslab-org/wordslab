@@ -1,17 +1,18 @@
 #!/bin/bash
-dataServiceName=$1
+dataDiskMountPath=$1
 kubernetesPort=6443
 httpIngressPort=80
 httpsIngressPort=443
 
-mount -o bind /mnt/wsl/$dataServiceName/var/volume/rancher /var/volume/rancher
+mount -o bind /mnt/$dataDiskMountPath/var/volume/rancher /var/volume/rancher
 
 mkdir -p /etc/rancher/k3s
-rm -f /etc/rancher/k3s/k3s.yaml
 mkdir -p /var/lib/rancher/k3s
-k3s --version | grep -o "v[0-9].*\s" > /var/lib/rancher/k3s/version
 mkdir -p /var/log/rancher/k3s
 mkdir -p /var/volume/rancher/k3s
+
+rm -f /etc/rancher/k3s/k3s.yaml
+k3s --version | grep -o "v[0-9].*\s" > /var/lib/rancher/k3s/version
 
 mkdir -p /var/lib/rancher/k3s/server/manifests/
 cat << EOF > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml

@@ -70,6 +70,16 @@ namespace wordslab.manager.vm
         public virtual bool IsServiceRunnig() { return false; }
 
         public virtual void StopService() { }
+
+        // --- wordslab virtual machine scripts ---
+
+        internal static string GetK3sScriptsPath(HostStorage storage)
+        {
+            return Path.Combine(storage.ScriptsDirectory, "vm", "k3s");
+        }
+
+        internal static readonly string k3sInstallScript = "wordslab-k3s-install.sh";
+        internal static readonly string k3sStartupScript = "wordslab-k3s-start.sh";
     }
     
     public enum VirtualDiskFunction

@@ -30,10 +30,7 @@
     <Content Include="scripts\vm\qemu\user-data.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\qemu\wordslab-k3s-install.sh">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="scripts\vm\qemu\wordslab-k3s-start.sh">
+    <Content Include="scripts\vm\k3s\wordslab-k3s-install.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="scripts\os\Windows\check-wsl.ps1">
@@ -63,7 +60,7 @@
     <Content Include="scripts\vm\wsl\wordslab-gpu-init.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="scripts\vm\wsl\wordslab-cluster-start.sh">
+    <Content Include="scripts\vm\k3s\wordslab-k3s-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="web\wwwroot\css\bootstrap\bootstrap.min.css">
