@@ -11,19 +11,19 @@ namespace wordslab.manager.os
             /// <summary>
             /// The amount of actual physical memory.
             /// </summary>
-            public ulong TotalPhysicalMB { get; set; }
+            public int TotalPhysicalMB { get; set; }
 
             /// <summary>
             /// The amount of physical memory currently available. 
             /// This is the amount of physical memory that can be immediately reused without having to write its contents to disk first. 
             /// It is the sum of the size of the standby, free, and zero lists.
             /// </summary>
-            public ulong FreePhysicalMB { get; set; }
+            public int FreePhysicalMB { get; set; }
 
             /// <summary>
             /// The amount of physical memory currently used by running processes. 
             /// </summary>
-            public ulong UsedPhysicalMB { get { return TotalPhysicalMB - FreePhysicalMB; } }
+            public int UsedPhysicalMB { get { return TotalPhysicalMB - FreePhysicalMB; } }
         }
 
         // Native call for Windows 
@@ -81,8 +81,8 @@ namespace wordslab.manager.os
                 MEMORYSTATUSEX memoryStatusEx = new MEMORYSTATUSEX();
                 if (GlobalMemoryStatusEx(memoryStatusEx))
                 {
-                    mem.TotalPhysicalMB = memoryStatusEx.ullTotalPhys / MEGA;
-                    mem.FreePhysicalMB = memoryStatusEx.ullAvailPhys / MEGA;
+                    mem.TotalPhysicalMB = (int)(memoryStatusEx.ullTotalPhys / MEGA);
+                    mem.FreePhysicalMB = (int)(memoryStatusEx.ullAvailPhys / MEGA);
                 }
 
                 return mem;
@@ -92,8 +92,8 @@ namespace wordslab.manager.os
                 MemoryInfo mem = new MemoryInfo();
 
                 string[] meminfo = Command.TryReadFileLines("/proc/meminfo");
-                mem.TotalPhysicalMB = GetBytesFromLine(meminfo, "MemTotal:") / MEGA;
-                mem.FreePhysicalMB = GetBytesFromLine(meminfo, "MemAvailable:") / MEGA;
+                mem.TotalPhysicalMB = (int)(GetBytesFromLine(meminfo, "MemTotal:") / MEGA);
+                mem.FreePhysicalMB = (int)(GetBytesFromLine(meminfo, "MemAvailable:") / MEGA);
 
                 return mem;
             }
@@ -108,8 +108,8 @@ namespace wordslab.manager.os
                 Command.Run("top", "-l 1", outputHandler: outputParser.Run);
                 
                 MemoryInfo mem = new MemoryInfo();
-                mem.TotalPhysicalMB = usedMem + freeMem;
-                mem.FreePhysicalMB = freeMem;
+                mem.TotalPhysicalMB = (int)(usedMem + freeMem);
+                mem.FreePhysicalMB = (int)freeMem;
                 return mem;
             }
             else

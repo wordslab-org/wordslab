@@ -24,23 +24,23 @@ namespace wordslab.manager.os
             /// <summary>
             /// Number of cores for the current instance of the processor. A core is a physical processor on the integrated circuit. For example, in a dual-core processor this property has a value of 2.
             /// </summary>
-            public UInt32 NumberOfCores { get; set; }
+            public int NumberOfCores { get; set; }
 
             /// <summary>
             /// Number of logical processors for the current instance of the processor. For processors capable of hyperthreading, this value includes only the processors which have hyperthreading enabled.
             /// </summary>
-            public UInt32 NumberOfLogicalProcessors { get; set; }
+            public int NumberOfLogicalProcessors { get; set; }
 
             /// <summary>
             /// Maximum speed of the processor, in MHz.
             /// </summary>
-            public UInt32 MaxClockSpeedMhz { get; set; }
+            public int MaxClockSpeedMhz { get; set; }
 
             /// <summary>
             /// Size of the Level 3 processor cache. A Level 3 cache is an external memory area that has a faster access time than the main RAM memory.
             /// Please note that this value may not be accurate inside a virtual machine or container.
             /// </summary>
-            public UInt32 L3CacheSizeKB { get; set; }
+            public int L3CacheSizeKB { get; set; }
 
             /// <summary>
             /// Processor information that describes the processor features. 
@@ -64,10 +64,10 @@ namespace wordslab.manager.os
 
                 var outputParser = Command.Output.GetValue(@"Manufacturer=([^;]*);", value => cpu.Manufacturer = value)
                                                  .GetValue(@"Name=([^;]*);", value => cpu.ModelName = value)
-                                                 .GetValue(@"NumberOfCores=(\d+)", value => cpu.NumberOfCores = uint.Parse(value))
-                                                 .GetValue(@"NumberOfLogicalProcessors=(\d+)", value => cpu.NumberOfLogicalProcessors = uint.Parse(value))
-                                                 .GetValue(@"MaxClockSpeed=(\d+)", value => cpu.MaxClockSpeedMhz = uint.Parse(value))
-                                                 .GetValue(@"L3CacheSize=(\d+)", value => cpu.L3CacheSizeKB = uint.Parse(value));
+                                                 .GetValue(@"NumberOfCores=(\d+)", value => cpu.NumberOfCores = int.Parse(value))
+                                                 .GetValue(@"NumberOfLogicalProcessors=(\d+)", value => cpu.NumberOfLogicalProcessors = int.Parse(value))
+                                                 .GetValue(@"MaxClockSpeed=(\d+)", value => cpu.MaxClockSpeedMhz = int.Parse(value))
+                                                 .GetValue(@"L3CacheSize=(\d+)", value => cpu.L3CacheSizeKB = int.Parse(value));
 
                 Command.Run("powershell.exe", powerShellQuery, outputHandler:outputParser.Run);
 
@@ -107,7 +107,7 @@ namespace wordslab.manager.os
                     match = physicalCoresRegex.Match(line);
                     if (match.Success && match.Groups.Count > 1)
                     {
-                        if (uint.TryParse(match.Groups[1].Value, out uint numberOfCores))
+                        if (int.TryParse(match.Groups[1].Value, out int numberOfCores))
                             cpu.NumberOfCores = numberOfCores;
                         continue;
                     }
@@ -115,7 +115,7 @@ namespace wordslab.manager.os
                     match = logicalCoresRegex.Match(line);
                     if (match.Success && match.Groups.Count > 1)
                     {
-                        if (uint.TryParse(match.Groups[1].Value, out uint numberOfLogicalProcessors))
+                        if (int.TryParse(match.Groups[1].Value, out int numberOfLogicalProcessors))
                             cpu.NumberOfLogicalProcessors = numberOfLogicalProcessors;
                         continue;
                     }
@@ -124,14 +124,14 @@ namespace wordslab.manager.os
                     if (match.Success && match.Groups.Count > 1)
                     {
                         if (double.TryParse(match.Groups[1].Value, out double currentClockSpeed))
-                            cpu.MaxClockSpeedMhz = (uint)currentClockSpeed;
+                            cpu.MaxClockSpeedMhz = (int)currentClockSpeed;
                         continue;
                     }
 
                     match = cacheSizeRegex.Match(line);
                     if (match.Success && match.Groups.Count > 1)
                     {
-                        if (uint.TryParse(match.Groups[1].Value, out uint cacheSize))
+                        if (int.TryParse(match.Groups[1].Value, out int cacheSize))
                             cpu.L3CacheSizeKB = cacheSize;
                         continue;
                     }
@@ -150,7 +150,7 @@ namespace wordslab.manager.os
                     Command.Run("lscpu", outputHandler: outputParser.Run);
                     if (!String.IsNullOrEmpty(maxfreq))
                     {
-                        cpu.MaxClockSpeedMhz = UInt32.Parse(maxfreq);
+                        cpu.MaxClockSpeedMhz = int.Parse(maxfreq);
                     }
 
                 }
@@ -171,19 +171,19 @@ namespace wordslab.manager.os
                 cpu.ModelName = value.TrimEnd(newLineChars);
 
                 Command.Run("sysctl", "-n hw.physicalcpu", outputHandler: output => value = output);
-                if (uint.TryParse(value, out uint numberOfCores))
+                if (int.TryParse(value, out int numberOfCores))
                     cpu.NumberOfCores = numberOfCores;
 
                 Command.Run("sysctl", "-n hw.logicalcpu", outputHandler: output => value = output);
-                if (uint.TryParse(value, out uint numberOfLogicalProcessors))
+                if (int.TryParse(value, out int numberOfLogicalProcessors))
                     cpu.NumberOfLogicalProcessors = numberOfLogicalProcessors;
 
                 Command.Run("sysctl", "-n hw.cpufrequency", outputHandler: output => value = output);
-                if (ulong.TryParse(value, out ulong maxClockSpeedHz))
-                    cpu.MaxClockSpeedMhz = (uint)(maxClockSpeedHz / 1000000);
+                if (long.TryParse(value, out long maxClockSpeedHz))
+                    cpu.MaxClockSpeedMhz = (int)(maxClockSpeedHz / 1000000);
 
                 Command.Run("sysctl", "-n hw.l3cachesize", outputHandler: output => value = output);
-                if (uint.TryParse(value, out uint L3CacheSize))
+                if (int.TryParse(value, out int L3CacheSize))
                     cpu.L3CacheSizeKB = L3CacheSize / 1024;
 
                 Command.Run("sysctl", "-n machdep.cpu.features", outputHandler: output => value = output);

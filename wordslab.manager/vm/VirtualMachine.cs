@@ -103,19 +103,19 @@ namespace wordslab.manager.vm
                 // Checking network ports requirements
                 // Check if the requested ports are available right before startup
                 var usedPorts = Network.GetAllTcpPortsInUse();
-                if (usedPorts.Contains(Config.HostSSHPort))
+                if (Config.ForwardSSHPortOnLocalhost && usedPorts.Contains(Config.HostSSHPort))
                 {
                     throw new InvalidOperationException($"Host port for SSH: {Config.HostSSHPort} is already in use, please select another port");
                 }
-                if (usedPorts.Contains(Config.HostKubernetesPort))
+                if (Config.ForwardKubernetesPortOnLocalhost && usedPorts.Contains(Config.HostKubernetesPort))
                 {
                     throw new InvalidOperationException($"Host port for Kubernetes: {Config.HostKubernetesPort} is already in use, please select another port");
                 }
-                if (usedPorts.Contains(Config.HostHttpIngressPort))
+                if (Config.ForwardHttpIngressPortOnLocalhost && usedPorts.Contains(Config.HostHttpIngressPort))
                 {
                     throw new InvalidOperationException($"Host port for HTTP ingress: {Config.HostHttpIngressPort} is already in use, please select another port");
                 }
-                if (usedPorts.Contains(Config.HostHttpsIngressPort))
+                if (Config.ForwardHttpsIngressPortOnLocalhost && usedPorts.Contains(Config.HostHttpsIngressPort))
                 {
                     throw new InvalidOperationException($"Host port for HTTPS ingress: {Config.HostHttpsIngressPort} is already in use, please select another port");
                 }

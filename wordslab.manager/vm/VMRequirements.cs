@@ -16,7 +16,7 @@ namespace wordslab.manager.vm
         public const int MIN_HOST_BACKUPDIR_GB = 2;
 
         public const int MIN_VM_PROCESSORS = 2;
-        public const int MIN_VM_MEMORY_GB = 4;
+        public const int MIN_VM_MEMORY_GB = 2;
         public const string MIN_VM_GPUMODEL = "NVIDIA GeForce GTX 1050";
         public const int MIN_VM_GPUMEMORY_GB = 4;
         public const int MIN_VM_CLUSTERDISK_GB = 5;
@@ -50,7 +50,7 @@ namespace wordslab.manager.vm
 
         public static bool CheckMemoryRequirements(VirtualMachineSpec vmSpec, Memory.MemoryInfo memInfo, out string memoryErrorMessage)
         {
-            var memorySpecOK = memInfo.TotalPhysicalMB >= (ulong)((MIN_HOST_RESERVED_MEMORY_GB + vmSpec.Compute.MemoryGB) * 1000);
+            var memorySpecOK = memInfo.TotalPhysicalMB >= ((MIN_HOST_RESERVED_MEMORY_GB + vmSpec.Compute.MemoryGB) * 1000);
             if (memorySpecOK)
             {
                 memoryErrorMessage = null;

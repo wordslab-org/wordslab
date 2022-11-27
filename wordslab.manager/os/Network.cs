@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
@@ -15,13 +16,13 @@ namespace wordslab.manager.os
             public string NetworkInterfaceName;
         }
 
-        public static Dictionary<string,IPAddressStatus> GetIPAddressesAvailable()
+        public static Dictionary<string, IPAddressStatus> GetIPAddressesAvailable()
         {
-            var addressesStatus = new Dictionary<string,IPAddressStatus>();
+            var addressesStatus = new Dictionary<string, IPAddressStatus>();
             var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-            foreach(var networkInterface in networkInterfaces)
+            foreach (var networkInterface in networkInterfaces)
             {
-                if(networkInterface.OperationalStatus == OperationalStatus.Up)
+                if (networkInterface.OperationalStatus == OperationalStatus.Up)
                 {
                     foreach (UnicastIPAddressInformation ip in networkInterface.GetIPProperties().UnicastAddresses)
                     {
@@ -41,14 +42,14 @@ namespace wordslab.manager.os
             return addressesStatus;
         }
 
-        public static Dictionary<string,HashSet<int>> GetTcpPortsInUsePerIPAddress()
+        public static Dictionary<string, HashSet<int>> GetTcpPortsInUsePerIPAddress()
         {
-            var portsInUse = new Dictionary<string,HashSet<int>>();
+            var portsInUse = new Dictionary<string, HashSet<int>>();
             IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
             IPEndPoint[] tcpEndPoints = properties.GetActiveTcpListeners();
-            foreach(var endpoint in tcpEndPoints)
+            foreach (var endpoint in tcpEndPoints)
             {
-                if(endpoint.AddressFamily == AddressFamily.InterNetwork)
+                if (endpoint.AddressFamily == AddressFamily.InterNetwork)
                 {
                     var ip = endpoint.Address.ToString();
                     HashSet<int> ports;
@@ -56,8 +57,8 @@ namespace wordslab.manager.os
                     {
                         ports = portsInUse[ip];
                     }
-                    else 
-                    { 
+                    else
+                    {
                         ports = new HashSet<int>();
                         portsInUse.Add(ip, ports);
                     }
@@ -74,9 +75,9 @@ namespace wordslab.manager.os
 
         public static int GetNextAvailablePort(int defaultPort, HashSet<int> portsInUse)
         {
-            for(int port=defaultPort; port<defaultPort+1000; port++)
+            for (int port = defaultPort; port < defaultPort + 1000; port++)
             {
-                if(!portsInUse.Contains(port))
+                if (!portsInUse.Contains(port))
                 {
                     return port;
                 }
@@ -130,6 +131,49 @@ namespace wordslab.manager.os
             }
         }
         */
+
+        public class PortConfig
+        {
+            public int VmPort { get; set; }
+
+            public int HostPort { get; set; }
+
+            public bool AllowAccessFromLAN { get; set; }
+        }
+
+        public static void CreateNetworkConfig(string vmName, string vmAddress, List<PortConfig> portsConfig, string scriptsDirectory, string logsDirectory)
+        {
+            if (OS.IsWindows)
+            {
+                var scriptArguments = $"{vmName} {vmAddress}";
+                foreach(var portConfig in portsConfig)
+                {
+                    scriptArguments += $" {portConfig.VmPort} {portConfig.HostPort} {(portConfig.AllowAccessFromLAN?'y':'n')}";
+                }
+                Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Network"), "create-network-config.ps1", scriptArguments, logsDirectory, runAsAdmin: true);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public static void DeleteNetworkConfig(string vmName, string vmAddress, List<PortConfig> portsConfig, string scriptsDirectory, string logsDirectory)
+        {
+            if (OS.IsWindows)
+            {
+                var scriptArguments = $"{vmName}";
+                foreach (var portConfig in portsConfig)
+                {
+                    scriptArguments += $" {portConfig.HostPort} {(portConfig.AllowAccessFromLAN ? 'y':'n')}";
+                }
+                Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Network"), "delete-network-config.ps1", scriptArguments, logsDirectory, runAsAdmin: true);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 
 }

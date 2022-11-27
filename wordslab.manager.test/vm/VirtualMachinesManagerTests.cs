@@ -77,42 +77,75 @@ namespace wordslab.manager.test.vm
 
                 // Hardware requirements OK
                 var maxSpec = vmSpecs.MaximumVMSpecOnThisMachine;
+                maxSpec.Compute.Processors = (Compute.GetCPUInfo().NumberOfLogicalProcessors - VMRequirements.MIN_HOST_RESERVED_PROCESSORS) / 2;
+                maxSpec.Compute.MemoryGB = ((int)Memory.GetMemoryInfo().TotalPhysicalMB/1024 - VMRequirements.MIN_HOST_RESERVED_MEMORY_GB) / 2;
                 var config2 = new VirtualMachineConfig(vmName, maxSpec,
                     VirtualMachineProvider.Wsl, null, false,
                     false, 0, false, 0, true, 80, false, true, 443, false);
 
                 ui = new TestProcessUI();
-                var vm = await vmm.CreateLocalVM(config2, ui);
-                Assert.IsNotNull(vm);
+                var vm1 = await vmm.CreateLocalVM(config2, ui);
+                Assert.IsNotNull(vm1);
 
-                vm.Start();
-                Assert.IsTrue(vm.IsRunning());
+                vm1.Start();
+                Assert.IsTrue(vm1.IsRunning());
 
                 localvms = vmm.ListLocalVMs();
                 Assert.IsTrue(localvms.Count == 1);
 
                 // Virtual machine already exists
                 ui = new TestProcessUI();
-                vm = await vmm.CreateLocalVM(config2, ui);
-                Assert.IsNull(vm);
-                vm.Start();
-                Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+                expectedEx = null;
+                try
+                {
+                    var vm = await vmm.CreateLocalVM(config2, ui);
+                }
+                catch(Exception e)
+                {
+                    expectedEx = e;
+                }
+                Assert.IsNotNull(expectedEx);
+                Assert.IsTrue(expectedEx.Message.Contains("already exists"));
 
                 // 2nd virtual machine - ports conflict
                 vmName = "test-blank2";
-                var minSpec = vmSpecs.MaximumVMSpecOnThisMachine;
-                var config3 = new VirtualMachineConfig(vmName, minSpec,
+                var vmSpecs2 = VMRequirements.GetRecommendedVMSpecs();
+                var maxSpec2 = vmSpecs2.MaximumVMSpecOnThisMachine;
+                maxSpec2.Compute.Processors = (Compute.GetCPUInfo().NumberOfLogicalProcessors - VMRequirements.MIN_HOST_RESERVED_PROCESSORS) / 2;
+                maxSpec2.Compute.MemoryGB = ((int)Memory.GetMemoryInfo().TotalPhysicalMB / 1024 - VMRequirements.MIN_HOST_RESERVED_MEMORY_GB) / 2;
+                var config3 = new VirtualMachineConfig(vmName, maxSpec2,
                     VirtualMachineProvider.Wsl, null, false,
                     false, 0, false, 0, true, 80, false, true, 443, false);
 
                 ui = new TestProcessUI();
-                vm = await vmm.CreateLocalVM(config3, ui);
-                Assert.IsNotNull(vm);
-                vm.Start();
-                Assert.IsTrue(ui.Messages.Last().Contains("Virtual machine started"));
+                var vm2 = await vmm.CreateLocalVM(config3, ui);
+                Assert.IsNotNull(vm2);
 
                 localvms = vmm.ListLocalVMs();
                 Assert.IsTrue(localvms.Count == 2);
+
+                expectedEx = null;
+                try
+                {
+                    vm2.Start();
+                }
+                catch(Exception e)
+                {
+                    expectedEx= e;
+                }
+                Assert.IsNotNull(expectedEx);
+                Assert.IsTrue(expectedEx.Message.Contains("is already in use"));
+
+                // Stop first vm and try again ...
+                Assert.IsTrue(vm1.IsRunning());
+                vm1.Stop();
+                Assert.IsFalse(vm1.IsRunning());
+
+                Assert.IsFalse(vm2.IsRunning());
+                vm2.Start();
+                Assert.IsTrue(vm2.IsRunning());
+                vm2.Stop();
+                Assert.IsFalse(vm2.IsRunning());
             }
         }
 

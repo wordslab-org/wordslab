@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Reflection.Metadata.Ecma335;
+using wordslab.manager.os;
 
 namespace wordslab.manager.config
 {
@@ -67,6 +69,28 @@ namespace wordslab.manager.config
         public bool ForwardHttpsIngressPortOnLocalhost { get; set; }
         public int HostHttpsIngressPort { get; internal set; }
         public bool AllowHttpsAccessFromLAN { get; set; }
+
+        internal List<Network.PortConfig> GetNetworkPortsConfig()
+        {
+            var portsConfig = new List<Network.PortConfig>();
+            if(ForwardSSHPortOnLocalhost)
+            {
+                portsConfig.Add(new Network.PortConfig() { VmPort=Spec.Network.SSHPort, HostPort=HostSSHPort, AllowAccessFromLAN=false });
+            }
+            if (ForwardKubernetesPortOnLocalhost)
+            {
+                portsConfig.Add(new Network.PortConfig() { VmPort = Spec.Network.KubernetesPort, HostPort = HostKubernetesPort, AllowAccessFromLAN = false });
+            }
+            if (ForwardHttpIngressPortOnLocalhost)
+            {
+                portsConfig.Add(new Network.PortConfig() { VmPort = Spec.Network.HttpIngressPort, HostPort = HostHttpIngressPort, AllowAccessFromLAN = AllowHttpAccessFromLAN });
+            }
+            if (ForwardHttpsIngressPortOnLocalhost)
+            {
+                portsConfig.Add(new Network.PortConfig() { VmPort = Spec.Network.HttpsIngressPort, HostPort = HostHttpsIngressPort, AllowAccessFromLAN = AllowHttpsAccessFromLAN });
+            }
+            return portsConfig;
+        }
 
         // Comparison
 

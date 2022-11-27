@@ -9,12 +9,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="scripts\os\Network\create-network-config.ps1" />
+    <None Remove="scripts\os\Network\delete-network-config.ps1" />
     <None Remove="scripts\os\Windows\install-openssh.ps1" />
     <None Remove="scripts\os\Windows\uninstall-openssh.ps1" />
     <None Remove="scripts\os\Wsl\update-wsl.ps1" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="scripts\os\Network\create-network-config.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\os\Network\delete-network-config.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="scripts\os\Windows\uninstall-openssh.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

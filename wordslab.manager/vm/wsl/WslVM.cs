@@ -109,6 +109,10 @@ namespace wordslab.manager.vm.wsl
                 var processId = Wsl.GetVirtualMachineProcessId();
                 vmInstance.Started(processId, ip, kubeconfig, null);
                 configStore.SaveChanges();
+
+                // Create the host network configuration
+                var portsConfig = Config.GetNetworkPortsConfig();
+                Network.CreateNetworkConfig(Name, vmInstance.VmIPAddress, portsConfig, storage.ScriptsDirectory, storage.LogsDirectory);
             }
             catch (Exception e)
             {
@@ -144,6 +148,10 @@ namespace wordslab.manager.vm.wsl
                 RunningInstance.Killed(e.Message);
                 configStore.SaveChanges();
             }
+
+            // Delete the host network configuration
+            var portsConfig = Config.GetNetworkPortsConfig();
+            Network.DeleteNetworkConfig(Name, RunningInstance.VmIPAddress, portsConfig, storage.ScriptsDirectory, storage.LogsDirectory);
 
             // Reset the running instance
             RunningInstance = null;
