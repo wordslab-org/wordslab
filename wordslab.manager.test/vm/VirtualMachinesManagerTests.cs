@@ -167,21 +167,17 @@ namespace wordslab.manager.test.vm
                 var vm1 = vms[0];
                 var vm2 = vms[1];
 
-                Assert.IsTrue(vm1.Name == "test-blank1");
-                Assert.IsTrue(vm2.Name == "test-blank2");                
-                
-                var portsbefore = Network.GetAllTcpPortsInUse();
-                vm1.Start();
-                var portsafter = Network.GetAllTcpPortsInUse();
-                var newports = portsafter.Except(portsbefore);
+                Assert.IsTrue(vm1.Name == "test-blank");
+                Assert.IsTrue(vm2.Name == "test-blank2");  
 
-                portsbefore = Network.GetAllTcpPortsInUse();
-                vm2.Start();
-                portsafter = Network.GetAllTcpPortsInUse();
-                newports = portsafter.Except(portsbefore);
+                Assert.IsFalse(vm1.IsRunning());
+                Assert.IsFalse(vm2.IsRunning());
 
-                Assert.IsTrue(vm1.IsRunning());
-                Assert.IsTrue(vm2.IsRunning());
+                var vmInstance1 = configStore.TryGetLastVirtualMachineInstance(vm1.Name);
+                Assert.IsNotNull(vmInstance1);
+                var vmInstance2 = configStore.TryGetLastVirtualMachineInstance(vm2.Name);
+                Assert.IsNotNull(vmInstance2);
+
             }
         }
 
@@ -197,17 +193,50 @@ namespace wordslab.manager.test.vm
                 var vmm = new VirtualMachinesManager(storage, configStore);
                 Assert.IsNotNull(vmm);
 
-                var vm1 = vmm.TryFindLocalVM("test-blank1");
+                var vm1 = vmm.TryFindLocalVM("test-blank");
                 Assert.IsNotNull(vm1);
-                Assert.IsTrue(vm1.IsRunning());
-                vm1.Stop();
+                if (vm1.IsRunning())
+                {
+                    vm1.Stop();
+                }
                 Assert.IsFalse(vm1.IsRunning());
+
+                var portsbefore = Network.GetAllTcpPortsInUse();
+                vm1.Start();
+                var portsafterStart = Network.GetAllTcpPortsInUse();
+                var addedports = portsafterStart.Except(portsbefore);
+                vm1.Stop();
+                var portsafterStop = Network.GetAllTcpPortsInUse();
+                var removedports = portsafterStart.Except(portsafterStop);
+                Assert.IsTrue(addedports.Count() == 4);
+                Assert.IsTrue(removedports.Count() == 4);
 
                 var vm2 = vmm.TryFindLocalVM("test-blank2");
                 Assert.IsNotNull(vm2);
+                if (vm2.IsRunning()) 
+                {
+                    vm2.Stop();
+                }
+                Assert.IsFalse(vm2.IsRunning());
+                vm2.Start();
                 Assert.IsTrue(vm2.IsRunning());
+
+                var vm2Instance = configStore.TryGetLastVirtualMachineInstance("test-blank2");
+                Assert.IsNotNull(vm2Instance);
+                Assert.IsTrue(vm2Instance.State == VirtualMachineState.Running);
+                Assert.IsTrue(DateTime.Now.Subtract(vm2Instance.StartTimestamp).TotalSeconds <= 60);
+                Assert.IsTrue(vm2Instance.StopTimestamp == null);
+                                
                 vm2.Stop();
                 Assert.IsFalse(vm2.IsRunning());
+
+                vm2Instance = configStore.TryGetLastVirtualMachineInstance("test-blank2");
+                Assert.IsNotNull(vm2Instance);
+                Assert.IsTrue(vm2Instance.State == VirtualMachineState.Stopped);
+                Assert.IsTrue(DateTime.Now.Subtract(vm2Instance.StopTimestamp.Value).TotalSeconds <= 60);
+
+                var vmInstances = configStore.GetVirtualMachineInstancesHistory("test-blank");
+                Assert.IsTrue(vmInstances.Count >= 2);
             }
         }
 
@@ -235,6 +264,13 @@ namespace wordslab.manager.test.vm
                 localvms = vmm.ListLocalVMs();
                 Assert.IsTrue(localvms.Count == 1);
 
+                var deletedVm = vmm.TryFindLocalVM(vmName);
+                Assert.IsNull(deletedVm);
+                var deletedConfig = configStore.TryGetVirtualMachineConfig(vmName);
+                Assert.IsNull(deletedConfig);
+                var deletedInstance = configStore.TryGetLastVirtualMachineInstance(vmName);
+                Assert.IsNull(deletedInstance);
+
                 ui = new TestProcessUI();
                 vmName = "test-blank2";
                 success = await vmm.DeleteLocalVM(vmName, ui);
@@ -243,6 +279,13 @@ namespace wordslab.manager.test.vm
 
                 localvms = vmm.ListLocalVMs();
                 Assert.IsTrue(localvms.Count == 0);
+
+                deletedVm = vmm.TryFindLocalVM(vmName);
+                Assert.IsNull(deletedVm);
+                deletedConfig = configStore.TryGetVirtualMachineConfig(vmName);
+                Assert.IsNull(deletedConfig);
+                deletedInstance = configStore.TryGetLastVirtualMachineInstance(vmName);
+                Assert.IsNull(deletedInstance);
             }
         }
     }

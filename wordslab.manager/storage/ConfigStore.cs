@@ -115,11 +115,19 @@ namespace wordslab.manager.storage
         }
 
         /// <summary>
-        /// Returns null if a virtual machine config with the specified name is not found
+        /// Returns null if a virtual machine instance with the specified name is not found
         /// </summary>
         public VirtualMachineInstance TryGetLastVirtualMachineInstance(string vmName)
         {
             return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderByDescending(instance => instance.StartTimestamp).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Returns an empy list if a virtual machine instance with the specified name is not found
+        /// </summary>
+        public List<VirtualMachineInstance> GetVirtualMachineInstancesHistory(string vmName)
+        {
+            return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderBy(instance => instance.StartTimestamp).ToList();
         }
 
         // Configure table name
