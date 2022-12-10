@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Reflection.Metadata.Ecma335;
 using wordslab.manager.os;
 
 namespace wordslab.manager.config
@@ -17,7 +16,7 @@ namespace wordslab.manager.config
         private VirtualMachineConfig() { }
 
         public VirtualMachineConfig(string name, VirtualMachineSpec spec, 
-            VirtualMachineProvider vmProvider = VirtualMachineProvider.Unspecified, string vmModelName = null, bool isPreemptible = false,
+            VirtualMachineProvider vmProvider, string vmModelName = null, bool isPreemptible = false,
             bool forwardSSHPortOnLocalhost = false, int hostSSHPort = 0, bool forwardKubernetesPortOnLocalhost = false, int hostKubernetesPort = 0, 
             bool forwardHttpIngressPortOnLocalhost = false, int hostHttpIngressPort = 0, bool allowHttpAccessFromLAN = false,
             bool forwardHttpsIngressPortOnLocalhost = false, int hostHttpsIngressPort = 0, bool allowHttpsAccessFromLAN = false)

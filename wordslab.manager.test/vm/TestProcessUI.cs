@@ -111,7 +111,7 @@ namespace wordslab.manager.test.vm
             return Task.FromResult(answer);
         }
 
-        public Task<string> DisplayInputQuestion(string question, string defaultValue)
+        public Task<string> DisplayInputQuestionAsync(string question, string defaultValue)
         {
             Messages.Add($"{question}");
             Messages.Add($"Default value: {defaultValue}");

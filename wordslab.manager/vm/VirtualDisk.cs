@@ -50,6 +50,8 @@ namespace wordslab.manager.vm
 
         public int MaxSizeGB { get; protected set; }
 
+        public int CurrentSizeGB { get { return (int)Math.Round(new FileInfo(StoragePath).Length/(1024d*1024*1024)); } }
+
         public bool IsSSD { get; protected set; }
 
         // Implement this in all subclasses :

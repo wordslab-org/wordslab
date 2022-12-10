@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using wordslab.manager.os;
+using wordslab.manager.vm.qemu;
 
 namespace wordslab.manager.config
 {
@@ -89,6 +91,73 @@ namespace wordslab.manager.config
 
         public string? ExecutionMessages { get; set; }
 
+        // URLs to access the instance
+
+        public string GetSSHCommandParams()
+        {
+            if(OS.IsWindows)
+            {
+                // No SSH port with WSL on Windows
+                return null;
+            }
+
+            // SSH to a qemu virtual machine
+            if(Config.ForwardSSHPortOnLocalhost)
+            {
+                return $"-p {Config.HostSSHPort} {QemuDisk.ubuntuImageUser}@127.0.0.1";
+            }
+            else
+            {
+                return $"-p {Config.Spec.Network.SSHPort} {QemuDisk.ubuntuImageUser}@{VmIPAddress}";
+            }
+        }
+
+        public string GetKubernetesServer()
+        {
+            if (Config.ForwardKubernetesPortOnLocalhost)
+            {
+                return $"https://127.0.0.1:{Config.HostKubernetesPort}";
+            }
+            else
+            {
+                return $"https://{VmIPAddress}:{Config.Spec.Network.KubernetesPort}";
+            }
+        }
+
+        public string GetHttpURL()
+        {
+            if(Config.ForwardHttpIngressPortOnLocalhost)
+            {
+                var ip = "127.0.0.1";
+                if (Config.AllowHttpAccessFromLAN) 
+                {
+                    ip = Network.GetIPAddressesAvailable().Values.Where(addr => !addr.IsLoopback).First().Address;
+                }
+                return $"http://{ip}:{Config.HostHttpIngressPort}/status";
+            }
+            else
+            {
+                return $"http://{VmIPAddress}:{Config.Spec.Network.HttpIngressPort}/status";
+            }
+        }
+
+        public string GetHttpsURL()
+        {
+            if (Config.ForwardHttpsIngressPortOnLocalhost)
+            {
+                var ip = "127.0.0.1";
+                if (Config.AllowHttpsAccessFromLAN)
+                {
+                    ip = Network.GetIPAddressesAvailable().Values.Where(addr => !addr.IsLoopback).First().Address;
+                }
+                return $"https://{ip}:{Config.HostHttpsIngressPort}/status";
+            }
+            else
+            {
+                return $"https://{VmIPAddress}:{Config.Spec.Network.HttpsIngressPort}/status";
+            }
+        }
+
         // Comparison
 
         public override bool Equals(object? obj)
@@ -110,6 +179,32 @@ namespace wordslab.manager.config
             equals = equals && instance.StopTimestamp == StopTimestamp;
             equals = equals && instance.ExecutionMessages == ExecutionMessages;
             return equals;
+        }
+
+        // Display
+
+        public class DisplayStatus
+        {
+            public string State;
+            public string StartedOn;
+            public string StoppedOn;
+            public string RunningTime;
+            public string Processors;
+            public string Memory;
+            public string GPU;
+        }
+
+        public DisplayStatus GetDisplayStatus()
+        {
+            var status = new DisplayStatus();
+            status.State = State.ToString().ToLowerInvariant();
+            status.StartedOn = StartTimestamp.ToString("MM/dd/yy HH:mm:ss");
+            status.StoppedOn = StopTimestamp==null?"":StopTimestamp.Value.ToString("MM/dd/yy HH:mm:ss");
+            status.RunningTime = DateTime.Now.Subtract(StartTimestamp).ToString(@"d\.hh\:mm\:ss");
+            status.Processors = ComputeStartArguments.Processors.ToString();
+            status.Memory = $"{ComputeStartArguments.MemoryGB} GB";
+            status.GPU = GPUStartArguments.ToString();
+            return status;
         }
     }
 }

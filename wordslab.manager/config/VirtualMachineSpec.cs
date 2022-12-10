@@ -4,7 +4,7 @@ using wordslab.manager.os;
 namespace wordslab.manager.config
 {
     [Owned]
-    public class ComputeSpec
+    public class ComputeSpec : ICloneable
     {
         public int Processors { get; set; }
 
@@ -20,10 +20,15 @@ namespace wordslab.manager.config
             equals = equals && spec.MemoryGB == MemoryGB;
             return equals;
         }
+
+        public object Clone()
+        {
+            return MemberwiseClone();
+        }
     }
 
     [Owned]
-    public class GPUSpec
+    public class GPUSpec : ICloneable
     {
         public string? ModelName { get; set; }
 
@@ -41,6 +46,16 @@ namespace wordslab.manager.config
             equals = equals && spec.ModelName == ModelName;
             equals = equals && spec.MemoryGB == MemoryGB;
             return equals;
+        }
+
+        public object Clone()
+        {
+            return MemberwiseClone();
+        }
+
+        public override string ToString()
+        {
+            return GPUCount == 0 ? "none" : $"{GPUCount}x{ModelName} {MemoryGB}GB";
         }
     }
 

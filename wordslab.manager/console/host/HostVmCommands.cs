@@ -15,143 +15,115 @@ namespace wordslab.manager.console.host
     public class VmNameSettings : CommandSettings
     {
         [Description("Virtual machine name")]
-        [CommandArgument(0, "[Name]")]
-        public string MachineName { get; init; }
+        [CommandArgument(0, "[name]")]
+        public string Name { get; init; }
     }
 
-    public class VmComputeSettings : VmNameSettings
+    public class VmPresetSettings : VmNameSettings
     {
         [Description("Use minimum compute and storage config")]
-        [CommandOption("--minmum")]
+        [CommandOption("--minimum")]
         public bool? UseMinimumSpecs { get; init; }
+
         [Description("Use recommended compute and storage config")]
         [CommandOption("--recommended")]
         public bool? UseRecommendedSpecs { get; init; }
+
         [Description("Use maximum compute and storage config")]
         [CommandOption("--maximum")]
         public bool? UseMaximumSpecs { get; init; }
+    }
 
-        [Description("Number of processors")]
+    public class VmComputeSettings : VmPresetSettings
+    {
+        [Description("Max number of processors")]
         [CommandOption("--proc")]
-        [DefaultValue(VMRequirements.MIN_VM_PROCESSORS)]
         public int? Processors { get; init; }
-        [Description("Memory size in GB")]
+
+        [Description("Max memory size in GB")]
         [CommandOption("--mem")]
-        [DefaultValue(VMRequirements.MIN_VM_MEMORY_GB)]
         public int? MemoryGB { get; init; }
-        [Description("GPU device index")]
+
+        [Description("Allow acces to GPU ?")]
         [CommandOption("--gpu")]
-        public int? GPUDevice { get; init; }
+        public bool? UseGPU { get; init; }
 
-        [Description("Host port to connect to the virtual machine through SSH (port forward)")]
-        [CommandOption("--sshport")]
-        [DefaultValue(VMRequirements.DEFAULT_HOST_SSH_PORT)]
-        public int? SSHPort { get; init; }
-        [Description("Host port to connect to the Kubernetes cluster inside the virtual machine (port forward)")]
-        [CommandOption("--kubeport")]
-        [DefaultValue(VMRequirements.DEFAULT_HOST_Kubernetes_PORT)]
-        public int? KubernetesPort { get; init; }
-        [Description("Host port to connect to the http services inside the virtual machine (port forward)")]
-        [CommandOption("--httpport")]
-        [DefaultValue(VMRequirements.DEFAULT_HOST_HttpIngress_PORT)]
-        public int? HttpIngressPort { get; init; }
-
-        public string ApplyToVMConfig(VirtualMachineConfig vmConfig, HostStorage hostStorage)
+        public ComputeSpec GetComputeStartArguments(VirtualMachineConfig vmConfig)
         {
-            var vmSettings = this;
+            // Step 1 : start with vm config 
+            var computeSpec = (ComputeSpec)vmConfig.Spec.Compute.Clone();
 
             // Step 2 : override compute values with min, rec or max specs 
-            if (vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
+            if (UseMinimumSpecs.HasValue || UseRecommendedSpecs.HasValue || UseMaximumSpecs.HasValue)
             {
-                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
-
-                VirtualMachineSpec targetSpec = null;
-                if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();                               
+                if (UseMinimumSpecs.HasValue && UseMinimumSpecs.Value)
                 {
-                    if (!vmSpecs.MinimumVMSpecIsSupportedOnThisMachine)
-                    {
-                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the minimum config: {vmSpecs.MinimunVMSpecErrorMessage}";
-                        return errorMessage;
-                    }
-                    targetSpec = vmSpecs.MinimumVMSpec;
+                    computeSpec = (ComputeSpec)vmSpecs.MinimumVMSpec.Compute.Clone();
                 }
-                if (vmSettings.UseRecommendedSpecs.HasValue && vmSettings.UseRecommendedSpecs.Value)
+                if (UseRecommendedSpecs.HasValue && UseRecommendedSpecs.Value && vmSpecs.RecommendedVMSpecIsSupportedOnThisMachine)
                 {
-                    if (!vmSpecs.RecommendedVMSpecIsSupportedOnThisMachine)
-                    {
-                        var errorMessage = $"The host machine is not powerful enough to run a virtual machine with the recommended config: {vmSpecs.RecommendedVMSpecErrorMessage}";
-                        return errorMessage;
-                    }
-                    targetSpec = vmSpecs.RecommendedVMSpec;
+                    computeSpec = (ComputeSpec)vmSpecs.RecommendedVMSpec.Compute.Clone();
                 }
-                if (vmSettings.UseMaximumSpecs.HasValue && vmSettings.UseMaximumSpecs.Value)
+                if (UseMaximumSpecs.HasValue && UseMaximumSpecs.Value)
                 {
-                    targetSpec = vmSpecs.MaximumVMSpecOnThisMachine;
-                }
-
-                vmConfig.Spec.Compute.Processors = targetSpec.Compute.Processors;
-                vmConfig.Spec.Compute.MemoryGB = targetSpec.Compute.MemoryGB;
-                if (string.IsNullOrEmpty(targetSpec.GPU.ModelName))
-                {
-                    vmConfig.Spec.GPU.ModelName = null;
-                }
-                else if (string.IsNullOrEmpty(vmConfig.Spec.GPU.ModelName))
-                {
-                    vmConfig.Spec.GPU.ModelName = vmSpecs.MaximumVMSpecOnThisMachine.GPU.ModelName;
-                    vmConfig.Spec.GPU.MemoryGB = vmSpecs.MaximumVMSpecOnThisMachine.GPU.MemoryGB;
+                    computeSpec = (ComputeSpec)vmSpecs.MaximumVMSpecOnThisMachine.Compute.Clone();
                 }
             }
 
             // Step 3 : apply all the values explicitly set on the command line
-            if (vmSettings.Processors.HasValue)
+            if (Processors.HasValue)
             {
-                vmConfig.Spec.Compute.Processors = vmSettings.Processors.Value;
+                computeSpec.Processors = Processors.Value;
             }
-            if (vmSettings.MemoryGB.HasValue)
+            if (MemoryGB.HasValue)
             {
-                vmConfig.Spec.Compute.MemoryGB = vmSettings.MemoryGB.Value;
-            }
-            if (vmSettings.GPUDevice.HasValue)
-            {
-                int gpuDevice = vmSettings.GPUDevice.Value;
-                var gpusInfo = Compute.GetNvidiaGPUsInfo();
-                if (gpuDevice < 1 || gpuDevice > gpusInfo.Count)
-                {
-                    var errorMessage = $"Invalid GPU selected: requested GPU device {gpuDevice} while {gpusInfo.Count} GPUs were detected on this machine";
-                    return errorMessage;
-                }
-                var selectedGPU = gpusInfo[gpuDevice - 1];
-                vmConfig.Spec.GPU.ModelName = selectedGPU.ModelName;
-                vmConfig.Spec.GPU.MemoryGB = selectedGPU.MemoryMB / 1024;
-            }
-            if (vmSettings.SSHPort.HasValue)
-            {
-                vmConfig.HostSSHPort = vmSettings.SSHPort.Value;
-            }
-            if (vmSettings.KubernetesPort.HasValue)
-            {
-                vmConfig.HostKubernetesPort = vmSettings.KubernetesPort.Value;
-            }
-            if (vmSettings.HttpIngressPort.HasValue)
-            {
-                vmConfig.HostHttpIngressPort = vmSettings.HttpIngressPort.Value;
+                computeSpec.MemoryGB = MemoryGB.Value;
             }
 
-            return null;
+            return computeSpec;
         }
-    }
 
-    public class VmConfigSettings : VmComputeSettings
-    {
-        [Description("Cluster disk size in GB")]
-        [CommandOption("--clusterdisk")]
-        [DefaultValue(VMRequirements.REC_VM_CLUSTERDISK_GB)]
-        public int? ClusterDiskSizeGB { get; init; }
+        public GPUSpec GetGPUStartArguments(VirtualMachineConfig vmConfig)
+        {
+            // Step 1 : start with vm config 
+            var gpuSpec = (GPUSpec)vmConfig.Spec.GPU.Clone();
 
-        [Description("Data disk size in GB")]
-        [CommandOption("--datadisk")]
-        [DefaultValue(VMRequirements.REC_VM_DATADISK_GB)]
-        public int? DataDiskSizeGB { get; init; }
+            // Step 2 : override compute values with min, rec or max specs 
+            RecommendedVMSpecs vmSpecs = null;
+            if (UseMinimumSpecs.HasValue || UseRecommendedSpecs.HasValue || UseMaximumSpecs.HasValue)
+            {
+                vmSpecs = VMRequirements.GetRecommendedVMSpecs();
+                if (UseMinimumSpecs.HasValue && UseMinimumSpecs.Value)
+                {
+                    gpuSpec = (GPUSpec)vmSpecs.MinimumVMSpec.GPU.Clone();
+                }
+                if (UseRecommendedSpecs.HasValue && UseRecommendedSpecs.Value && vmSpecs.RecommendedVMSpecIsSupportedOnThisMachine)
+                {
+                    gpuSpec = (GPUSpec)vmSpecs.RecommendedVMSpec.GPU.Clone();
+                }
+                if (UseMaximumSpecs.HasValue && UseMaximumSpecs.Value)
+                {
+                    gpuSpec = (GPUSpec)vmSpecs.MaximumVMSpecOnThisMachine.GPU.Clone();
+                }
+            }
+
+            // Step 3 : apply all the values explicitly set on the command line
+            if (UseGPU.HasValue)
+            {
+                if (UseGPU.Value)
+                {
+                    if (vmSpecs == null) vmSpecs = VMRequirements.GetRecommendedVMSpecs();
+                    gpuSpec = (GPUSpec)vmSpecs.MaximumVMSpecOnThisMachine.GPU.Clone();
+                }
+                else
+                {
+                    gpuSpec.GPUCount = 0;
+                }
+            }
+
+            return gpuSpec;
+        }
     }
 
     public abstract class VmCommand<TSettings> : Command<TSettings> where TSettings : CommandSettings
@@ -175,41 +147,93 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] NoParamsSettings settings)
         {
+            AnsiConsole.WriteLine("Searching local virtual machines ...");
+            AnsiConsole.WriteLine();
+
             var vms = vmManager.ListLocalVMs();            
-
-            DisplayVmList(vms);
-            return 0;
-        }
-
-        internal static void DisplayVmList(List<VirtualMachine> vms)
-        {
             if (vms.Count == 0)
             {
                 AnsiConsole.WriteLine("No virtual machine found on this host: you can create one with the command \"wordslab host vm create\".");
-                return;
+                return 0;
             }
 
-            var table = new Table();
-            table.AddColumn("Name");
-            table.AddColumn("State");
-            table.AddColumn("Http port");
-            table.AddColumn("Processors");
-            table.AddColumn("Memory");
-            table.AddColumn("Os disk");
-            table.AddColumn("Cluster disk");
-            table.AddColumn("Data disk");
-            foreach (var vm in vms)
+            var runningVMs = vms.Where(vm => vm.IsRunning()).ToList();
+            var stoppedVMs = vms.Where(vm => !vm.IsRunning()).ToList();
+
+            // 1. Running VMs
+            if (runningVMs.Count > 0)
             {
-                table.AddRow( vm.Name,
-                    vm.IsRunning() ? "running" : "stopped",
-                    vm.Config.HostHttpIngressPort.ToString(),
-                    vm.IsRunning() ? vm.RunningInstance.ComputeStartArguments.Processors.ToString() : vm.Config.Spec.Compute.Processors.ToString(),
-                    vm.IsRunning() ? vm.RunningInstance.ComputeStartArguments.MemoryGB.ToString() : vm.Config.Spec.Compute.MemoryGB.ToString(),
-                    vm.ClusterDisk.MaxSizeGB + " GB",
-                    vm.DataDisk.MaxSizeGB + " GB"
-                    );
+                AnsiConsole.WriteLine("Running virtual machines:");
+                AnsiConsole.WriteLine();
+
+                var table = new Table();
+                table.AddColumn("Name");
+                table.AddColumn("Address");
+                table.AddColumn("Started on");
+                table.AddColumn("Running since");
+                table.AddColumn("Processors");
+                table.AddColumn("Memory");
+                table.AddColumn("GPU");
+                table.AddColumn("Cluster disk");
+                table.AddColumn("Data disk");
+                foreach (var vm in runningVMs)
+                {
+                    var instance = vm.RunningInstance;
+                    var displayStatus = instance.GetDisplayStatus();
+                    table.AddRow(
+                        vm.Name,
+                        instance.GetHttpURL(),
+                        displayStatus.StartedOn,
+                        displayStatus.RunningTime,
+                        displayStatus.Processors,
+                        displayStatus.Memory,
+                        displayStatus.GPU,
+                        vm.ClusterDisk.CurrentSizeGB + "GB",
+                        vm.DataDisk.CurrentSizeGB + "GB");
+                }
+                AnsiConsole.Write(table);
+                AnsiConsole.WriteLine();
             }
-            AnsiConsole.Write(table);
+
+            // 2. Stopped VMs
+            if (stoppedVMs.Count > 0)
+            {
+                AnsiConsole.WriteLine("Stopped virtual machines:");
+                AnsiConsole.WriteLine();
+
+                var table = new Table();
+                table.AddColumn("Name");
+                table.AddColumn("First start");
+                table.AddColumn("Last stop");
+                table.AddColumn("Last state");
+                table.AddColumn("Total time");
+                table.AddColumn("Processors");
+                table.AddColumn("Memory");
+                table.AddColumn("GPU");
+                table.AddColumn("Cluster disk");
+                table.AddColumn("Data disk");
+                foreach (var vm in stoppedVMs)
+                {
+                    var firstInstance = configStore.TryGetFirstVirtualMachineInstance(vm.Name);
+                    var lastInstance = configStore.TryGetLastVirtualMachineInstance(vm.Name);
+                    var totalRunningTime = configStore.GetVirtualMachineInstanceTotalRunningTime(vm.Name);
+                    table.AddRow(
+                        vm.Name,
+                        firstInstance==null?"":firstInstance.StartTimestamp.ToString("MM/dd/yy HH:mm:ss"),
+                        lastInstance == null ? "" : lastInstance.StopTimestamp.Value.ToString("MM/dd/yy HH:mm:ss"),
+                        lastInstance == null ? "" : lastInstance.State.ToString().ToLowerInvariant(),
+                        totalRunningTime.ToString(@"d\.hh\:mm\:ss"),
+                        vm.Config.Spec.Compute.Processors.ToString(),
+                        $"{vm.Config.Spec.Compute.MemoryGB}GB",
+                        vm.Config.Spec.GPU.ToString(),
+                        vm.ClusterDisk.CurrentSizeGB + "GB",
+                        vm.DataDisk.CurrentSizeGB + "GB");
+                }
+                AnsiConsole.Write(table);
+                AnsiConsole.WriteLine();
+            }
+
+            return 0;
         }
     }
 
@@ -220,7 +244,7 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmComputeSettings vmSettings)
         {
-            var vmName = vmSettings.MachineName;
+            var vmName = vmSettings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
                 AnsiConsole.WriteLine("Virtual machine name argument is missing");
@@ -240,28 +264,38 @@ namespace wordslab.manager.console.host
                 return 0;
             }
 
-            // Step 1 : initialize vm config with the values from the last run
-            var vmConfig = configStore.TryGetVirtualMachineConfig(vmName);
-            if(vmConfig == null)
-            {
-                AnsiConsole.WriteLine($"Could not find the configuration of the virtual machine: {vmName}");
-                return 1;
-            }
-
-            // Step 2 & 3 : override with command line parameters
-            var errorMessage = vmSettings.ApplyToVMConfig(vmConfig, hostStorage);
-            if(errorMessage != null)
-            {
-                AnsiConsole.WriteLine(errorMessage);
-                return 1;
-            }
+            AnsiConsole.WriteLine($"Starting virtual machine {vmName} ...");
+            AnsiConsole.WriteLine();
 
             // Then start the VM with the merged config properties
-            vm.Start(vmConfig.Spec.Compute, vmConfig.Spec.GPU);
+            VirtualMachineInstance vmi = null;
+            try
+            {
+                var computeSpec = vmSettings.GetComputeStartArguments(vm.Config);
+                var gpuSpec = vmSettings.GetGPUStartArguments(vm.Config);
 
-            // Save the new config to the database
-            configStore.SaveChanges();
+                AnsiConsole.WriteLine($"- {computeSpec.Processors} processors");
+                AnsiConsole.WriteLine($"- {computeSpec.MemoryGB} GB memory");
+                if(gpuSpec.GPUCount > 0)
+                {
+                    AnsiConsole.WriteLine($"- {gpuSpec.ToString()}");
+                }
+                AnsiConsole.WriteLine();
 
+                vmi = vm.Start(computeSpec, gpuSpec);
+            }
+            catch(Exception ex)
+            {
+                AnsiConsole.WriteLine($"Failed to start virtual machine {vmName}:");
+                AnsiConsole.WriteLine(ex.Message);
+                AnsiConsole.WriteLine();
+                return -1;
+            }
+
+            AnsiConsole.WriteLine($"Virtual machine {vmName} started:");
+            AnsiConsole.WriteLine($"- {vmi.GetHttpURL()}");
+            AnsiConsole.WriteLine($"- {vmi.GetHttpsURL()}");
+            AnsiConsole.WriteLine();
             return 0;
         }
     }
@@ -273,7 +307,7 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            var vmName = settings.MachineName;
+            var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
                 AnsiConsole.WriteLine("Virtual machine name argument is missing");
@@ -293,7 +327,26 @@ namespace wordslab.manager.console.host
                 return 0;
             }
 
-            vm.Stop();
+            AnsiConsole.WriteLine($"Stopping virtual machine {vmName} ...");
+            AnsiConsole.WriteLine();
+
+            var vmInstance = vm.RunningInstance;
+
+            try 
+            { 
+                vm.Stop();
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.WriteLine($"Failed to stop virtual machine {vmName}:");
+                AnsiConsole.WriteLine(ex.Message);
+                AnsiConsole.WriteLine();
+                return -1;
+            }
+
+            AnsiConsole.WriteLine($"Virtual machine {vmName} stopped.");
+            AnsiConsole.WriteLine($"Running time: {(vmInstance.StopTimestamp.Value.Subtract(vmInstance.StartTimestamp).ToString(@"d\.hh\:mm\:ss"))}");
+            AnsiConsole.WriteLine();
             return 0;
         }
     }
@@ -305,7 +358,7 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            var vmName = settings.MachineName;
+            var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
                 AnsiConsole.WriteLine("Virtual machine name argument is missing");
@@ -319,10 +372,51 @@ namespace wordslab.manager.console.host
                 return 1;
             }
 
-            var vms = new List<VirtualMachine>();
-            vms.Add(vm);
+            AnsiConsole.WriteLine($"Virtual machine {vmName} status:");
+            AnsiConsole.WriteLine();
+            if (vm.IsRunning())
+            {
+                var instance = vm.RunningInstance;
+                var displayStatus = instance.GetDisplayStatus();
+                AnsiConsole.WriteLine("- state: running");
+                AnsiConsole.WriteLine($"- started on: {displayStatus.StartedOn}");
+                AnsiConsole.WriteLine($"- running since: {displayStatus.RunningTime}");
+                AnsiConsole.WriteLine();
+                AnsiConsole.WriteLine($"- processors: {displayStatus.Processors}");
+                AnsiConsole.WriteLine($"- memory: {displayStatus.Memory}");
+                AnsiConsole.WriteLine($"- GPU: {displayStatus.GPU}");
+                AnsiConsole.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
+                AnsiConsole.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
+                AnsiConsole.WriteLine();
+                AnsiConsole.WriteLine($"-> {instance.GetHttpURL()}");
+                AnsiConsole.WriteLine($"-> {instance.GetHttpsURL()}");
+            }
+            else
+            {
+                var vmInstance = configStore.TryGetLastVirtualMachineInstance(vmName);
+                if (vmInstance == null)
+                {
+                    AnsiConsole.WriteLine("- state: never started");
+                }
+                else
+                {
+                    var displayStatus = vmInstance.GetDisplayStatus();
+                    AnsiConsole.WriteLine($"- state: {vmInstance.State.ToString().ToLowerInvariant()}");
+                    AnsiConsole.WriteLine($"- last stopped on: {displayStatus.StoppedOn}");
+                    AnsiConsole.WriteLine($"- last running time: {displayStatus.RunningTime}");
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.WriteLine($"- processors: {vm.Config.Spec.Compute.Processors}");
+                    AnsiConsole.WriteLine($"- memory: {vm.Config.Spec.Compute.MemoryGB} GB");
+                    if (vm.Config.Spec.GPU.GPUCount > 0)
+                    {
+                        AnsiConsole.WriteLine($"- GPU: {vm.Config.Spec.GPU.ToString()}");
+                    }
+                    AnsiConsole.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
+                    AnsiConsole.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
+                }
+            }
+            AnsiConsole.WriteLine();
 
-            VmListCommand.DisplayVmList(vms);
             return 0;
         }
     }
@@ -334,19 +428,23 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
+            AnsiConsole.WriteLine("Analysing host machine hardware ...");
+            AnsiConsole.WriteLine();
+
             var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             
             DisplayRecommendedSpec("Minimum", vmSpecs.MinimumVMSpec, vmSpecs.MinimunVMSpecErrorMessage);
-            DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage);
             if (vmSpecs.MinimumVMSpecIsSupportedOnThisMachine)
             {
                 DisplayRecommendedSpec("Maximum", vmSpecs.MaximumVMSpecOnThisMachine, null);
             }
+            DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage);
 
             var tcpPortsInUse = Network.GetAllTcpPortsInUse();
             var sshPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_SSH_PORT);
             var kubernetesPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_Kubernetes_PORT);
             var httpPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_HttpIngress_PORT);
+            var httpsPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_HttpsIngress_PORT);
 
             string portAvailable = "available";
             string portInUse = "already in use";
@@ -354,39 +452,21 @@ namespace wordslab.manager.console.host
             AnsiConsole.WriteLine($"- connect to the virtual machine through SSH: {VMRequirements.DEFAULT_HOST_SSH_PORT} -> {(sshPortAvailable ? portAvailable : portInUse)}");
             AnsiConsole.WriteLine($"- connect to the Kubernetes cluster inside the VM: {VMRequirements.DEFAULT_HOST_Kubernetes_PORT} -> {(kubernetesPortAvailable ? portAvailable : portInUse)}");
             AnsiConsole.WriteLine($"- connect to the HTTP services inside the VM: {VMRequirements.DEFAULT_HOST_HttpIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
+            AnsiConsole.WriteLine($"- connect to the HTTPS services inside the VM: {VMRequirements.DEFAULT_HOST_HttpsIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
             AnsiConsole.WriteLine("");
-            if (!sshPortAvailable || !kubernetesPortAvailable || !httpPortAvailable)
-            {
-                AnsiConsole.WriteLine("You can add the following options to the wordlab host vm create or start commands:");
-                var portOptions = "";
-                if (!sshPortAvailable)
-                {
-                    portOptions += $"--sshport {Network.GetNextAvailablePort(VMRequirements.DEFAULT_HOST_SSH_PORT, tcpPortsInUse)} ";
-                }
-                if (!kubernetesPortAvailable)
-                {
-                    portOptions += $"--kubeport {Network.GetNextAvailablePort(VMRequirements.DEFAULT_HOST_Kubernetes_PORT, tcpPortsInUse)} ";
-                }
-                if (!httpPortAvailable)
-                {
-                    portOptions += $"--httpport {Network.GetNextAvailablePort(VMRequirements.DEFAULT_HOST_HttpIngress_PORT, tcpPortsInUse)}";
-                }
-                AnsiConsole.WriteLine(portOptions);
-            }
 
             return 0;
         }
 
         private static void DisplayRecommendedSpec(string specName, VirtualMachineSpec spec, string errMsg)
         {
-            AnsiConsole.WriteLine($"{specName} Virtual Machine configuration :");
+            AnsiConsole.WriteLine($"{specName} virtual machine configuration :");
             if (!String.IsNullOrEmpty(errMsg))
             {
                 AnsiConsole.WriteLine($"=> {errMsg}");
             }
             else
             {
-                AnsiConsole.WriteLine($"- command: wordslab host vm create --{specName.ToLowerInvariant()}");
                 AnsiConsole.WriteLine($"- number of processors: {spec.Compute.Processors}");
                 AnsiConsole.WriteLine($"- memory size in GB: {spec.Compute.MemoryGB}");
                 if (!String.IsNullOrEmpty(spec.GPU.ModelName))
@@ -400,49 +480,64 @@ namespace wordslab.manager.console.host
         }
     }
 
-    public class VmCreateCommand : VmCommand<VmConfigSettings>
+    public class VmCreateCommand : VmCommand<VmPresetSettings>
     {
         public VmCreateCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmConfigSettings vmSettings)
+        public override int Execute([NotNull] CommandContext context, [NotNull] VmPresetSettings vmSettings)
         {
-            /*
-            // Step 1 : initialize vm config with default values
-            var vmSpec = new VirtualMachineSpec();
-            
-            // Step 2 & 3 : override with command line parameters
-            var errorMessage = vmSettings.ApplyToVMConfig(vmSpec, hostStorage);
-            if (errorMessage != null)
+            var vmName = vmSettings.Name;
+            if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine(errorMessage);
-                return 1;
-            }*
-            if(vmSettings.ClusterDiskSizeGB.HasValue) vmSpec.ClusterDiskSizeGB = vmSettings.ClusterDiskSizeGB.Value;
-            if(vmSettings.DataDiskSizeGB.HasValue) vmSpec.DataDiskSizeGB = vmSettings.DataDiskSizeGB.Value;
-
-            var installUI = new ConsoleProcessUI();
-            var vm = AsyncUtil.RunSync(() => vmManager.CreateLocalVM(vmSpec, installUI));
-            if (vm == null)
-            {
+                AnsiConsole.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
-            // Save the new virtual machine config in the database
-            configStore.AddVirtualMachineConfig(new VirtualMachineConfig(vm));
-            */
-            throw new NotImplementedException();
+            VirtualMachineSpec vmPresetSpec = null;
+            if (vmSettings.UseMinimumSpecs.HasValue || vmSettings.UseRecommendedSpecs.HasValue || vmSettings.UseMaximumSpecs.HasValue)
+            {
+                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
+                if (vmSpecs.MinimumVMSpecIsSupportedOnThisMachine)
+                {
+                    if (vmSettings.UseMinimumSpecs.HasValue && vmSettings.UseMinimumSpecs.Value)
+                    {
+                        vmPresetSpec = vmSpecs.MinimumVMSpec;
+                    }
+                    if (vmSettings.UseRecommendedSpecs.HasValue && vmSettings.UseRecommendedSpecs.Value && vmSpecs.RecommendedVMSpecIsSupportedOnThisMachine)
+                    {
+                        vmPresetSpec = vmSpecs.RecommendedVMSpec;
+                    }
+                    if (vmSettings.UseMaximumSpecs.HasValue && vmSettings.UseMaximumSpecs.Value)
+                    {
+                        vmPresetSpec = vmSpecs.MaximumVMSpecOnThisMachine;
+                    }
+                }
+            }
+
+            var installUI = new ConsoleProcessUI();
+            var vmConfig = AsyncUtil.RunSync(() => vmManager.CreateLocalVMConfig(vmName, vmPresetSpec, configStore.HostMachineConfig, installUI));
+            if(vmConfig == null)
+            {
+                return -1;
+            }
+
+            var vm = AsyncUtil.RunSync(() => vmManager.CreateLocalVM(vmConfig, installUI));
+            if (vm == null)
+            {
+                return -1;
+            }
 
             return 0;
         }        
     }
 
-    public class VmResizeCommand : VmCommand<VmConfigSettings>
+    public class VmResizeCommand : VmCommand<VmNameSettings>
     {
         public VmResizeCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmConfigSettings settings)
+        public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
             AnsiConsole.WriteLine("ERROR: host vm resize command not yet implemented");
             return -1;
@@ -456,7 +551,7 @@ namespace wordslab.manager.console.host
 
         public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            var vmName = settings.MachineName;
+            var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
                 AnsiConsole.WriteLine("Virtual machine name argument is missing");
@@ -471,14 +566,11 @@ namespace wordslab.manager.console.host
             }
 
             var installUI = new ConsoleProcessUI();
-            var success = AsyncUtil.RunSync(() => vmManager.DeleteLocalVM(vm.Name, installUI));
+            var success = AsyncUtil.RunSync(() => vmManager.DeleteLocalVM(vmName, installUI));
             if (!success)
             {
-                return 1;
+                return -1;
             }
-
-            // Remove the virtual machine from the database
-            configStore.RemoveVirtualMachineConfig(vm.Name);
 
             return 0;
         }

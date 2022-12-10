@@ -117,9 +117,23 @@ namespace wordslab.manager.storage
         /// <summary>
         /// Returns null if a virtual machine instance with the specified name is not found
         /// </summary>
+        public VirtualMachineInstance TryGetFirstVirtualMachineInstance(string vmName)
+        {
+            return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderBy(instance => instance.StartTimestamp).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Returns null if a virtual machine instance with the specified name is not found
+        /// </summary>
         public VirtualMachineInstance TryGetLastVirtualMachineInstance(string vmName)
         {
             return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderByDescending(instance => instance.StartTimestamp).FirstOrDefault();
+        }
+
+        public TimeSpan GetVirtualMachineInstanceTotalRunningTime(string vmName)
+        {
+            var totalTicks = VirtualMachineInstances.Where(vmi => vmi.Name == vmName && vmi.StopTimestamp != null).ToList().Select(vmi => vmi.StopTimestamp.Value.Subtract(vmi.StartTimestamp).Ticks).DefaultIfEmpty(0).Sum();
+            return new TimeSpan(totalTicks);
         }
 
         /// <summary>

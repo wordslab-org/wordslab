@@ -57,17 +57,17 @@ namespace wordslab.manager.vm.qemu
 
             SshClient.ImportKnownHostOnClient(ip, sshPort);
 
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName), "ubuntu", ip, sshPort, $"~/{VirtualMachine.k3sExecutableFileName}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName), "ubuntu", ip, sshPort, $"~/{VirtualMachine.k3sImagesFileName}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName), "ubuntu", ip, sshPort, $"~/{VirtualMachine.helmFileName}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{VirtualMachine.k3sExecutableFileName}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{VirtualMachine.k3sImagesFileName}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{VirtualMachine.helmFileName}");
 
             var scriptsPath = GetK3sScriptsPath(storage);
-            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sInstallScript), "ubuntu", ip, sshPort, $"~/{k3sInstallScript}");
-            SshClient.ExecuteRemoteCommand("ubuntu", ip, sshPort, $"chmod a+x {k3sInstallScript}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sStartupScript), "ubuntu", ip, sshPort, $"~/{k3sStartupScript}");
-            SshClient.ExecuteRemoteCommand("ubuntu", ip, sshPort, $"chmod a+x {k3sStartupScript}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sInstallScript), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{k3sInstallScript}");
+            SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, ip, sshPort, $"chmod a+x {k3sInstallScript}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sStartupScript), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{k3sStartupScript}");
+            SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, ip, sshPort, $"chmod a+x {k3sStartupScript}");
 
-            SshClient.ExecuteRemoteCommand("ubuntu", ip, sshPort, $"sudo ./{k3sInstallScript}");
+            SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, ip, sshPort, $"sudo ./{k3sInstallScript}");
         }
 
         public static VirtualDisk CreateBlank(string vmName, int totalSizeGB, HostStorage storage)
@@ -125,6 +125,8 @@ namespace wordslab.manager.vm.qemu
         internal static readonly string ubuntuImageURL = $"https://cloud-images.ubuntu.com/minimal/releases/{ubuntuRelease}/release-{ubuntuVersion}/ubuntu-{ubuntuReleaseNum}-minimal-cloudimg-amd64.img";
         internal static readonly int ubuntuImageSize = 264962048;
         internal static readonly string ubuntuFileName = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}-cloud.img";
+
+        internal static readonly string ubuntuImageUser = QemuDisk.ubuntuImageUser;
 
         // --- wordslab virtual machine scripts ---
 

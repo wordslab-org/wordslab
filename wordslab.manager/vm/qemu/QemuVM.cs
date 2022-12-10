@@ -87,13 +87,13 @@ namespace wordslab.manager.vm.qemu
                 var processId = Qemu.StartVirtualMachine(computeStartArguments.Processors, computeStartArguments.MemoryGB, ClusterDisk.StoragePath, DataDisk.StoragePath, Config.HostSSHPort, Config.HostHttpIngressPort, Config.HostHttpsIngressPort, Config.HostKubernetesPort);
 
                 // Start k3s inside the virtual machine
-                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", Config.HostSSHPort, $"sudo ./{VirtualDisk.k3sStartupScript} wordslab-data");
+                SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, "127.0.0.1", Config.HostSSHPort, $"sudo ./{VirtualDisk.k3sStartupScript} wordslab-data");
 
                 // Get virtual machine IP and kubeconfig
                 string ip = null;
-                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", Config.HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
+                SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, "127.0.0.1", Config.HostSSHPort, "hostname -I | grep -Eo \"^[0-9\\.]+\"", outputHandler: output => ip = output);
                 string kubeconfig = null;
-                SshClient.ExecuteRemoteCommand("ubuntu", "127.0.0.1", Config.HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
+                SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, "127.0.0.1", Config.HostSSHPort, "cat /etc/rancher/k3s/k3s.yaml", outputHandler: output => kubeconfig = output);
 
                 vmInstance.Started(processId, ip, kubeconfig, null);
                 configStore.SaveChanges();

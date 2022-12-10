@@ -162,14 +162,14 @@ public static class ConsoleApp
 
         config.AddBranch("host", config =>
         {
-            config.SetDescription("Manage wordslab virtual machines on your local host machine");
-            config.AddCommand<InstallCommand>("install")
-                        .WithDescription("Install software prequisites and configure your host machine sandbox to enable local virtual machines");
+            config.SetDescription("Manage wordslab virtual machines on your host machine");
+            config.AddCommand<ConfigInitCommand>("init")
+                        .WithDescription("Install software prequisites and configure your host machine sandbox");
             config.AddBranch("config", config =>
             {
                 config.SetDescription("Display and update your host machine sandbox configuration");
-                config.AddCommand<ConfigInfoCommand>("info")
-                    .WithDescription("Display  host machine sandbox configuration");
+                config.AddCommand<ConfigInfoCommand>("show")
+                    .WithDescription("Display host machine sandbox configuration");
                 config.AddCommand<ConfigUpdateCommand>("update")
                         .WithDescription("Update host machine sandbox configuration");
             });
@@ -178,6 +178,8 @@ public static class ConsoleApp
                 config.SetDescription("Create and manage virtual machines on your host machine to run local wordslab clusters");
                 config.AddCommand<VmListCommand>("list")
                     .WithDescription("List all wordslab virtual machines created on your local host");
+                config.AddCommand<VmCreateCommand>("create")
+                        .WithDescription("Create a new wordslab virtual machine on your local host");   
                 config.AddCommand<VmStartCommand>("start")
                         .WithDescription("Start a local wordslab virtual machine on your local host");
                 config.AddCommand<VmStopCommand>("stop")
@@ -186,10 +188,8 @@ public static class ConsoleApp
                         .WithDescription("Display the status of a specific wordslab virtual machine on your local host");
                 config.AddCommand<VmAdviseCommand>("advise")
                     .WithDescription("Advise a minimum, recommended and maximum config for a local virtual machine");
-                config.AddCommand<VmCreateCommand>("create")
-                        .WithDescription("Create a new wordslab virtual machine on your local host");
                 config.AddCommand<VmResizeCommand>("resize")
-                        .WithDescription("Resize the disks of an existing wordslab virtual machine on your local host");
+                        .WithDescription("Resize an existing wordslab virtual machine on your local host");
                 config.AddCommand<VmDeleteCommand>("delete")
                         .WithDescription("DANGER - Delete a local wordslab virtual machine - ALL DATA WILL BE LOST");
             });
@@ -200,37 +200,6 @@ public static class ConsoleApp
                     .WithDescription("Display host machine hardware and operating system information");
                 config.AddCommand<SystemStatusCommand>("status")
                     .WithDescription("Display host machine usage metrics: cpu, memory, storage, network");
-            });
-            config.AddBranch("storage", config =>
-            {
-                config.SetDescription("Display wordslab working directories and disk space usage on your local host machine");
-                config.AddCommand<StorageInfoCommand>("info")
-                    .WithDescription("Display host machine disk space information");
-                config.AddCommand<StorageStatusCommand>("status")
-                    .WithDescription("Display wordslab working directories and disk space usage");
-
-            });
-            config.AddBranch("compute", config =>
-            {
-                config.SetDescription("Display wordslab cpu, gpu, and memory quotas on your local host machine");
-                config.AddCommand<ComputeInfoCommand>("info")
-                    .WithDescription("Display host machine cpu, gpu, and memory information");
-                config.AddCommand<ComputeStatusCommand>("status")
-                    .WithDescription("Display host machine cpu, gpu, and memory usage");
-            });
-            config.AddBranch("network", config =>
-            {
-                config.SetDescription("Display wordslab network traffic on your local host machine");
-                config.AddCommand<NetworkInfoCommand>("info")
-                    .WithDescription("Display host machine network information");
-                config.AddCommand<NetworkStatusCommand>("status")
-                    .WithDescription("Display host machine network ports usage");
-            });
-            config.AddBranch("os", config =>
-            {
-                config.SetDescription("Display operating system and hypervisor information on your local host machine");
-                config.AddCommand<OsInfoCommand>("info")
-                    .WithDescription("Display host machine operating system and hypervisor information");
             });
         });
 

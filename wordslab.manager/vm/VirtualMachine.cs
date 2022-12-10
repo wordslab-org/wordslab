@@ -130,9 +130,9 @@ namespace wordslab.manager.vm
 
         // --- wordslab virtual machine software ---
 
-        // Versions last updated : August 16 2022
+            // Versions last updated : August 16 2022
 
-        // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/
+            // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/
         internal static readonly string k3sVersion = "1.24.3+k3s1";
         internal static readonly string k3sExecutableURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s";
         internal static readonly int    k3sExecutableSize = 65921024;

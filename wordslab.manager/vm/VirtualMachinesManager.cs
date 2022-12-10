@@ -129,8 +129,110 @@ namespace wordslab.manager.vm
             }
         }
 
+        public async Task<VirtualMachineConfig> CreateLocalVMConfig(string vmName, VirtualMachineSpec? vmPresetSpec, HostMachineConfig hostConfig, InstallProcessUI installUI)
+        {
+            installUI.DisplayInstallStep(1, 2, $"Configure the new virtual machine: {vmName}");
+
+            var vmProvider = OS.IsWindows ? VirtualMachineProvider.Wsl : VirtualMachineProvider.Qemu;
+
+            // Option 1: shortcut - use a preset spec -> goal = no user interaction 
+            if (vmPresetSpec != null)
+            {
+                var cmd = installUI.DisplayCommandLaunch("Using the default config passed as a parameter");                
+
+                var vmConfig = new VirtualMachineConfig(vmName, vmPresetSpec,  vmProvider, 
+                    forwardHttpIngressPortOnLocalhost: true, hostHttpIngressPort: hostConfig.HttpPort, allowHttpAccessFromLAN: hostConfig.CanExposeHttpOnLAN,
+                    forwardHttpsIngressPortOnLocalhost: true, hostHttpsIngressPort: hostConfig.HttpsPort, allowHttpsAccessFromLAN: hostConfig.CanExposeHttpsOnLAN);
+
+                installUI.DisplayCommandResult(cmd, true, $"{vmPresetSpec.Compute.Processors} processors, {vmPresetSpec.Compute.MemoryGB} GB memory, {(vmPresetSpec.GPU.GPUCount>0?"use GPU":"no GPU")}, cluster disk: max {vmPresetSpec.Storage.ClusterDiskSizeGB} GB, data disk: max {vmPresetSpec.Storage.ClusterDiskSizeGB} GB");
+
+                return vmConfig;
+            }
+            // Option 2: expert mode - set each property via user interaction 
+            else
+            {
+                try
+                {
+                    var vmSpec = new VirtualMachineSpec();
+
+                    // Compute spec
+                    var processors = await installUI.DisplayInputQuestionAsync($"Number of processors (min {VMRequirements.MIN_VM_PROCESSORS} - max {hostConfig.Processors})", hostConfig.Processors.ToString());
+                    var memory = await installUI.DisplayInputQuestionAsync($"Memory in GB (min {VMRequirements.MIN_VM_MEMORY_GB} - max {hostConfig.MemoryGB})", hostConfig.MemoryGB.ToString());
+                    vmSpec.Compute.Processors = int.Parse(processors);
+                    vmSpec.Compute.MemoryGB = int.Parse(memory);
+
+                    // GPU spec
+                    if (hostConfig.CanUseGPUs)
+                    {
+                        var bestGPU = Compute.GetNvidiaGPUsInfo().OrderByDescending(gpu => (int)gpu.Architecture).ThenByDescending(gpu => gpu.MemoryMB).FirstOrDefault();
+                        if (bestGPU != null)
+                        {
+                            var useGPU = await installUI.DisplayQuestionAsync($"Use Nvidia GPU: {bestGPU.ModelName} {bestGPU.MemoryMB/1024} GB");
+                            if (useGPU)
+                            {
+                                vmSpec.GPU = new GPUSpec() { ModelName = bestGPU.ModelName, MemoryGB = bestGPU.MemoryMB / 1024, GPUCount = 1 };
+                            }
+                        }
+                    }
+
+                    // Storage spec
+                    vmSpec.Storage.ClusterDiskIsSSD = Storage.IsPathOnSSD(hostConfig.VirtualMachineClusterPath);
+                    vmSpec.Storage.DataDiskIsSSD = Storage.IsPathOnSSD(hostConfig.VirtualMachineDataPath);
+                    var clusterDiskSize = await installUI.DisplayInputQuestionAsync($"Max cluster disk size in GB (min {VMRequirements.MIN_VM_CLUSTERDISK_GB} - max {hostConfig.VirtualMachineClusterSizeGB})", hostConfig.VirtualMachineClusterSizeGB.ToString());
+                    var dataDiskSize = await installUI.DisplayInputQuestionAsync($"Max data disk size in GB (min {VMRequirements.MIN_VM_DATADISK_GB} - max {hostConfig.VirtualMachineDataSizeGB})", hostConfig.VirtualMachineDataSizeGB.ToString());
+                    vmSpec.Storage.ClusterDiskSizeGB = int.Parse(clusterDiskSize);
+                    vmSpec.Storage.DataDiskSizeGB = int.Parse(dataDiskSize);
+
+                    // Network config
+                    var forwardHttpIngressPortOnLocalhost = true;
+                    var hostHttpIngressPort = hostConfig.HttpPort;
+                    var allowHttpAccessFromLAN = hostConfig.CanExposeHttpOnLAN;
+                    var forwardHttpsIngressPortOnLocalhost = true;
+                    var hostHttpsIngressPort = hostConfig.HttpsPort;
+                    var allowHttpsAccessFromLAN = hostConfig.CanExposeHttpsOnLAN;
+                    var customNetworkConfig = await installUI.DisplayQuestionAsync("Do you want to customize the VM network config ?");
+                    if(customNetworkConfig)
+                    {
+                        if (OS.IsWindows)
+                        {
+                            forwardHttpIngressPortOnLocalhost = await installUI.DisplayQuestionAsync("Do you want to forward the HTTP ingress port to the host machine ?");
+                        }
+                        if(forwardHttpIngressPortOnLocalhost)
+                        {
+                            var httpPort = await installUI.DisplayInputQuestionAsync("Choose a port for HTTP ingress on the host machine", $"{hostConfig.HttpPort}");
+                            hostHttpIngressPort = int.Parse(httpPort);
+                            allowHttpAccessFromLAN = await installUI.DisplayQuestionAsync("Do you want to allow acces to the HTTP ingress port from the local network (firewall config) ?");
+                        }
+                        if (OS.IsWindows)
+                        {
+                            forwardHttpsIngressPortOnLocalhost = await installUI.DisplayQuestionAsync("Do you want to forward the HTTPS ingress port to the host machine ?");
+                        }
+                        if (forwardHttpsIngressPortOnLocalhost)
+                        {
+                            var httpsPort = await installUI.DisplayInputQuestionAsync("Choose a port for HTTPS ingress on the host machine", $"{hostConfig.HttpsPort}");
+                            hostHttpsIngressPort = int.Parse(httpsPort);
+                            allowHttpsAccessFromLAN = await installUI.DisplayQuestionAsync("Do you want to allow acces to the HTTPS ingress port from the local network (firewall config) ?");
+                        }
+                    }
+
+                    var vmConfig = new VirtualMachineConfig(vmName, vmSpec, vmProvider,
+                    forwardHttpIngressPortOnLocalhost: forwardHttpIngressPortOnLocalhost, hostHttpIngressPort: hostHttpIngressPort, allowHttpAccessFromLAN: allowHttpAccessFromLAN,
+                    forwardHttpsIngressPortOnLocalhost: forwardHttpsIngressPortOnLocalhost, hostHttpsIngressPort: hostHttpsIngressPort, allowHttpsAccessFromLAN: allowHttpsAccessFromLAN);
+
+                    return vmConfig;
+                }
+                catch(Exception ex) 
+                {
+                    installUI.DisplayCommandError($"Failed to parse user input: {ex.Message}");
+                    return null;
+                }
+            }
+        }
+
         public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, InstallProcessUI installUI)
         {
+            installUI.DisplayInstallStep(2, 2, $"Create the new virtual machine: {vmConfig.Name}");
+
             // Check if the vm configuration is compatible with the sandbox defined on the host machine
             CheckLocalVMConfig(vmConfig, configStore, hostStorage);
 

@@ -16,7 +16,7 @@
 
         Task<bool> DisplayAdminScriptQuestionAsync(string scriptDescription, string scriptContent);
 
-        Task<string> DisplayInputQuestion(string question, string defaultValue);
+        Task<string> DisplayInputQuestionAsync(string question, string defaultValue);
     }
 
     public delegate Task RunAndDisplayProgress(Action<double> displayProgress);
