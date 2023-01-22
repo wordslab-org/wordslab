@@ -263,20 +263,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python", "python", "{7886EA
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "containers", "containers", "{66966BBE-5C27-42D6-8EEB-943681BFB555}"
 	ProjectSection(SolutionItems) = preProject
-		check-containers-size.md = check-containers-size.md
-		deeplearning_libraries.md = deeplearning_libraries.md
-		how_to_enable_nvidia_GPU_in_container.md = how_to_enable_nvidia_GPU_in_container.md
-		huggingface-containers.md = huggingface-containers.md
-		jupyter-foundation-install.sh = jupyter-foundation-install.sh
-		jupyter-notebook-install.sh = jupyter-notebook-install.sh
+		doc\infra\containers\check-containers-size.md = doc\infra\containers\check-containers-size.md
+		doc\infra\containers\deeplearning_libraries.md = doc\infra\containers\deeplearning_libraries.md
+		doc\infra\containers\how_to_enable_nvidia_GPU_in_container.md = doc\infra\containers\how_to_enable_nvidia_GPU_in_container.md
+		doc\infra\containers\huggingface-containers.md = doc\infra\containers\huggingface-containers.md
+		doc\infra\containers\jupyter-foundation-install.sh = doc\infra\containers\jupyter-foundation-install.sh
+		doc\infra\containers\jupyter-notebook-install.sh = doc\infra\containers\jupyter-notebook-install.sh
 		doc\infra\containers\jupyter.md = doc\infra\containers\jupyter.md
-		ml-workspace.yaml = ml-workspace.yaml
-		nvidia-cuda-base-install.sh = nvidia-cuda-base-install.sh
-		nvidia-cuda-runtime-install.sh = nvidia-cuda-runtime-install.sh
-		pytorch-install.md = pytorch-install.md
-		ubuntu-test.yaml = ubuntu-test.yaml
-		wordslab-notebook.yaml = wordslab-notebook.yaml
-		__startup_commands.txt = __startup_commands.txt
+		doc\infra\containers\nvidia-cuda-base-install.sh = doc\infra\containers\nvidia-cuda-base-install.sh
+		doc\infra\containers\nvidia-cuda-runtime-install.sh = doc\infra\containers\nvidia-cuda-runtime-install.sh
+		doc\infra\containers\pytorch-install.md = doc\infra\containers\pytorch-install.md
+		doc\infra\containers\ubuntu-test.yaml = doc\infra\containers\ubuntu-test.yaml
+		doc\infra\containers\wordslab-notebook.yaml = doc\infra\containers\wordslab-notebook.yaml
+		doc\infra\containers\__startup_commands.txt = doc\infra\containers\__startup_commands.txt
 	EndProjectSection
 EndProject
 Global
