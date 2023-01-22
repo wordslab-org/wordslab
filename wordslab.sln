@@ -117,8 +117,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "fastai", "fastai", "{A09B1F
 	ProjectSection(SolutionItems) = preProject
 		doc\ai\fastai\docs.fast.ai.csv = doc\ai\fastai\docs.fast.ai.csv
 		doc\ai\fastai\fastaidocs.html = doc\ai\fastai\fastaidocs.html
-		doc\ai\fastai\Generate page.ipynb = doc\ai\fastai\Generate page.ipynb
 		doc\ai\fastai\fastai_docs_v2.7.8.pptx = doc\ai\fastai\fastai_docs_v2.7.8.pptx
+		doc\ai\fastai\Generate page.ipynb = doc\ai\fastai\Generate page.ipynb
 		doc\ai\fastai\links.csv = doc\ai\fastai\links.csv
 		doc\ai\fastai\titles.csv = doc\ai\fastai\titles.csv
 		doc\ai\fastai\URL to fastaidocs.txt = doc\ai\fastai\URL to fastaidocs.txt
@@ -261,6 +261,24 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python", "python", "{7886EA
 		doc\dev\python\ubuntu-python-setup.sh = doc\dev\python\ubuntu-python-setup.sh
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "containers", "containers", "{66966BBE-5C27-42D6-8EEB-943681BFB555}"
+	ProjectSection(SolutionItems) = preProject
+		check-containers-size.md = check-containers-size.md
+		deeplearning_libraries.md = deeplearning_libraries.md
+		how_to_enable_nvidia_GPU_in_container.md = how_to_enable_nvidia_GPU_in_container.md
+		huggingface-containers.md = huggingface-containers.md
+		jupyter-foundation-install.sh = jupyter-foundation-install.sh
+		jupyter-notebook-install.sh = jupyter-notebook-install.sh
+		doc\infra\containers\jupyter.md = doc\infra\containers\jupyter.md
+		ml-workspace.yaml = ml-workspace.yaml
+		nvidia-cuda-base-install.sh = nvidia-cuda-base-install.sh
+		nvidia-cuda-runtime-install.sh = nvidia-cuda-runtime-install.sh
+		pytorch-install.md = pytorch-install.md
+		ubuntu-test.yaml = ubuntu-test.yaml
+		wordslab-notebook.yaml = wordslab-notebook.yaml
+		__startup_commands.txt = __startup_commands.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -317,6 +335,7 @@ Global
 		{1A02D8A2-BBF2-4F67-A93E-82EF77214562} = {D0128A08-DF14-4D69-AF5B-06AC48D470C1}
 		{6EA1B509-4B79-4C83-AE4B-8110CBBA6110} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
 		{7886EA2A-E25F-416D-BBC6-07B8C1A8B831} = {308A9D62-1D2A-4DF7-8676-A0075C8F48FD}
+		{66966BBE-5C27-42D6-8EEB-943681BFB555} = {1A02D8A2-BBF2-4F67-A93E-82EF77214562}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1E574D49-0F7D-4070-9AE4-088FCA10348B}

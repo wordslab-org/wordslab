@@ -158,7 +158,7 @@ namespace wordslab.manager.os
             }
         }
 
-        public static void DeleteNetworkConfig(string vmName, string vmAddress, List<PortConfig> portsConfig, string scriptsDirectory, string logsDirectory)
+        public static void DeleteNetworkConfig(string vmName, List<PortConfig> portsConfig, string scriptsDirectory, string logsDirectory)
         {
             if (OS.IsWindows)
             {

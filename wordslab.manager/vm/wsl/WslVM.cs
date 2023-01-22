@@ -151,7 +151,7 @@ namespace wordslab.manager.vm.wsl
 
             // Delete the host network configuration
             var portsConfig = Config.GetNetworkPortsConfig();
-            Network.DeleteNetworkConfig(Name, RunningInstance.VmIPAddress, portsConfig, storage.ScriptsDirectory, storage.LogsDirectory);
+            Network.DeleteNetworkConfig(Name, portsConfig, storage.ScriptsDirectory, storage.LogsDirectory);
 
             // Reset the running instance
             RunningInstance = null;

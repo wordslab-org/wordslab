@@ -216,11 +216,15 @@ namespace wordslab.manager.console.host
                 {
                     var firstInstance = configStore.TryGetFirstVirtualMachineInstance(vm.Name);
                     var lastInstance = configStore.TryGetLastVirtualMachineInstance(vm.Name);
+                    if(lastInstance.State == VirtualMachineState.Running)
+                    {
+                        lastInstance.Killed($"Virtual machine process not found on {(DateTime.Now.ToString("MM/dd/yy HH:mm:ss"))}");
+                    }
                     var totalRunningTime = configStore.GetVirtualMachineInstanceTotalRunningTime(vm.Name);
                     table.AddRow(
                         vm.Name,
                         firstInstance==null?"":firstInstance.StartTimestamp.ToString("MM/dd/yy HH:mm:ss"),
-                        lastInstance == null ? "" : lastInstance.StopTimestamp.Value.ToString("MM/dd/yy HH:mm:ss"),
+                        lastInstance == null || !lastInstance.StopTimestamp.HasValue ? "" : lastInstance.StopTimestamp.Value.ToString("MM/dd/yy HH:mm:ss"),
                         lastInstance == null ? "" : lastInstance.State.ToString().ToLowerInvariant(),
                         totalRunningTime.ToString(@"d\.hh\:mm\:ss"),
                         vm.Config.Spec.Compute.Processors.ToString(),
