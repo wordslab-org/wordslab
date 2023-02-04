@@ -84,6 +84,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wsl", "wsl", "{5BB86118-B41
 		doc\infra\wsl\wsl networking.md = doc\infra\wsl\wsl networking.md
 		doc\infra\wsl\wsl-commands.txt = doc\infra\wsl\wsl-commands.txt
 		doc\infra\wsl\wsl-ubuntu-cpu.txt = doc\infra\wsl\wsl-ubuntu-cpu.txt
+		doc\infra\wsl\wsl_1.0.md = doc\infra\wsl\wsl_1.0.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{22CA881B-3AE8-4E41-A8F7-F50174C6E0BF}"
