@@ -59,7 +59,10 @@ namespace wordslab.manager.vm.qemu
 
             SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sExecutableFileName), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{VirtualMachine.k3sExecutableFileName}");
             SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.k3sImagesFileName), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{VirtualMachine.k3sImagesFileName}");
-            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.helmFileName), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{VirtualMachine.helmFileName}");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, "helm"), QemuDisk.ubuntuImageUser, ip, sshPort, "~/helm");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, "buildctl"), QemuDisk.ubuntuImageUser, ip, sshPort, "~/buildctl");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, "buildkitd"), QemuDisk.ubuntuImageUser, ip, sshPort, "~/buildkitd");
+            SshClient.CopyFileToRemoteMachine(Path.Combine(storage.DownloadCacheDirectory, "nerdctl"), QemuDisk.ubuntuImageUser, ip, sshPort, "~/nerdctl");
 
             var scriptsPath = GetK3sScriptsPath(storage);
             SshClient.CopyFileToRemoteMachine(Path.Combine(scriptsPath, k3sInstallScript), QemuDisk.ubuntuImageUser, ip, sshPort, $"~/{k3sInstallScript}");
@@ -116,15 +119,14 @@ namespace wordslab.manager.vm.qemu
 
         // --- wordslab virtual machine software ---
 
-        // Versions last updated : August 16 2022
+        // Versions last updated : February 05 2023
 
         // Ubuntu cloud images: https://cloud-images.ubuntu.com/minimal/releases/
-        internal static readonly string ubuntuRelease = "focal";
-        internal static readonly string ubuntuReleaseNum = "20.04";
-        internal static readonly string ubuntuVersion = "20220810";
-        internal static readonly string ubuntuImageURL = $"https://cloud-images.ubuntu.com/minimal/releases/{ubuntuRelease}/release-{ubuntuVersion}/ubuntu-{ubuntuReleaseNum}-minimal-cloudimg-amd64.img";
-        internal static readonly int ubuntuImageSize = 264962048;
-        internal static readonly string ubuntuFileName = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}-cloud.img";
+        internal static readonly string ubuntuRelease = "jammy";
+        internal static readonly string ubuntuReleaseNum = "22.04";
+        internal static readonly string ubuntuImageURL = $"https://cloud-images.ubuntu.com/minimal/releases/{ubuntuRelease}/release/ubuntu-{ubuntuReleaseNum}-minimal-cloudimg-amd64.img";
+        internal static readonly int ubuntuImageSize = 291176448;
+        internal static readonly string ubuntuFileName = $"ubuntu-{ubuntuRelease}-cloud.img";
 
         internal static readonly string ubuntuImageUser = QemuDisk.ubuntuImageUser;
 

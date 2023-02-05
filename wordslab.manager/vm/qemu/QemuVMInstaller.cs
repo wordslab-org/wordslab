@@ -1,6 +1,7 @@
 ﻿using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
+using wordslab.manager.vm.wsl;
 
 namespace wordslab.manager.vm.qemu
 {
@@ -302,16 +303,17 @@ namespace wordslab.manager.vm.qemu
                 bool k3sExecutableOK = true;
                 bool k3sImagesOK = true;
                 bool helmExecutableOK = true;
+                bool nerdctlExecutableOK = true;
 
                 ui.DisplayInstallStep(6, 6, "Download Virtual Machine OS images and Kubernetes tools");
 
-                var c28 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({QemuDisk.ubuntuRelease} {QemuDisk.ubuntuVersion})", QemuDisk.ubuntuImageSize, "Bytes",
+                var c28 = new LongRunningCommand($"Downloading Ubuntu Linux operating system image ({QemuDisk.ubuntuRelease})", QemuDisk.ubuntuImageSize, "Bytes",
                     displayProgress => hostStorage.DownloadFileWithCache(QemuDisk.ubuntuImageURL, QemuDisk.ubuntuFileName,
                                         progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
                     displayResult =>
                     {
                         var ubuntuFile = new FileInfo(Path.Combine(hostStorage.DownloadCacheDirectory, QemuDisk.ubuntuFileName));
-                        ubuntuImageOK = ubuntuFile.Exists && ubuntuFile.Length == QemuDisk.ubuntuImageSize;
+                        ubuntuImageOK = ubuntuFile.Exists && Math.Abs((ubuntuFile.Length - QemuDisk.ubuntuImageSize) / (float)QemuDisk.ubuntuImageSize) <= 0.25;
                         displayResult(ubuntuImageOK);
                     });
 
@@ -343,24 +345,44 @@ namespace wordslab.manager.vm.qemu
                     {
                         // Extract helm executable from the downloaded tar file
                         var helmExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "helm");
-                        if (!File.Exists(helmExecutablePath))
-                        {
-                            var helmTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.helmFileName);
-                            var helmTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "helm-temp");
-                            Directory.CreateDirectory(helmTmpDir);
-                            HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
-                            File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
-                            Directory.Delete(helmTmpDir, true);
-                        }
+                        var helmTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.helmFileName);
+                        var helmTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "helm-temp");
+                        Directory.CreateDirectory(helmTmpDir);
+                        HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
+                        File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
+                        Directory.Delete(helmTmpDir, true);
 
                         var helmExecFile = new FileInfo(helmExecutablePath);
                         helmExecutableOK = helmExecFile.Exists && helmExecFile.Length == VirtualMachine.helmExecutableDiskSize;
                         displayResult(helmExecutableOK);
                     });
 
-                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c28, c29, c30, c31 });
+                var c31b = new LongRunningCommand($"Downloading nerdctl and buildkit executables (v{VirtualMachine.nerdctlVersion})", VirtualMachine.nerdctlBundleDownloadSize, "Bytes",
+                    displayProgress => hostStorage.DownloadFileWithCache(VirtualMachine.nerdctlBundleURL, VirtualMachine.nerdctlFileName, gunzip: true,
+                                        progressCallback: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                    displayResult =>
+                    {
+                        // Extract nerdctl executable from the downloaded tar file
+                        var nerdctlExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "nerdctl");
+                        var buildctlExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "buildctl");
+                        var buildkitdExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "buildkitd");
+                        var nerdctlTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.nerdctlFileName);
+                        var nerdctlTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "nerdctl-temp");
+                        Directory.CreateDirectory(nerdctlTmpDir);
+                        HostStorage.ExtractTarFile(nerdctlTarFile, nerdctlTmpDir);
+                        File.Move(Path.Combine(nerdctlTmpDir, "bin", "nerdctl"), nerdctlExecutablePath);
+                        File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildctl"), buildctlExecutablePath);
+                        File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildkitd"), buildkitdExecutablePath);
+                        Directory.Delete(nerdctlTmpDir, true);
 
-                if (!ubuntuImageOK || !k3sExecutableOK || !k3sImagesOK || !helmExecutableOK)
+                        var nerdctlExecFile = new FileInfo(nerdctlExecutablePath);
+                        nerdctlExecutableOK = nerdctlExecFile.Exists && nerdctlExecFile.Length == VirtualMachine.nerdctlExecutableDiskSize;
+                        displayResult(helmExecutableOK);
+                    });
+
+                ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c28, c29, c30, c31, c31b });
+
+                if (!ubuntuImageOK || !k3sExecutableOK || !k3sImagesOK || !helmExecutableOK || !nerdctlExecutableOK)
                 {
                     return null;
                 }

@@ -10,3 +10,13 @@ source ~/.bashrc
 
 mv ~/helm /usr/local/bin/helm
 chmod a+x /usr/local/bin/helm
+
+mv ~/buildctl /usr/local/bin/buildctl
+chmod a+x /usr/local/bin/buildctl
+mv ~/buildkitd /usr/local/bin/buildkitd
+chmod a+x /usr/local/bin/buildkitd
+mv ~/nerdctl /usr/local/bin/nerdctl
+chmod a+x /usr/local/bin/nerdctl
+
+echo -e "alias nerdctl='nerdctl --address /run/k3s/containerd/containerd.sock --namespace k8s.io'" >> ~/.bash_aliases
+source ~/.bashrc

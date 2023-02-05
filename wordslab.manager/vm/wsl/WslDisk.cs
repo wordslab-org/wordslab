@@ -66,7 +66,7 @@ namespace wordslab.manager.vm.wsl
             Wsl.execShell($"chmod a+x /root/{VirtualDisk.k3sStartupScript}", serviceName);
 
             string cacheDirectory = storage.DownloadCacheDirectory;
-            Wsl.execShell($"/root/{diskInitAndStartScripts[0]} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.k3sImagesFileName}' '{VirtualMachine.helmFileName}'", serviceName, timeoutSec: 60, ignoreError: "perl: warning");
+            Wsl.execShell($"/root/{diskInitAndStartScripts[0]} '{cacheDirectory}' '{VirtualMachine.k3sExecutableFileName}' '{VirtualMachine.k3sImagesFileName}'", serviceName, timeoutSec: 60, ignoreError: "perl: warning");
                        
             Wsl.execShell($"/root/{VirtualDisk.k3sInstallScript}", serviceName, timeoutSec:30);
 
@@ -198,22 +198,22 @@ namespace wordslab.manager.vm.wsl
 
         // --- wordslab virtual machine software ---
 
-        // Versions last updated : August 16 2022
+        // Versions last updated : February 05 2023
 
         // Alpine mini root filesystem: https://alpinelinux.org/downloads/
-        internal static readonly string alpineVersion   = "3.16.0";
+        internal static readonly string alpineVersion   = "3.17.1";
         internal static readonly string alpineImageURL  = $"https://dl-cdn.alpinelinux.org/alpine/v{alpineVersion.Substring(0, 4)}/releases/x86_64/alpine-minirootfs-{alpineVersion}-x86_64.tar.gz";
-        internal static readonly int    alpineImageDownloadSize = 2712602;
-        internal static readonly int    alpineImageDiskSize = 5816320;
+        internal static readonly int    alpineImageDownloadSize = 3252080;
+        internal static readonly int    alpineImageDiskSize = 7342080;
         internal static readonly string alpineFileName  = $"alpine-{alpineVersion}.tar";
 
         // Ubuntu minimum images: https://partner-images.canonical.com/oci/
-        internal static readonly string ubuntuRelease   = "focal";
+        internal static readonly string ubuntuRelease   = "jammy";
         internal static readonly string ubuntuVersion   = "current";
         internal static readonly string ubuntuImageURL  = $"https://partner-images.canonical.com/oci/{ubuntuRelease}/{ubuntuVersion}/ubuntu-{ubuntuRelease}-oci-amd64-root.tar.gz";
         // WARNING : because we need to point tu "current" version, the sizes below are approximate
-        internal static readonly int    ubuntuImageDownloadSize = 27761025;
-        internal static readonly int    ubuntuImageDiskSize = 78499840;
+        internal static readonly int    ubuntuImageDownloadSize = 29826687;
+        internal static readonly int    ubuntuImageDiskSize = 83937280;
         internal static readonly string ubuntuFileName  = $"ubuntu-{ubuntuRelease}-{ubuntuVersion}.tar";
 
         // --- wordslab virtual machine scripts ---

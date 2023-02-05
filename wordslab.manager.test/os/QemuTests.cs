@@ -20,7 +20,8 @@ namespace wordslab.manager.test.os
             var dt2 = storage.DownloadFileWithCache(VirtualMachine.k3sExecutableURL, VirtualMachine.k3sExecutableFileName);
             var dt3 = storage.DownloadFileWithCache(VirtualMachine.k3sImagesURL, VirtualMachine.k3sImagesFileName, gunzip: true);
             var dt4 = storage.DownloadFileWithCache(VirtualMachine.helmExecutableURL, VirtualMachine.helmFileName, gunzip: true);
-            Task.WaitAll(dt1, dt2, dt3, dt4);
+            var dt5 = storage.DownloadFileWithCache(VirtualMachine.nerdctlBundleURL, VirtualMachine.nerdctlFileName, gunzip: true);
+            Task.WaitAll(dt1, dt2, dt3, dt4, dt5);
 
             // Extract helm executable from the downloaded tar file
             var helmExecutablePath = Path.Combine(storage.DownloadCacheDirectory, "helm");
@@ -32,6 +33,22 @@ namespace wordslab.manager.test.os
                 HostStorage.ExtractTarFile(helmTarFile, helmTmpDir);
                 File.Move(Path.Combine(helmTmpDir, "linux-amd64", "helm"), helmExecutablePath);
                 Directory.Delete(helmTmpDir, true);
+            }
+
+            // Extract nerdctl executable from the downloaded tar file
+            var nerdctlExecutablePath = Path.Combine(storage.DownloadCacheDirectory, "nerdctl");
+            var buildctlExecutablePath = Path.Combine(storage.DownloadCacheDirectory, "buildctl");
+            var buildkitdExecutablePath = Path.Combine(storage.DownloadCacheDirectory, "buildkitd");
+            if (!File.Exists(nerdctlExecutablePath) || !File.Exists(buildctlExecutablePath) || !File.Exists(buildkitdExecutablePath))
+            {
+                var nerdctlTarFile = Path.Combine(storage.DownloadCacheDirectory, VirtualMachine.nerdctlFileName);
+                var nerdctlTmpDir = Path.Combine(storage.DownloadCacheDirectory, "nerdctl-temp");
+                Directory.CreateDirectory(nerdctlTmpDir);
+                HostStorage.ExtractTarFile(nerdctlTarFile, nerdctlTmpDir);
+                File.Move(Path.Combine(nerdctlTmpDir, "bin", "nerdctl"), nerdctlExecutablePath);
+                File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildctl"), buildctlExecutablePath);
+                File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildkitd"), buildkitdExecutablePath);
+                Directory.Delete(nerdctlTmpDir, true);
             }
         }
 

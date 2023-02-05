@@ -2,7 +2,6 @@
 downloadpath=$(wslpath "$1")
 k3sexecutablefile=$2
 k3simagesfile=$3
-helmfile=$4
 
 apt update
 apt -y install ca-certificates
@@ -17,6 +16,9 @@ mkdir -p /var/lib
 mkdir -p /var/log/rancher
 mkdir -p /var/volume/rancher
 
-cp $downloadpath/$helmfile ~/helm
+cp $downloadpath/helm ~/helm
+cp $downloadpath/buildctl ~/buildctl
+cp $downloadpath/buildkitd ~/buildkitd
+cp $downloadpath/nerdctl ~/nerdctl
 
 echo -e "[automount]\nenabled=false\n[interop]\nenabled=false\nappendWindowsPath=false" >> /etc/wsl.conf

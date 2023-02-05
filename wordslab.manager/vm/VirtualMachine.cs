@@ -130,26 +130,36 @@ namespace wordslab.manager.vm
 
         // --- wordslab virtual machine software ---
 
-            // Versions last updated : August 16 2022
+        // Versions last updated : February 05 2023
 
-            // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/
-        internal static readonly string k3sVersion = "1.24.3+k3s1";
+        // Rancher k3s releases: https://github.com/k3s-io/k3s/releases/latest
+        internal static readonly string k3sVersion = "1.26.1+k3s1";
         internal static readonly string k3sExecutableURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s";
-        internal static readonly int    k3sExecutableSize = 65921024;
+        internal static readonly int    k3sExecutableSize = 66752512;
         internal static readonly string k3sExecutableFileName = $"k3s-{k3sVersion}";
         internal static readonly string k3sImagesURL = $"https://github.com/k3s-io/k3s/releases/download/v{k3sVersion}/k3s-airgap-images-amd64.tar.gz";
-        internal static readonly int    k3sImagesDownloadSize = 167319501;
-        internal static readonly int    k3sImagesDiskSize = 504174592;
+        internal static readonly int    k3sImagesDownloadSize = 188407521;
+        internal static readonly int    k3sImagesDiskSize = 554935808;
         internal static readonly string k3sImagesFileName = $"k3s-airgap-images-{k3sVersion}.tar";
 
-        // Helm releases: https://github.com/helm/helm/releases
-        internal static readonly string helmVersion = "3.9.3";
+        // Helm releases: https://github.com/helm/helm/releases/latest
+        internal static readonly string helmVersion = "3.11.0";
         internal static readonly string helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
-        internal static readonly int    helmExecutableDownloadSize = 14025325;
-        internal static readonly int    helmExecutableDiskSize = 46374912;
-        internal static readonly string helmFileName = $"heml-{helmVersion}.tar";
+        internal static readonly int    helmExecutableDownloadSize = 15023353;
+        internal static readonly int    helmExecutableDiskSize = 46888960;
+        internal static readonly string helmFileName = $"helm-{helmVersion}.tar";
 
-        // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases
-        internal static readonly string nvidiaContainerRuntimeVersion = "3.11.0";
+        // nerdctl releases: https://github.com/containerd/nerdctl/releases/latest
+        internal static readonly string nerdctlVersion = "1.2.0";
+        internal static readonly string nerdctlBundleURL = $"https://github.com/containerd/nerdctl/releases/download/v${nerdctlVersion}/nerdctl-full-${nerdctlVersion}-linux-amd64.tar.gz";
+        internal static readonly int    nerdctlBundleDownloadSize = 241421255;
+        internal static readonly int    nerdctlBundleDiskSize = 567968768;
+        internal static readonly int    nerdctlExecutableDiskSize = 25710592;
+        internal static readonly string nerdctlFileName = $"nerdctl-full-${nerdctlVersion}.tar";
+
+        // nvidia container runtime versions:
+        // Don't use: https://github.com/NVIDIA/nvidia-container-runtime/releases/latest 
+        // Use this command to get the latest version: apt show nvidia-container-runtime
+        internal static readonly string nvidiaContainerRuntimeVersion = "3.12.0-1";
     }    
 }
