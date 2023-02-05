@@ -25,6 +25,9 @@ namespace wordslab.manager.vm
             DataDisk = dataDisk;
             this.configStore = configStore;
             this.storage = storage;
+
+            // Initialize the running state
+            IsRunning();
         }
 
         private static readonly Regex NAME_REGEX = new Regex("^[a-z0-9-]+$");
@@ -37,13 +40,75 @@ namespace wordslab.manager.vm
 
         public VirtualDisk DataDisk { get; init; }
 
-        public abstract bool IsRunning();
+        protected abstract int FindRunningProcessId();
+
+        public bool IsRunning()
+        {
+            // Check if the distribution is currently running on the host machine
+            var vmProcessId = FindRunningProcessId();
+            var vmProcessFound = vmProcessId >= 0;
+
+            // Get the last instance found in the database
+            RunningInstance = configStore.TryGetLastVirtualMachineInstance(Name);
+
+            // If this VM is currently stopped
+            if (!vmProcessFound)
+            {
+                // Database state: never launched or failed / stopped / killed instance
+                if (RunningInstance == null || (RunningInstance.State != VirtualMachineState.Starting && RunningInstance.State != VirtualMachineState.Running))
+                {
+                    // State is consistent, nothing to do
+                }
+                // Database state: instance starting / running
+                else
+                {
+                    // State is inconsistent, fix the database state
+                    Kill(RunningInstance, $"A running process for virtual machine '{Name}' was not found: it was killed outside of wordslab manager");
+                }
+                RunningInstance = null;
+            }
+
+            // If this VM is currently running
+            if (vmProcessFound)
+            {
+                // Database state: never launched or failed / stopped / killed instance
+                if (RunningInstance == null || (RunningInstance.State != VirtualMachineState.Starting && RunningInstance.State != VirtualMachineState.Running))
+                {
+                    // VM was launched outside of wordslab manager and must now be stopped outside wordslab manager to resynchronize state
+                    throw new InvalidOperationException($"The virtual machine {Name} was launched outside of wordslab manager: please stop it with native commands before you can use it from within wordslab manager again");
+                }
+
+                // Database state: instance starting / running but with a different process ID
+                if(RunningInstance != null && 
+                    (RunningInstance.State == VirtualMachineState.Starting || RunningInstance.State == VirtualMachineState.Running) &&
+                    RunningInstance.VmProcessId != vmProcessId)
+                {
+                    // State is inconsistent, fix the database state
+                    Kill(RunningInstance, $"A running process with the right process id for virtual machine '{Name}' was not found: it was killed outside of wordslab manager");
+
+                    // VM was launched outside of wordslab manager and must now be stopped outside wordslab manager to resynchronize state
+                    throw new InvalidOperationException($"The virtual machine {Name} was launched outside of wordslab manager: please stop it with native commands before you can use it from within wordslab manager again");
+                }
+            }
+
+            return vmProcessFound;
+        }
 
         public VirtualMachineInstance RunningInstance { get; protected set; }
 
         public abstract VirtualMachineInstance Start(ComputeSpec computeStartArguments = null, GPUSpec gpuStartArguments = null);
 
         public abstract void Stop();
+
+        protected void Kill(VirtualMachineInstance instance, string message)
+        {
+            instance.Killed(message);
+            configStore.SaveChanges();
+
+            CleanupAfterStopOrKill();
+        }
+
+        protected abstract void CleanupAfterStopOrKill();
 
         protected VirtualMachineInstance CheckStartArgumentsAndCreateInstance(ComputeSpec computeStartArguments, GPUSpec gpuStartArguments)
         {

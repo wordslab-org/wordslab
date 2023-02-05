@@ -138,6 +138,17 @@ namespace wordslab.manager.console.host
             this.configStore = configStore;
             this.vmManager = new VirtualMachinesManager(hostStorage, configStore);
         }
+
+        public override int Execute(CommandContext context, TSettings settings)
+        {
+            AnsiConsole.WriteLine("Checking local virtual machines state ...");
+            AnsiConsole.WriteLine();
+
+            var vms = vmManager.ListLocalVMs();
+            return ExecuteCommand(vms, context, settings);
+        }
+
+        protected abstract int ExecuteCommand(List<VirtualMachine> vms, CommandContext context, TSettings settings);
     }
 
     public class VmListCommand : VmCommand<NoParamsSettings>
@@ -145,12 +156,8 @@ namespace wordslab.manager.console.host
         public VmListCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] NoParamsSettings settings)
-        {
-            AnsiConsole.WriteLine("Searching local virtual machines ...");
-            AnsiConsole.WriteLine();
-
-            var vms = vmManager.ListLocalVMs();            
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] NoParamsSettings settings)
+        {           
             if (vms.Count == 0)
             {
                 AnsiConsole.WriteLine("No virtual machine found on this host: you can create one with the command \"wordslab host vm create\".");
@@ -216,10 +223,6 @@ namespace wordslab.manager.console.host
                 {
                     var firstInstance = configStore.TryGetFirstVirtualMachineInstance(vm.Name);
                     var lastInstance = configStore.TryGetLastVirtualMachineInstance(vm.Name);
-                    if(lastInstance.State == VirtualMachineState.Running)
-                    {
-                        lastInstance.Killed($"Virtual machine process not found on {(DateTime.Now.ToString("MM/dd/yy HH:mm:ss"))}");
-                    }
                     var totalRunningTime = configStore.GetVirtualMachineInstanceTotalRunningTime(vm.Name);
                     table.AddRow(
                         vm.Name,
@@ -246,7 +249,7 @@ namespace wordslab.manager.console.host
         public VmStartCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmComputeSettings vmSettings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmComputeSettings vmSettings)
         {
             var vmName = vmSettings.Name;
             if (String.IsNullOrEmpty(vmName))
@@ -309,7 +312,7 @@ namespace wordslab.manager.console.host
         public VmStopCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
             var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
@@ -360,7 +363,7 @@ namespace wordslab.manager.console.host
         public VmStatusCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
             var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
@@ -430,7 +433,7 @@ namespace wordslab.manager.console.host
         public VmAdviseCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
             AnsiConsole.WriteLine("Analysing host machine hardware ...");
             AnsiConsole.WriteLine();
@@ -489,7 +492,7 @@ namespace wordslab.manager.console.host
         public VmCreateCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmPresetSettings vmSettings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmPresetSettings vmSettings)
         {
             var vmName = vmSettings.Name;
             if (String.IsNullOrEmpty(vmName))
@@ -541,7 +544,7 @@ namespace wordslab.manager.console.host
         public VmResizeCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
             AnsiConsole.WriteLine("ERROR: host vm resize command not yet implemented");
             return -1;
@@ -553,7 +556,7 @@ namespace wordslab.manager.console.host
         public VmDeleteCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        public override int Execute([NotNull] CommandContext context, [NotNull] VmNameSettings settings)
+        protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
             var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))

@@ -22,12 +22,9 @@ namespace wordslab.manager.vm.googlecloud
             {
                 throw new ArgumentException("VmProvider should be GoogleCloud");
             }
-
-            // Initialize the running state
-            IsRunning();
         }
 
-        public override bool IsRunning()
+        protected override int FindRunningProcessId()
         {
             throw new NotImplementedException();
         }
@@ -38,6 +35,11 @@ namespace wordslab.manager.vm.googlecloud
         }
 
         public override void Stop()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void CleanupAfterStopOrKill()
         {
             throw new NotImplementedException();
         }

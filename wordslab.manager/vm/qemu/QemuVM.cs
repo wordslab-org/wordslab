@@ -36,37 +36,19 @@ namespace wordslab.manager.vm.qemu
             {
                 throw new ArgumentException("VmProvider should be Qemu");
             }
-
-            // Initialize the running state
-            IsRunning();
         }
 
-        public override bool IsRunning()
+        protected override int FindRunningProcessId()
         {
-            // Find running process
             var qemuProc = Qemu.TryFindVirtualMachineProcess(ClusterDisk.StoragePath);
-           
-            // Sync with config database state
-            if(qemuProc != null && RunningInstance == null)
+            if(qemuProc != null)
             {
-                var lastRunningInstance = configStore.TryGetLastVirtualMachineInstance(Name);
-                if(lastRunningInstance == null || lastRunningInstance.VmProcessId != qemuProc.PID)
-                {
-                    throw new InvalidOperationException($"The qemu virtual machine {Name} was launched outside of wordslab manager: please stop it from your terminal before you can use it from within wordslab manager again");
-                }
-                else
-                {
-                    RunningInstance = lastRunningInstance;
-                }
+                return qemuProc.PID;
             }
-            if(qemuProc == null && RunningInstance != null)
+            else
             {
-                RunningInstance.Killed($"A running qemu process for virtual machine {Name} was not found: it was killed outside of wordslab manager");
-                configStore.SaveChanges();
-                RunningInstance = null;
+                return -1;
             }
-
-            return qemuProc != null;
         }
 
         public override VirtualMachineInstance Start(ComputeSpec computeStartArguments = null, GPUSpec gpuStartArguments = null)
@@ -128,12 +110,19 @@ namespace wordslab.manager.vm.qemu
             }
             catch(Exception e)
             {
-                RunningInstance.Killed(e.Message);
-                configStore.SaveChanges();
+                Kill(RunningInstance, e.Message);
             }
 
             // Reset the running instance
             RunningInstance = null;
+
+            // Delete all other vm artifacts
+            CleanupAfterStopOrKill();
+        }
+
+        protected override void CleanupAfterStopOrKill()
+        {
+            // TO DO implement network cleanup here
         }
     }
 }

@@ -38,14 +38,10 @@ namespace wordslab.manager.vm.wsl
             {
                 throw new ArgumentException("VmProvider should be Wsl");
             }
-
-            // Initialize the running state
-            IsRunning();
         }
 
-        public override bool IsRunning()
+        protected override int FindRunningProcessId()
         {
-            // Find running distribution
             var wslDistribFound = false;
             try
             {
@@ -54,27 +50,12 @@ namespace wordslab.manager.vm.wsl
             }
             catch { }
 
-            // Sync with config database state
-            if (wslDistribFound && RunningInstance == null)
+            var runningProcessId = -1;
+            if(wslDistribFound)
             {
-                var lastRunningInstance = configStore.TryGetLastVirtualMachineInstance(Name);
-                if (lastRunningInstance == null || lastRunningInstance.VmProcessId != Wsl.GetVirtualMachineProcessId())
-                {
-                    throw new InvalidOperationException($"The WSL virtual machine {Name} was launched outside of wordslab manager: please stop it from your terminal before you can use it from within wordslab manager again");
-                }
-                else
-                {
-                    RunningInstance = lastRunningInstance;
-                }
+                runningProcessId = Wsl.GetVirtualMachineProcessId();
             }
-            if (!wslDistribFound && RunningInstance != null)
-            {
-                RunningInstance.Killed($"A running WSL distribution for virtual machine '{Name}' was not found: it was killed outside of wordslab manager");
-                configStore.SaveChanges();
-                RunningInstance = null;
-            }
-
-            return wslDistribFound;
+            return runningProcessId;
         }
 
         public override VirtualMachineInstance Start(ComputeSpec computeStartArguments = null, GPUSpec gpuStartArguments = null)
@@ -145,16 +126,21 @@ namespace wordslab.manager.vm.wsl
             }
             catch (Exception e)
             {
-                RunningInstance.Killed(e.Message);
-                configStore.SaveChanges();
+                Kill(RunningInstance, e.Message);
             }
-
-            // Delete the host network configuration
-            var portsConfig = Config.GetNetworkPortsConfig();
-            Network.DeleteNetworkConfig(Name, portsConfig, storage.ScriptsDirectory, storage.LogsDirectory);
 
             // Reset the running instance
             RunningInstance = null;
+            
+            // Delete all other vm artifacts
+            CleanupAfterStopOrKill();
+        }
+
+        protected override void CleanupAfterStopOrKill()
+        {
+            // Delete the host network configuration
+            var portsConfig = Config.GetNetworkPortsConfig();
+            Network.DeleteNetworkConfig(Name, portsConfig, storage.ScriptsDirectory, storage.LogsDirectory);
         }
     }
 }
