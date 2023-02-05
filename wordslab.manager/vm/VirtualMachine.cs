@@ -150,6 +150,6 @@ namespace wordslab.manager.vm
         internal static readonly string helmFileName = $"heml-{helmVersion}.tar";
 
         // nvidia container runtime versions: https://github.com/NVIDIA/nvidia-container-runtime/releases
-        internal static readonly string nvidiaContainerRuntimeVersion = "3.10.0-1";
+        internal static readonly string nvidiaContainerRuntimeVersion = "3.11.0";
     }    
 }
