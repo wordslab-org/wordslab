@@ -14,6 +14,16 @@ namespace wordslab.manager.os
             else { return false; }
         }
 
+        public static bool IsWindows10Version2004OrHigher()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var targetVersion = new Version(10, 0, 19041);
+                return OS.GetOSVersion() >= targetVersion;
+            }
+            else { return false; }
+        }
+
         public static bool IsWindows10Version21H2OrHigher()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

@@ -1,36 +1,18 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using wordslab.manager.storage;
 
 namespace wordslab.manager.os
 {
     // Reference documentation :
-    // https://docs.microsoft.com/en-us/windows/wsl/basic-commands
+    // https://learn.microsoft.com/en-us/windows/wsl/install
+    // https://learn.microsoft.com/en-us/windows/wsl/install-manual
+    // https://learn.microsoft.com/en-us/windows/wsl/basic-commands
     // https://github.com/agowa338/WSL-DistroLauncher-Alpine
     // C# calls to wslapi.dll : https://programmerall.com/article/2051677932/
     public static class Wsl
     {
-        // 0. Check if WSL 2 is already installed
-        
-        public static bool IsWSL2AlreadyInstalled()
-        {
-            if (IsWindowsVersionOKForWSL2())
-            {
-                try
-                {
-                    var wslStatus = Wsl.status();
-                    if (wslStatus != null && wslStatus.IsInstalled) { return true; }
-                }
-                catch (Exception) { /* ignore errors */ }
-                return false;
-            }
-            else { return false; }
-        }
-
-        // 1. Check requirements for running WSL 2
-        // https://docs.microsoft.com/en-us/windows/wsl/install-manual#step-2---check-requirements-for-running-wsl-2
-        // 1.1 You must be running Windows 10. For x64 systems: Version 1903 or higher, with Build 18362 or higher.
-        // 1.2 You must enable the Virtual Machine Platform optional feature. Your machine will require virtualization capabilities to use this feature.
-
+        // --- “in-Windows” version of WSL as a Windows Optional component ---
         // Build 18917 : 
         // - wsl.exe --list --verbose, wsl.exe --list --quiet options
         // - wsl.exe --import --version options 
@@ -58,13 +40,64 @@ namespace wordslab.manager.os
         // Build 21364 :
         // - GUI apps are now available
 
+        // --- WSL in the Microsoft Store as the “Store version of WSL” ---
+        // 0.47.1 (oct 2021)
+        // - WSLg is now bundled as part of the WSL app
+        // - Add mount --vhd to make mounting VHD files easier
+        // - Add --name feature to wsl.exe --mount
+        // - Switch wsl.exe --install to not require the --distribution argument
+        // - Add wsl.exe --version command
+        // - Update wsl.exe --update to launch the store page.
+        // 0.50.2
+        // - Add --no-launch option to wsl.exe --install
+        // 0.58.0
+        // - Add wsl.exe --import-in-place to take an existing.vhdx file and register it as a distro
+        // - Introduce --vhd flag for wsl.exe --import and wsl.exe --export operations
+        // - Increase the default max size of the dynamic VHD to 1TB
+        // 0.67.6
+        // - Add official support for systemd
+        // - Implement wsl.exe --update --web-download to allow updates directly from GitHub
+        // 1.0.3 
+        // - Add a --pre-release option to wsl.exe --update
+        // 1.1.0
+        // - Attempt to always reuse the same IP address in the WSL NAT network
+        // - Make the localhost relay ignore conflicting binds.
+
+        // 0. Check if WSL 2 is already installed
+
+        public static bool IsWSL2AlreadyInstalled()
+        {
+            try
+            {
+                var wslStatus = Wsl.status();
+                if (wslStatus != null && wslStatus.IsInstalled) { return true; }
+            }
+            catch (Exception) { /* ignore errors */ }
+            return false;
+        }
+
+        // 1. Check requirements for running WSL 2
+
+        // LEGACY manual install
+        // https://learn.microsoft.com/en-us/windows/wsl/install-manual#step-2---check-requirements-for-running-wsl-2
+        // 1.1 You must be running Windows 10. For x64 systems: Version 1903 or higher, with Build 18362 or higher.
+        // 1.2 You must enable the Virtual Machine Platform optional feature. Your machine will require virtualization capabilities to use this feature.
+
         public static bool IsWindowsVersionOKForWSL2()
         {
             return OS.IsOSArchitectureX64() && Windows.IsWindows10Version1903OrHigher();
         }
 
+        // Automated install
+        // https://learn.microsoft.com/en-us/windows/wsl/install#prerequisites
+        
+        public static bool IsWindowsVersionOKForInstallCommand()
+        {
+            return Windows.IsWindows10Version2004OrHigher();
+        }
+
         // Additional requirements to enable NVIDIA CUDA on WSL 2
-        // https://docs.microsoft.com/en-us/windows/ai/directml/gpu-cuda-in-wsl
+        // https://learn.microsoft.com/en-us/windows/ai/directml/gpu-cuda-in-wsl
         // 1.3 WSL 2 GPU acceleration will be available on Pascal (GTX 1050) and later GPU architecture on both GeForce and Quadro product SKUs in WDDM mode
         // 1.4 Windows 11 and Windows 10, version 21H2 (build 19044) support running existing ML tools, libraries, and popular frameworks that use NVIDIA CUDA for GPU hardware acceleration inside a WSL 2 instance.
         // 1.5 Download and install the NVIDIA CUDA-enabled driver for WSL to use with your existing CUDA ML workflow
@@ -115,7 +148,7 @@ namespace wordslab.manager.os
             return false;
         }
 
-        // 2. Enable WSL2 dependencies
+        // 2. Enable WSL2 dependencies (manual install only !)
         // https://docs.microsoft.com/en-us/windows/wsl/install-manual#step-3---enable-virtual-machine-feature
         // 2.1 Enable Virtual Machine feature (/featurename:VirtualMachinePlatform) - as Administrator
         // 2.2 Enable the Windows Subsystem for Linux (featurename:Microsoft-Windows-Subsystem-Linux) - as Administrator
@@ -127,20 +160,145 @@ namespace wordslab.manager.os
             var kernelUpdate = await storageManager.DownloadFileWithCache("https://wslstorestorage.blob.core.Windows.net/wslblob/wsl_update_x64.msi", "wsl_update_x64.msi");
             Command.Run("msiexec.exe", "/i " + kernelUpdate.FullName, timeoutSec: 60);
         }
-        
-        /// <summary>
-        /// A complete WSL restart will then be needed with wsl --shutdown
-        /// </summary>
-        public static void UpdateLinuxKernelVersion(string scriptsDirectory, string logsDirectory, bool rollback = false)
-        {
-            string options = "";
-            if (rollback) options += "--rollback ";
-            Command.ExecuteShellScript(Path.Combine(scriptsDirectory,"os","Wsl"), "update-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 300);
-        }
 
         // WSL 2 commands
 
         public const string WSLEXE = "wsl.exe";
+
+        // Install and update Windows Subsystem for Linux & disctributions
+        
+        public static string install_script(string scriptsDirectory)
+        {
+            return Command.GetScriptContent(Path.Combine(scriptsDirectory, "os", "Wsl"), "install-wsl.ps1");
+        }
+
+        public static void install(string scriptsDirectory, string logsDirectory, bool installGithubRelease = false, bool installDefaultDistribution = false)
+        {
+            if(IsWSL2AlreadyInstalled())
+            {
+                return;
+            }
+
+            string options = "";
+            if (installGithubRelease) options += "--web-download ";
+            if (!installDefaultDistribution) options += "--no-distribution ";
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Wsl"), "install-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 1800);
+
+        }
+
+        public static void installDistribution(string distributionName = "Ubuntu", bool launchDistributionAfterInstall = false)
+        {
+            string options = "";
+            if (!launchDistributionAfterInstall) options += "--no-launch ";
+            Command.Run(WSLEXE, $"--install --distribution {distributionName} {options}", timeoutSec: 1800, unicodeEncoding: true);
+        }
+
+        public static string update_script(string scriptsDirectory)
+        {
+            return Command.GetScriptContent(Path.Combine(scriptsDirectory, "os", "Wsl"), "update-wsl.ps1");
+        }
+
+        /// <summary>
+        /// A complete WSL restart will then be needed with wsl --shutdown
+        /// </summary>
+        public static void update(string scriptsDirectory, string logsDirectory, bool installGithubRelease = false)
+        {
+            string options = "";
+            if (installGithubRelease) options += "--web-download ";
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Wsl"), "update-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 1800);
+        }
+
+        public class StatusResult
+        {
+            public bool IsInstalled = false;
+            // All the properties below are set only in IsInstalled == true
+            public int DefaultVersion = 0;
+            public string DefaultDistribution;
+            public bool IsMicrosoftStoreVersion = false;
+            // The two properties below are set only if IsMicrosoftStoreVersion == false
+            // When IsMicrosoftStoreVersion == true, use the Wsl.version() method instead
+            public Version LinuxKernelVersion;
+            public string LastWSLUpdate;
+        }
+
+        public static StatusResult status()
+        {
+            var result = new StatusResult();
+            try
+            {
+                string? distrib = null;
+                string? wslver = null;
+                string? wsldate = null;
+                string? linuxver = null;
+                var outputParser = Command.Output.GetValue(@":\s+(?<distrib>[a-zA-Z]+[^\s]*)\s*$", s => distrib = s).
+                                                  GetValue(@":\s+(?<wslver>[\d])\s*$", s => wslver = s).
+                                                  GetValue(@"\s+(?<wsldate>\d+(?:/\d+)+)\s*$", s => wsldate = s).
+                                                  GetValue(@":\s+(?<linuxver>(?:\d+\.)+\d+)\s*$", s => linuxver = s);
+
+                Command.Run("wsl", "--status", unicodeEncoding: true, outputHandler: outputParser.Run, exitCodeHandler: c => result.IsInstalled = (c == 0));
+
+                if (!String.IsNullOrEmpty(wslver)) result.DefaultVersion = Int32.Parse(wslver);
+                if (!String.IsNullOrEmpty(distrib)) result.DefaultDistribution = distrib;
+                if (!String.IsNullOrEmpty(linuxver)) result.LinuxKernelVersion = new Version(linuxver);
+                if (!String.IsNullOrEmpty(wsldate)) result.LastWSLUpdate = wsldate;
+
+                // Windows 11 - WSL from Microsoft Store
+                if (result.IsInstalled && String.IsNullOrEmpty(linuxver))
+                {
+                    var version = Wsl.version();
+                    result.IsMicrosoftStoreVersion = version.IsMicrosoftStoreVersion;
+                    result.LinuxKernelVersion = version.LinuxKernelVersion;
+                    result.LastWSLUpdate = $"Store version: {version.WslStoreVersion}";
+                }
+            }
+            catch (Exception ex)
+            {
+                // This method is used to check if wsl is installed => do nothing in case of exception
+            }
+            return result;
+        }
+
+        public class VersionResult
+        {
+            public bool IsMicrosoftStoreVersion = false;
+            public Version WslStoreVersion;
+            public Version LinuxKernelVersion;
+            public Version WSLgVersion;
+        }
+
+        public static VersionResult version()
+        {
+            var result = new VersionResult();
+            try
+            {
+                string output = null;
+                Command.Run("wsl", "--version", unicodeEncoding: true, outputHandler: o => output = o, exitCodeHandler: c => result.IsMicrosoftStoreVersion = (c == 0));
+
+                var versionInfos = output.Split('\n');
+                if (versionInfos.Length >= 3)
+                {
+                    result.IsMicrosoftStoreVersion = true;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var versionInfo = versionInfos[i];
+                        var versionIndex = versionInfo.IndexOf(": ");
+                        if (versionIndex > 0)
+                        {
+                            var versionNumber = versionInfo.Substring(versionIndex + 2).Trim();
+                            var version = new Version(versionNumber);
+                            if (i == 0) { result.WslStoreVersion = version; }
+                            if (i == 1) { result.LinuxKernelVersion = version; }
+                            if (i == 2) { result.WSLgVersion = version; }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // This method is used to check if the Windows Store version is installed => do nothing in case of exception
+            }
+            return result;
+        }
 
         // Execute Linux binary files
 
@@ -201,9 +359,14 @@ namespace wordslab.manager.os
 
         // Manage Windows Subsystem for Linux
 
-        public static void install(string distributionName = "Ubuntu")
+        public static bool IsRunning()
         {
-            Command.Run(WSLEXE, $"--install --distribution {distributionName}", timeoutSec: 300, unicodeEncoding: true);
+            return Wsl.list().Any(d => d.IsRunning);
+        }
+
+        public static void shutdown()
+        {
+            Command.Run(WSLEXE, "--shutdown", unicodeEncoding: true);
         }
 
         public static void setDefaultVersion(int version)
@@ -212,68 +375,6 @@ namespace wordslab.manager.os
             {
                 Command.Run(WSLEXE, $"--set-default-version {version}", unicodeEncoding: true);
             }
-        }
-
-        public static void shutdown()
-        {
-            Command.Run(WSLEXE, "--shutdown", unicodeEncoding: true);
-        }
-
-        public class StatusResult
-        {
-            public bool IsInstalled = false;
-            public int DefaultVersion = 0;
-            public string DefaultDistribution;
-            public bool IsMicrosoftStoreVersion = false;
-            public Version LinuxKernelVersion;
-            public string LastWSLUpdate;
-        }
-
-        public static StatusResult status()
-        {
-            var result = new StatusResult();
-            try
-            {
-                string? distrib = null;
-                string? wslver = null;
-                string? wsldate = null;
-                string? linuxver = null;
-                var outputParser = Command.Output.GetValue(@":\s+(?<distrib>[a-zA-Z]+[^\s]*)\s*$", s => distrib = s).
-                                                  GetValue(@":\s+(?<wslver>[\d])\s*$", s => wslver = s).
-                                                  GetValue(@"\s+(?<wsldate>\d+(?:/\d+)+)\s*$", s => wsldate = s).
-                                                  GetValue(@":\s+(?<linuxver>(?:\d+\.)+\d+)\s*$", s => linuxver = s);
-
-                Command.Run("wsl", "--status", unicodeEncoding: true, outputHandler: outputParser.Run, exitCodeHandler: c => result.IsInstalled = (c == 0));
-
-                if (!String.IsNullOrEmpty(wslver)) result.DefaultVersion = Int32.Parse(wslver);
-                if (!String.IsNullOrEmpty(distrib)) result.DefaultDistribution = distrib;
-                if (!String.IsNullOrEmpty(linuxver)) result.LinuxKernelVersion = new Version(linuxver);
-                if (!String.IsNullOrEmpty(wsldate)) result.LastWSLUpdate = wsldate;
-
-                // Windows 11 - WSL from Microsoft Store
-                if(result.IsInstalled && String.IsNullOrEmpty(linuxver))
-                {
-                    string output = null;
-                    Command.Run("wsl", "--version", unicodeEncoding: true, outputHandler: o => output = o);
-                    var versionInfos = output.Split('\n');
-                    if(versionInfos.Length > 2)
-                    {
-                        var kernelVersionInfo = versionInfos[1];
-                        var versionIndex = kernelVersionInfo.IndexOf(": ");
-                        if(versionIndex > 0)
-                        {
-                            linuxver = kernelVersionInfo.Substring(versionIndex+2).Trim();
-                            result.LinuxKernelVersion = new Version(linuxver);
-                            result.LastWSLUpdate = DateTime.Now.ToShortDateString();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // This method is used to check if wsl is installed => do nothing in case of exception
-            }
-            return result;
         }
 
         // https://docs.microsoft.com/en-us/windows/wsl/wsl-config#wslconfig
@@ -457,11 +558,6 @@ namespace wordslab.manager.os
             return config;
         }
 
-        public static bool IsRunning()
-        {
-            return Wsl.list().Any(d => d.IsRunning);
-        }
-
         private static bool ParseBoolean(string value)
         {
             return value == "true";
@@ -564,16 +660,19 @@ namespace wordslab.manager.os
 
         // Manage distributions in Windows Subsystem for Linux
 
-        public static void export(string distribution, string filename)
+        public static void export(string distribution, string filename, bool exportToVHD=false)
         {
-            Command.Run(WSLEXE, $"--export {distribution} \"{filename}\"", timeoutSec: 60, unicodeEncoding: true);
+            string options = "";
+            if (exportToVHD) options += $"--vhd ";
+            Command.Run(WSLEXE, $"--export {distribution} \"{filename}\" {options}", timeoutSec: 300, unicodeEncoding: true);
         }
 
-        public static void import(string distribution, string installPath, string filename, int? version = null)
+        public static void import(string distribution, string installPath, string filename, int? version = null, bool importFromVHD=false)
         {
             string options = "";
             if (version.HasValue) options += $"--version {version.Value} ";
-            Command.Run(WSLEXE, $"--import {distribution} \"{installPath}\" \"{filename}\" {options}", timeoutSec: 60, unicodeEncoding: true);
+            if (importFromVHD) options += $"--vhd ";
+            Command.Run(WSLEXE, $"--import {distribution} \"{installPath}\" \"{filename}\" {options}", timeoutSec: 300, unicodeEncoding: true);
         }
 
         public class DistributionInfo

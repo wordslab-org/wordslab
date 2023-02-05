@@ -2,7 +2,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 
@@ -70,7 +69,7 @@ namespace wordslab.manager.test.os
         public void T08_TestUpdateLinuxKernelVersion()
         {
             var storage = new HostStorage();
-            Wsl.UpdateLinuxKernelVersion(storage.ScriptsDirectory, storage.LogsDirectory);
+            Wsl.update(storage.ScriptsDirectory, storage.LogsDirectory);
 
             var status = Wsl.status();
             Assert.IsTrue(status.LinuxKernelVersion.Major >= 5);
@@ -113,7 +112,7 @@ namespace wordslab.manager.test.os
             var installedDistribs = Wsl.list();
             Assert.IsFalse(installedDistribs.Any(d => d.Distribution == distribution));
 
-            Wsl.install(distribution);
+            Wsl.installDistribution(distribution);
 
             installedDistribs = Wsl.list();
             Assert.IsTrue(installedDistribs.Any(d => d.Distribution == distribution));

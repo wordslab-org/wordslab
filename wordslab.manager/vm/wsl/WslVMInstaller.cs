@@ -144,18 +144,30 @@ namespace wordslab.manager.vm.wsl
                 ui.DisplayCommandResult(c12, wsl2Installed);
 
                 if (!wsl2Installed)
-                {                    
+                {
+                    var useInstallCommand = Wsl.IsWindowsVersionOKForInstallCommand();
+                    var scriptToExecute = useInstallCommand ? Wsl.install_script(hostStorage.ScriptsDirectory) : Windows.EnableWindowsSubsystemForLinux_script(hostStorage.ScriptsDirectory);
+
                     var enableWsl = await ui.DisplayAdminScriptQuestionAsync(
-                        "Activating Windows Virtual Machine Platform and Windows Subsystem for Linux requires ADMIN privileges. Are you OK to execute the following script as admin ?",
-                        Windows.EnableWindowsSubsystemForLinux_script(hostStorage.ScriptsDirectory));
+                            "Activating Windows Virtual Machine Platform and Windows Subsystem for Linux requires ADMIN privileges. Are you OK to execute the following script as admin ?",
+                            scriptToExecute);
                     if (!enableWsl)
                     {
                         return null;
                     }
 
+                    var restartNeeded = true;
                     var c13 = ui.DisplayCommandLaunch("Activating Windows Virtual Machine Platform and Windows Subsystem for Linux");
-                    var restartNeeded = Windows.EnableWindowsSubsystemForLinux(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
+                    if (useInstallCommand)
+                    {
+                        Wsl.install(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
+                    }
+                    else
+                    {                        
+                        restartNeeded = Windows.EnableWindowsSubsystemForLinux(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
+                    }
                     ui.DisplayCommandResult(c13, true);
+
                     if (restartNeeded)
                     {
                         var restartNow = await ui.DisplayQuestionAsync("You need to restart your computer to finish Windows Subsystem for Linux installation. Restart now ?");
@@ -176,7 +188,7 @@ namespace wordslab.manager.vm.wsl
                     if (!linuxKernelVersionOK)
                     {
                         var c15 = ui.DisplayCommandLaunch("Updating Windows Subsystem for Linux kernel to the latest version");
-                        Wsl.UpdateLinuxKernelVersion(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
+                        Wsl.update(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
                         ui.DisplayCommandResult(c15, true);
 
                         var c16 = ui.DisplayCommandLaunch("Checking Windows Subsystem for Linux kernel version (after update)");
