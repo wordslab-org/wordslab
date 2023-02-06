@@ -2,7 +2,6 @@
   "profiles": {
     "wordslab.manager": {
       "commandName": "Project",
-      "commandLineArgs": "host vm start test",
       "workingDirectory": "C:\\Users\\laure\\OneDrive\\Dev\\C#\\wordslab-org\\wordslab\\wordslab.manager\\bin\\Release\\net6.0\\win-x64\\publish",
       "launchBrowser": true,
       "environmentVariables": {
