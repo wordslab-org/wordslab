@@ -201,10 +201,11 @@ namespace wordslab.manager.os
         /// <summary>
         /// A complete WSL restart will then be needed with wsl --shutdown
         /// </summary>
-        public static void update(string scriptsDirectory, string logsDirectory, bool installGithubRelease = false)
+        public static void update(string scriptsDirectory, string logsDirectory, bool installGithubRelease = false, bool installPreRelease = false)
         {
             string options = "";
             if (installGithubRelease) options += "--web-download ";
+            if (installPreRelease) options += "--pre-release";
             Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Wsl"), "update-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 1800);
         }
 
