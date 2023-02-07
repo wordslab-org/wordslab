@@ -141,6 +141,13 @@ namespace wordslab.manager.console.host
 
         public override int Execute(CommandContext context, TSettings settings)
         {
+            if (configStore.HostMachineConfig == null)
+            {
+                AnsiConsole.WriteLine("Host machine config not yet initialized: please execute 'wordslab host init' first");
+                AnsiConsole.WriteLine();
+                return 0;
+            }
+
             AnsiConsole.WriteLine("Checking local virtual machines state ...");
             AnsiConsole.WriteLine();
 

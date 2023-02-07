@@ -211,16 +211,16 @@ namespace wordslab.manager.vm
         internal static readonly string helmVersion = "3.11.0";
         internal static readonly string helmExecutableURL = $"https://get.helm.sh/helm-v{helmVersion}-linux-amd64.tar.gz";
         internal static readonly int    helmExecutableDownloadSize = 15023353;
-        internal static readonly int    helmExecutableDiskSize = 46888960;
+        internal static readonly int    helmExecutableDiskSize = 46374912;
         internal static readonly string helmFileName = $"helm-{helmVersion}.tar";
 
         // nerdctl releases: https://github.com/containerd/nerdctl/releases/latest
         internal static readonly string nerdctlVersion = "1.2.0";
-        internal static readonly string nerdctlBundleURL = $"https://github.com/containerd/nerdctl/releases/download/v${nerdctlVersion}/nerdctl-full-${nerdctlVersion}-linux-amd64.tar.gz";
+        internal static readonly string nerdctlBundleURL = $"https://github.com/containerd/nerdctl/releases/download/v{nerdctlVersion}/nerdctl-full-{nerdctlVersion}-linux-amd64.tar.gz";
         internal static readonly int    nerdctlBundleDownloadSize = 241421255;
-        internal static readonly int    nerdctlBundleDiskSize = 567968768;
+        //internal static readonly int  nerdctlBundleDiskSize = 567968768;
         internal static readonly int    nerdctlExecutableDiskSize = 25710592;
-        internal static readonly string nerdctlFileName = $"nerdctl-full-${nerdctlVersion}.tar";
+        internal static readonly string nerdctlFileName = $"nerdctl-full-{nerdctlVersion}.tar";
 
         // nvidia container runtime versions:
         // Don't use: https://github.com/NVIDIA/nvidia-container-runtime/releases/latest 
