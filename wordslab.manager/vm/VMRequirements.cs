@@ -123,7 +123,7 @@ namespace wordslab.manager.vm
                 var availableGPU = gpusInfo.Where(gpu => gpu.ModelName == vmSpec.GPU.ModelName).FirstOrDefault();
                 if(availableGPU == null)
                 {
-                    availableGPU = gpusInfo.Where(gpu => Compute.GPUInfo.GetArchitecture(gpu.ModelName) == gpuArchitecture).OrderByDescending(gpu => gpu.MemoryMB).FirstOrDefault();
+                    availableGPU = gpusInfo.Where(gpu => Compute.GPUInfo.GetArchitecture(gpu.ModelName) >= gpuArchitecture).OrderByDescending(gpu => gpu.MemoryMB).FirstOrDefault();
                     if (availableGPU != null)
                     {
                         gpuErrorMessage = $"Could not find the required Nvidia GPU (\"{vmSpec.GPU.ModelName}\"), but found a GPU of the same architecture or more recent (\"{availableGPU.ModelName}\").";
