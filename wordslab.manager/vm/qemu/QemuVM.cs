@@ -69,7 +69,7 @@ namespace wordslab.manager.vm.qemu
                 var processId = Qemu.StartVirtualMachine(computeStartArguments.Processors, computeStartArguments.MemoryGB, ClusterDisk.StoragePath, DataDisk.StoragePath, Config.HostSSHPort, Config.HostHttpIngressPort, Config.HostHttpsIngressPort, Config.HostKubernetesPort);
 
                 // Start k3s inside the virtual machine
-                SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, "127.0.0.1", Config.HostSSHPort, $"sudo ./{VirtualDisk.k3sStartupScript} wordslab-data");
+                SshClient.ExecuteRemoteCommand(QemuDisk.ubuntuImageUser, "127.0.0.1", Config.HostSSHPort, $"sudo ./{VirtualDisk.k3sStartupScript} wordslab-data", timeoutSec:300);
 
                 // Get virtual machine IP and kubeconfig
                 string ip = null;

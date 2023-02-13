@@ -38,6 +38,11 @@ do
      sleep 1
 done
 
+until [ -n "$(k3s kubectl get crd | grep ingressroutes)" ]
+do
+     sleep 1
+done
+
 ps x | grep -o "[0-9].*\sk3s server" | grep -Eo "^[0-9]+" > /var/lib/rancher/k3s/pid
 
 # Launch the buildkit dameon as a prerequisite to enable the nerdctl build command

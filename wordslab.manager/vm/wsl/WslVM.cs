@@ -76,7 +76,7 @@ namespace wordslab.manager.vm.wsl
                 DataDisk.StartService();
 
                 // Start k3s inside the virtual machine on the cluster disk
-                Wsl.execShell($"/root/{VirtualDisk.k3sStartupScript} 'wsl/{DataDisk.ServiceName}'", ClusterDisk.ServiceName, timeoutSec:180, ignoreError: "screen size is bogus");
+                Wsl.execShell($"/root/{VirtualDisk.k3sStartupScript} 'wsl/{DataDisk.ServiceName}'", ClusterDisk.ServiceName, timeoutSec:300, ignoreError: "screen size is bogus");
 
                 // Here's an example PowerShell command to add a port proxy that listens on port 4000 on the host and connects it to port 4000 to the WSL 2 VM with IP address 192.168.101.100.
                 // netsh interface portproxy add v4tov4 listenport=4000 listenaddress=0.0.0.0 connectport=4000 connectaddress=192.168.101.100

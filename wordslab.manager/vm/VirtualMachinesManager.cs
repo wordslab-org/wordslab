@@ -1,4 +1,5 @@
-﻿using wordslab.manager.config;
+﻿using System.Xml.Linq;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.vm.qemu;
@@ -259,7 +260,21 @@ namespace wordslab.manager.vm
             }
 
             // Initialize a VirtualMachine object to operate the local VM
-            return TryFindLocalVM(vmConfig.Name);
+            var vm = TryFindLocalVM(vmConfig.Name);
+
+            // First start & stop to initialize Kubernetes install
+            var c = installUI.DisplayCommandLaunch($"Starting virtual machine '{vmConfig.Name}' and installing Kubernetes cluster");
+            try
+            {
+                vm.Start();
+                installUI.DisplayCommandResult(c, true);
+            }
+            catch(Exception e)
+            {
+                installUI.DisplayCommandResult(c, false, errorMessage: e.Message);
+            }
+
+            return vm;
         }
 
         public List<VirtualMachine> ListLocalVMs()
