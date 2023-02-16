@@ -181,19 +181,19 @@ namespace wordslab.manager.vm.wsl
 
                 // BUG FIX : WSL Store version 0.67.6 to 1.0.3 contains a bug => update mandatory
                 var version = Wsl.version();
-                var minBugVersion = new Version("0.67.6");
-                var maxBugVersion = new Version("1.0.3");
+                var minBugVersion = new Version("0.67.6.0");
+                var maxBugVersion = new Version("1.0.3.0");
                 if (version.IsMicrosoftStoreVersion && 
                     (version.WslStoreVersion >= minBugVersion && version.WslStoreVersion <= maxBugVersion))
                 {
-                    var c15b = ui.DisplayCommandLaunch($"WSL Store version {version} contains a bug: updating Windows Subsystem to the latest stable version");
+                    var c15b = ui.DisplayCommandLaunch($"WSL Store version {version.WslStoreVersion} contains a bug: updating Windows Subsystem to the latest stable version");
                     Wsl.update(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
                     ui.DisplayCommandResult(c15b, true);
 
                     version = Wsl.version();
                     if (version.WslStoreVersion <= maxBugVersion)
                     {
-                        var c16b = ui.DisplayCommandLaunch($"WSL Store version {version} still contains the bug: updating Windows Subsystem to the latest pre-release version");
+                        var c16b = ui.DisplayCommandLaunch($"WSL Store version {version.WslStoreVersion} still contains the bug: updating Windows Subsystem to the latest pre-release version");
                         Wsl.update(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory, installPreRelease: true);
                         ui.DisplayCommandResult(c16b, true);
                     }

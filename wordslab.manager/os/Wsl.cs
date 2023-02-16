@@ -206,7 +206,9 @@ namespace wordslab.manager.os
             string options = "";
             if (installGithubRelease) options += "--web-download ";
             if (installPreRelease) options += "--pre-release";
-            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Wsl"), "update-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 1800);
+            int exitCode = 0;
+            Command.ExecuteShellScript(Path.Combine(scriptsDirectory, "os", "Wsl"), "update-wsl.ps1", options, logsDirectory, runAsAdmin: true, timeoutSec: 1800, exitCodeHandler: c => exitCode=c);
+            if(installPreRelease && exitCode == 1) { } // Do nothing, update successful
         }
 
         public class StatusResult
@@ -699,7 +701,9 @@ namespace wordslab.manager.os
                                                WslVersion = Int32.Parse(dict["version"]) },
                     result);
 
-                Command.Run(WSLEXE, "--list --verbose", unicodeEncoding: true, outputHandler: outputParser.Run);
+                int exitCode = 0;
+                Command.Run(WSLEXE, "--list --verbose", unicodeEncoding: true, outputHandler: outputParser.Run, exitCodeHandler: c => exitCode=c);
+                if(exitCode == -1) { } // Do nothing, return empty list
             }
             else
             {

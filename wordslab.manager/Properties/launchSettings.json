@@ -2,7 +2,7 @@
   "profiles": {
     "wordslab.manager": {
       "commandName": "Project",
-      "commandLineArgs": "host vm create test",
+      "commandLineArgs": "host vm start test",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
