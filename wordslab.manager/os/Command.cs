@@ -199,7 +199,7 @@ namespace wordslab.manager.os
                 {
                     process.StartInfo.FileName = "powershell.exe"; 
                     var scriptCommand = $"\"{scriptFile.FullName}\" {scriptArguments}";
-                    var redirectOutputSyntax = $"2>&1 | Tee-Object -FilePath \"{outputLogFile}\"";
+                    var redirectOutputSyntax = $"2>&1 | Out-File -FilePath \"{outputLogFile}\" -Encoding 'oem'";
                     process.StartInfo.Arguments = $"-ExecutionPolicy Bypass {scriptCommand} {redirectOutputSyntax}; exit $LASTEXITCODE";
                 }
                 else

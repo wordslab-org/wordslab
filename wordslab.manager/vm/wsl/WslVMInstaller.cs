@@ -386,7 +386,7 @@ namespace wordslab.manager.vm.wsl
 
                         var nerdctlExecFile = new FileInfo(nerdctlExecutablePath);
                         nerdctlExecutableOK = nerdctlExecFile.Exists && nerdctlExecFile.Length == VirtualMachine.nerdctlExecutableDiskSize;
-                        displayResult(helmExecutableOK);
+                        displayResult(nerdctlExecutableOK);
                     });
 
                 ui.RunCommandsAndDisplayProgress(new LongRunningCommand[] { c27, c28, c29, c30, c31, c31b });
