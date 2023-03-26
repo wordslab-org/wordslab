@@ -7,6 +7,7 @@ apt update
 apt -y install ca-certificates
 apt -y install vim-tiny
 apt -y install gnupg2 curl
+apt -y install git
 
 cp $downloadpath/$k3sexecutablefile ~/k3s
 cp $downloadpath/$k3simagesfile ~/k3s-airgap-images-amd64.tar
