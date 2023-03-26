@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
 using wordslab.manager.storage;
 
@@ -676,6 +677,19 @@ namespace wordslab.manager.os
             if (version.HasValue) options += $"--version {version.Value} ";
             if (importFromVHD) options += $"--vhd ";
             Command.Run(WSLEXE, $"--import {distribution} \"{installPath}\" \"{filename}\" {options}", timeoutSec: 300, unicodeEncoding: true);
+        }
+
+        public static void updateInstallPath(string distribution, string installPath)
+        {
+            if(GetVirtualMachineProcessId() >= 0)
+            {
+                throw new Exception("WSL process is still running: impossible to update distribution install path");
+            }
+
+            // var wslKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Lxss\\");
+            // -> {UUID}\DistributionName
+            // -> {UUID}\BasePath
+            throw new NotImplementedException();
         }
 
         public class DistributionInfo

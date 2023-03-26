@@ -10,7 +10,6 @@ namespace wordslab.manager.console.host
     {
         protected readonly HostStorage hostStorage;
         protected readonly ConfigStore configStore;
-        protected readonly VirtualMachinesManager vmManager;
 
         public ConfigCommand(HostStorage hostStorage, ConfigStore configStore)
         {
@@ -97,11 +96,25 @@ namespace wordslab.manager.console.host
             {
                 AnsiConsole.WriteLine("Host machine config not yet initialized: please execute 'wordslab host init' first");
                 AnsiConsole.WriteLine();
+                return 0;
+            }
+
+            AnsiConsole.WriteLine("Checking local virtual machines state ...");
+            AnsiConsole.WriteLine();
+
+            var vmManager = new VirtualMachinesManager(hostStorage, configStore);
+            var vms = vmManager.ListLocalVMs();
+            var runningVMs = vms.Where(vm => vm.IsRunning()).Count();
+            if(runningVMs > 0)
+            {
+                AnsiConsole.WriteLine($"{runningVMs} local virtual machines are currently running: you need to stop them before you can update the sandbox configuration");
+                AnsiConsole.WriteLine();
                 return 1;
             }
 
-            AnsiConsole.WriteLine("ERROR: host config update command not yet implemented");
-            return -1;
+            var installUI = new ConsoleProcessUI();
+            AsyncUtil.RunSync(() => vmManager.UpdateHostMachineConfig(installUI));
+            return 0;
         }
 
         public class Settings : CommandSettings

@@ -253,50 +253,12 @@ namespace wordslab.manager.vm.qemu
                     return null;
                 }
 
-                var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
-                var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
-                var currentDirectories = new string[] { hostStorage.VirtualMachineClusterDirectory, hostStorage.VirtualMachineDataDirectory, hostStorage.BackupDirectory };
-                var candidateVolumesForCluster = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > (minVmSpec.Storage.ClusterDiskSizeGB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB) && (!minVmSpec.Storage.ClusterDiskIsSSD || di.IsSSD)).ToList();
-                var candidateVolumesForData = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > minVmSpec.Storage.DataDiskSizeGB && (!minVmSpec.Storage.DataDiskIsSSD || di.IsSSD)).ToList();
-                var candidateVolumesForBackup = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > VMRequirements.MIN_HOST_BACKUPDIR_GB).ToList();
-                var candidateVolumesArray = new List<os.DriveInfo>[] { candidateVolumesForCluster, candidateVolumesForData, candidateVolumesForBackup };
-                foreach (var (storageLocation, currentDirectory, candidateVolumes) in storageLocations.Zip(currentDirectories, candidateVolumesArray))
-                {
-                    var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} [{(di.IsSSD ? "SDD" : "HDD")}] [{di.FreeSpaceMB / 1000f:F1} GB free]"));
-                    var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));
-                    var defaultPath = currentPathIsOK ? currentDirectory : null;
-                    var storageDescription = storageDescriptions[(int)storageLocation];
-                    var targetPath = await ui.DisplayInputQuestionAsync($"Choose a base directory to store the {storageDescription} (a subdirectory {HostStorage.GetSubdirectoryFor(StorageLocation.VirtualMachineCluster)} will be created). Candidate volumes: ${volumeCandidates})", defaultPath);
-                    if (!targetPath.Equals(currentDirectory))
-                    {
-                        hostStorage.MoveConfigurableDirectoryTo(storageLocation, targetPath);
-                    }
-                }
-                machineConfig.VirtualMachineClusterPath = hostStorage.VirtualMachineDataDirectory;
-                machineConfig.VirtualMachineDataPath = hostStorage.VirtualMachineDataDirectory;
-                machineConfig.BackupPath = hostStorage.BackupDirectory;
+                await ConfigureHostStorage(hostStorage, ui, machineConfig, minVmSpec, drivesInfo);
 
                 // 5. Configure a sandbox to host the local virtual machines
 
                 ui.DisplayInstallStep(5, 6, "Configure a sandbox to host the local virtual machines");
-
-                var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
-                var recVmSpec = vmSpecs.RecommendedVMSpec;
-                var maxVmSpec = vmSpecs.MaximumVMSpecOnThisMachine;
-
-                machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
-                machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
-
-                machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
-                machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
-                machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", (Storage.GetDriveInfoFromPath(machineConfig.BackupPath).FreeSpaceMB/1000).ToString()));
-
-                machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
-                machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
-                machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
-                machineConfig.CanExposeHttpOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster http port from other machines on the local network");
-                machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
-                machineConfig.CanExposeHttpsOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster https port from other machines on the local network");
+                await ConfigureHostSandbox(ui, machineConfig, minVmSpec);
 
                 // 6. Download VM software images
                 bool ubuntuImageOK = true;
@@ -394,6 +356,78 @@ namespace wordslab.manager.vm.qemu
                 ui.DisplayCommandError(ex.Message);
                 return null;
             }
+        }
+
+        private static async Task ConfigureHostStorage(HostStorage hostStorage, InstallProcessUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
+        {
+            var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
+            var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
+            var currentDirectories = new string[] { hostStorage.VirtualMachineClusterDirectory, hostStorage.VirtualMachineDataDirectory, hostStorage.BackupDirectory };
+            var candidateVolumesForCluster = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > (minVmSpec.Storage.ClusterDiskSizeGB + VMRequirements.MIN_HOST_DOWNLOADDIR_GB) && (!minVmSpec.Storage.ClusterDiskIsSSD || di.IsSSD)).ToList();
+            var candidateVolumesForData = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > minVmSpec.Storage.DataDiskSizeGB && (!minVmSpec.Storage.DataDiskIsSSD || di.IsSSD)).ToList();
+            var candidateVolumesForBackup = drivesInfo.Values.Where(di => di.FreeSpaceMB / 1000f > VMRequirements.MIN_HOST_BACKUPDIR_GB).ToList();
+            var candidateVolumesArray = new List<os.DriveInfo>[] { candidateVolumesForCluster, candidateVolumesForData, candidateVolumesForBackup };
+            foreach (var (storageLocation, currentDirectory, candidateVolumes) in storageLocations.Zip(currentDirectories, candidateVolumesArray))
+            {
+                var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} [{(di.IsSSD ? "SDD" : "HDD")}] [{di.FreeSpaceMB / 1000f:F1} GB free]"));
+                var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));
+                var defaultPath = currentPathIsOK ? currentDirectory : null;
+                var storageDescription = storageDescriptions[(int)storageLocation];
+                var targetPath = await ui.DisplayInputQuestionAsync($"Choose a base directory to store the {storageDescription} (a subdirectory {HostStorage.GetSubdirectoryFor(StorageLocation.VirtualMachineCluster)} will be created). Candidate volumes: ${volumeCandidates})", defaultPath);
+                if (!targetPath.Equals(currentDirectory))
+                {
+                    hostStorage.MoveConfigurableDirectoryTo(storageLocation, targetPath);
+                }
+            }
+            machineConfig.VirtualMachineClusterPath = hostStorage.VirtualMachineDataDirectory;
+            machineConfig.VirtualMachineDataPath = hostStorage.VirtualMachineDataDirectory;
+            machineConfig.BackupPath = hostStorage.BackupDirectory;
+        }
+
+        private static async Task ConfigureHostSandbox(InstallProcessUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
+        {
+            var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
+            var recVmSpec = vmSpecs.RecommendedVMSpec;
+            var maxVmSpec = vmSpecs.MaximumVMSpecOnThisMachine;
+
+            machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
+            machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
+
+            machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
+            machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
+            machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", (Storage.GetDriveInfoFromPath(machineConfig.BackupPath).FreeSpaceMB / 1000).ToString()));
+
+            machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
+            machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
+            machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
+            machineConfig.CanExposeHttpOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster http port from other machines on the local network");
+            machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
+            machineConfig.CanExposeHttpsOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster https port from other machines on the local network");
+        }
+
+
+        public static async Task<HostMachineConfig> UpdateHostMachineConfig(HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
+        {
+            // 1. Configure host machine Storage
+
+            var drivesInfo = Storage.GetDrivesInfo();
+            var minVmSpec = VMRequirements.GetMinimumVMSpec();
+
+            var doConfigStorage = await ui.DisplayQuestionAsync("Do you want to update the base storage directories ?");
+            if (doConfigStorage)
+            {
+                await ConfigureHostStorage(hostStorage, ui, hostConfig, minVmSpec, drivesInfo);
+            }
+
+            // 2. Configure a sandbox to host the local virtual machines
+
+            var doConfigSandbox = await ui.DisplayQuestionAsync("Do you want to update the sandbox configuration (processors, memory, GPU, network ports available for your virtual machines) ?");
+            if (doConfigSandbox)
+            {
+                await ConfigureHostSandbox(ui, hostConfig, minVmSpec);
+            }
+
+            return hostConfig;
         }
 
         public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)

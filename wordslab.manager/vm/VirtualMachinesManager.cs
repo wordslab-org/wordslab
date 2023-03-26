@@ -47,6 +47,26 @@ namespace wordslab.manager.vm
             return configStore.HostMachineConfig;
         }
 
+        public async Task<HostMachineConfig> UpdateHostMachineConfig(InstallProcessUI installUI)
+        {
+            if (configStore.HostMachineConfig == null)
+            {
+                throw new Exception($"Host machine {OS.GetMachineName()} was not yet configured");
+            }
+
+            if (OS.IsWindows)
+            {
+                await WslVMInstaller.UpdateHostMachineConfig(configStore.HostMachineConfig, hostStorage, installUI);
+            }
+            else if (OS.IsLinux || OS.IsMacOS)
+            {
+                await QemuVMInstaller.UpdateHostMachineConfig(configStore.HostMachineConfig, hostStorage, installUI);
+            }
+            configStore.SaveChanges();
+
+            return configStore.HostMachineConfig;
+        }
+
         internal void CheckLocalVMConfig(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage)
         {
             // Check if a virtual machine with the same name already exists
@@ -319,16 +339,12 @@ namespace wordslab.manager.vm
                 {
                     throw new Exception($"Your host machine is in an inconsistent state: virtual machine '{vmName}' found on disk but not the configuration database");
                 }
-                try
+                var vm = TryFindLocalVM(vmName);
+                if(vm == null )
                 {
-                    var vm = TryFindLocalVM(vmName);
-                    vms.Add(vm);
-                }
-                catch(Exception e)
-                {
-
                     throw new Exception($"Your host machine is in an inconsistent state: virtual machine '{vmName}' found in the configuration database but not on disk");
                 }
+                vms.Add(vm);
             }         
             
             return vms;
