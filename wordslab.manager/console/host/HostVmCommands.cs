@@ -228,18 +228,16 @@ namespace wordslab.manager.console.host
                 table.AddColumn("Data disk");
                 foreach (var vm in stoppedVMs)
                 {
-                    var firstInstance = configStore.TryGetFirstVirtualMachineInstance(vm.Name);
-                    var lastInstance = configStore.TryGetLastVirtualMachineInstance(vm.Name);
-                    var totalRunningTime = configStore.GetVirtualMachineInstanceTotalRunningTime(vm.Name);
+                    var displayStatus = vm.GetDisplayStatus();
                     table.AddRow(
                         vm.Name,
-                        firstInstance==null?"":firstInstance.StartTimestamp.ToString("MM/dd/yy HH:mm:ss"),
-                        lastInstance == null || !lastInstance.StopTimestamp.HasValue ? "" : lastInstance.StopTimestamp.Value.ToString("MM/dd/yy HH:mm:ss"),
-                        lastInstance == null ? "" : lastInstance.State.ToString().ToLowerInvariant(),
-                        totalRunningTime.ToString(@"d\.hh\:mm\:ss"),
-                        vm.Config.Spec.Compute.Processors.ToString(),
-                        $"{vm.Config.Spec.Compute.MemoryGB}GB",
-                        vm.Config.Spec.GPU.ToString(),
+                        displayStatus.FirstStart,
+                        displayStatus.LastStop,
+                        displayStatus.LastState,
+                        displayStatus.TotalTime,
+                        displayStatus.Processors,
+                        displayStatus.Memory,
+                        displayStatus.GPU,
                         vm.ClusterDisk.CurrentSizeGB + "GB",
                         vm.DataDisk.CurrentSizeGB + "GB");
                 }

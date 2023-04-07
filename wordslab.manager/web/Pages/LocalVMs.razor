@@ -1,8 +1,308 @@
 ﻿@page "/"
 @page "/localvm"
 
+@implements IDisposable
+
+@inject HostStorage HostStorage
+@inject ConfigStore ConfigStore
+@inject VirtualMachinesManager VmManager
+
 <PageTitle>Local VMs</PageTitle>
 
-<h1>Local virtual machines</h1>
+<p>Host machine: <b>@OS.GetMachineName()</b></p>
 
-Web interface not yet implemented in this version, please use the command line.
+@{
+    var config = ConfigStore.HostMachineConfig;
+}
+
+@if (config == null)
+{ 
+    <p>Host machine sandbox not yet configured.</p>
+}
+else
+{
+    <h3>Local virtual machines</h3>
+
+    var vms = VmManager.ListLocalVMs();
+    if(vms.Count > 0)
+    {
+        var runningVMs = vms.Where(vm => vm.IsRunning()).ToList();
+        if (runningVMs.Count > 0)
+        {
+            <h5>Running virtual machines</h5>
+            <table class="table table-striped table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th></th>
+                        <th scope="col">Name</th>
+                        <th scope="col">URL</th>
+                        <th scope="col">Processors</th>
+                        <th scope="col">Memory</th>
+                        <th scope="col">GPU</th>
+                        <th scope="col">Cluster disk</th>
+                        <th scope="col">Data disk</th>
+                        <th scope="col">Started on</th>
+                        <th scope="col">Running since</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var vm in runningVMs)
+                    {
+                        var instance = vm.RunningInstance;
+                        var displayStatus = instance.GetDisplayStatus();
+                        string statusMessage;
+                        vmsStatus.TryGetValue(vm.Name, out statusMessage);
+
+                        <tr class="align-middle">
+                           <td>
+                                <button class="btn btn-primary" disabled=@(statusMessage == "stopping") @onclick="@(async () => await StopLocalVM(vm))">
+                                @if(statusMessage == "stopping")
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <text>   Stopping...</text>
+                                } 
+                                else 
+                                {                                    
+                                    <text>Stop</text>
+                                }
+                                </button>
+                                @if(statusMessage != null && statusMessage.StartsWith("Failed"))
+                                {
+                                    <div class="alert alert-primary" role="alert">
+                                      @statusMessage
+                                    </div>
+                                }
+                            </td>
+                            <td class="fs-4 fw-bold">@vm.Name</td>
+                            <td><a href="@instance.GetHttpURL()" target="_blank">@instance.GetHttpURL()</a></td>                            
+                            <td>@displayStatus.Processors <div class="text-primary">@displayStatus.ProcessorsUsage used</div></td>
+                            <td>@displayStatus.Memory <div class="text-primary">@displayStatus.MemoryUsage used</div></td>
+                            <td>@displayStatus.GPU <div class="text-primary">@displayStatus.GPUUsage</div></td>
+                            <td>@vm.Config.Spec.Storage.ClusterDiskSizeGB GB <div class="text-primary">@vm.ClusterDisk.CurrentSizeGB GB used</div></td>
+                            <td>@vm.Config.Spec.Storage.DataDiskSizeGB GB <div class="text-primary">@vm.DataDisk.CurrentSizeGB GB used</div></td>
+                            <td>@displayStatus.StartedOn</td>
+                            <td>@displayStatus.RunningTime</td>
+                        </tr>        
+                    }
+                </tbody>
+            </table>
+        }
+                
+        var stoppedVMs = vms.Where(vm => !vm.IsRunning()).ToList();
+        if (stoppedVMs.Count > 0)
+        {
+            <h5>Stopped virtual machines</h5>
+            <table class="table table-striped table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th></th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Processors</th>
+                        <th scope="col">Memory</th>
+                        <th scope="col">GPU</th>
+                        <th scope="col">Cluster disk</th>
+                        <th scope="col">Data disk</th>
+                        <th scope="col">First start</th>
+                        <th scope="col">Last stop</th>
+                        <th scope="col">Last state</th>
+                        <th scope="col">Total time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var vm in stoppedVMs)
+                    {
+                        var displayStatus = vm.GetDisplayStatus();
+                        string statusMessage;
+                        vmsStatus.TryGetValue(vm.Name, out statusMessage); 
+
+                        <tr class="align-middle">
+                            <td>
+                                <button class="btn btn-primary" disabled=@(statusMessage == "starting") @onclick="@(async () => await StartLocalVM(vm))">
+                                @if(statusMessage == "starting")
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <text>   Starting...</text>
+                                } 
+                                else 
+                                {                                    
+                                    <text>Start</text>
+                                }
+                                </button>
+                                @if(statusMessage != null && statusMessage.StartsWith("Failed"))
+                                {
+                                    <div class="alert alert-primary" role="alert">
+                                      @statusMessage
+                                    </div>
+                                }
+                            </td>
+                            <td>@vm.Name</td>
+                            <td>@displayStatus.Processors</td>
+                            <td>@displayStatus.Memory</td>
+                            <td>@displayStatus.GPU</td>
+                            <td>@vm.Config.Spec.Storage.ClusterDiskSizeGB GB <div class="text-primary">@vm.ClusterDisk.CurrentSizeGB GB used</div></td>
+                            <td>@vm.Config.Spec.Storage.DataDiskSizeGB GB <div class="text-primary">@vm.DataDisk.CurrentSizeGB GB used</div></td>
+                            <td>@displayStatus.FirstStart</td>
+                            <td>@displayStatus.LastStop</td>
+                            <td>@displayStatus.LastState</td>
+                            <td>@displayStatus.TotalTime</td>
+                        </tr>        
+                    }
+                </tbody>
+            </table>
+        }
+    }
+else
+{
+    <p>No virtual machines found.</p>        
+}
+
+<h3 class="mt-5">Host machine sandbox</h3>
+
+<p>Wordslab install path: <small>@HostStorage.AppDirectory</small></p>
+
+    <h5>Compute</h5>
+    <table class="table table-striped table-bordered">
+        <thead class="thead-light">
+            <tr>
+                <th scope="col">Max vm processors</th>
+                <th scope="col">Max vm memory</th>
+                <th scope="col">Can use GPUs?</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@config.Processors</td>
+                <td>@config.MemoryGB GB</td>
+                <td>@config.CanUseGPUs</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h5>Storage</h5>
+    <table class="table table-striped table-bordered">
+        <thead class="thead-light">
+            <tr>
+                <th></th>
+                <th scope="col">Storage path</th>
+                <th scope="col">Max size</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th scope="row">Vm cluster disks</th>
+                <td><small>@config.VirtualMachineClusterPath</small></td>
+                <td>@config.VirtualMachineClusterSizeGB GB</td>
+            </tr>
+            <tr>
+                <th scope="row">Vm data disks</th>
+                <td><small>@config.VirtualMachineDataPath</small></td>
+                <td>@config.VirtualMachineDataSizeGB GB</td>
+            </tr>
+            <tr>
+                <th scope="row">Backups</th>
+                <td><small>@config.BackupPath</small></td>
+                <td>@config.BackupSizeGB GB</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h5>Network</h5>
+    <table class="table table-striped table-bordered">
+        <thead class="thead-light">
+            <tr>
+                @if (!OS.IsWindows)
+                {
+                <th scope="col">SSH ports range</th>
+                }
+                <th scope="col">Kubernetes ports range</th>
+                <th scope="col">Http ports range</th>
+                <th scope="col">Can expose Http on LAN?</th>                
+                <th scope="col">Https ports range</th>
+                <th scope="col">Can expose Https on LAN?</th> 
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                @if (!OS.IsWindows)
+                {
+                <td>@config.SSHPort-@(config.SSHPort+9)</td>
+                }
+                <td>@config.KubernetesPort-@(config.KubernetesPort+9)</td>
+                <td>@config.HttpPort-@(config.HttpPort+9)</td>
+                <td>@config.CanExposeHttpOnLAN</td>
+                <td>@config.HttpsPort-@(config.HttpsPort+9)</td>
+                <td>@config.CanExposeHttpsOnLAN</td>
+            </tr>
+        </tbody>
+    </table>
+}
+
+@code{
+    private System.Timers.Timer _timer;
+
+    protected override void OnInitialized()
+    {
+        _timer = new System.Timers.Timer(5000); // 5000 milliseconds = 5 seconds
+        _timer.Elapsed += OnTimerElapsed;
+        _timer.AutoReset = true;
+        _timer.Start();
+    }
+
+    private void OnTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        _timer.Dispose();
+    }
+
+    private Dictionary<string, string> vmsStatus = new Dictionary<string, string>();
+
+    private async Task StartLocalVM(VirtualMachine vm)
+    {
+        string vmStatus;
+        vmsStatus.TryGetValue(vm.Name, out vmStatus);
+        if (vmStatus != "starting")
+        {
+            vmsStatus[vm.Name] = "starting";
+            StateHasChanged();
+            await Task.Yield();
+
+            try
+            {
+                vm.Start();
+                vmsStatus.Remove(vm.Name);
+            }
+            catch (Exception e)
+            {
+                vmsStatus[vm.Name] = $"Failed to start VM: {e.Message}";
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task StopLocalVM(VirtualMachine vm)
+    {
+        string vmStatus;
+        vmsStatus.TryGetValue(vm.Name, out vmStatus);
+        if (vmStatus != "stopping")
+        {
+            vmsStatus[vm.Name] = "stopping";
+            StateHasChanged();
+            await Task.Yield();
+
+            try
+            {
+                vm.Stop();
+                vmsStatus.Remove(vm.Name);
+            }
+            catch (Exception e)
+            {
+                vmsStatus[vm.Name] = $"Failed to stop VM: {e.Message}";
+            }
+            StateHasChanged();
+        }
+    }
+}

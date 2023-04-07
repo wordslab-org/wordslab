@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.os;
+using wordslab.manager.vm;
 
 public static class WebApp
 {
@@ -22,6 +23,10 @@ public static class WebApp
         builder.Services.AddRazorPages();
         builder.Services.Configure<RazorPagesOptions>(options => options.RootDirectory = "/web/Pages");
         builder.Services.AddServerSideBlazor();
+
+        // Register VirtualMachinesManager service
+
+        builder.Services.AddScoped<VirtualMachinesManager>();    
 
         // Initialize the web application host
 

@@ -193,6 +193,37 @@ namespace wordslab.manager.vm
             return vmInstance;
         }
 
+        // Display
+
+        public class DisplayStatus
+        {
+            public string FirstStart;
+            public string LastStop;
+            public string LastState;
+            public string TotalTime;
+            public string Processors;
+            public string Memory;
+            public string GPU;
+        }
+
+        public DisplayStatus GetDisplayStatus()
+        {
+            var firstInstance = configStore.TryGetFirstVirtualMachineInstance(Name);
+            var lastInstance = configStore.TryGetLastVirtualMachineInstance(Name);
+            var totalRunningTime = configStore.GetVirtualMachineInstanceTotalRunningTime(Name);
+
+            var status = new DisplayStatus();
+
+            status.FirstStart = firstInstance == null ? "" : firstInstance.StartTimestamp.ToString("MM/dd/yy HH:mm:ss");
+            status.LastStop = lastInstance == null || !lastInstance.StopTimestamp.HasValue ? "" : lastInstance.StopTimestamp.Value.ToString("MM/dd/yy HH:mm:ss");
+            status.LastState = lastInstance == null ? "" : lastInstance.State.ToString().ToLowerInvariant();
+            status.TotalTime = totalRunningTime.ToString(@"d\.hh\:mm\:ss");
+            status.Processors = Config.Spec.Compute.Processors.ToString();
+            status.Memory = $"{Config.Spec.Compute.MemoryGB} GB";
+            status.GPU = Config.Spec.GPU.ToString();
+            return status;
+        }
+
         // --- wordslab virtual machine software ---
 
         // Versions last updated : February 05 2023

@@ -2,7 +2,6 @@
   "profiles": {
     "wordslab.manager": {
       "commandName": "Project",
-      "commandLineArgs": "host config update",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

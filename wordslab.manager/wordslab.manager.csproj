@@ -121,4 +121,8 @@
     <PackageReference Include="Spectre.Console.Cli" Version="0.45.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="images\" />
+  </ItemGroup>
+
 </Project>

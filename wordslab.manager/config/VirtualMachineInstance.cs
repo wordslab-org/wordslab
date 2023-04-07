@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using wordslab.manager.os;
 using wordslab.manager.vm.qemu;
 
@@ -133,11 +134,11 @@ namespace wordslab.manager.config
                 {
                     ip = Network.GetIPAddressesAvailable().Values.Where(addr => !addr.IsLoopback).First().Address;
                 }
-                return $"http://{ip}:{Config.HostHttpIngressPort}/status";
+                return $"http://{ip}:{Config.HostHttpIngressPort}/wordslab";
             }
             else
             {
-                return $"http://{VmIPAddress}:{Config.Spec.Network.HttpIngressPort}/status";
+                return $"http://{VmIPAddress}:{Config.Spec.Network.HttpIngressPort}/wordslab";
             }
         }
 
@@ -190,8 +191,11 @@ namespace wordslab.manager.config
             public string StoppedOn;
             public string RunningTime;
             public string Processors;
+            public string ProcessorsUsage;
             public string Memory;
+            public string MemoryUsage;
             public string GPU;
+            public string GPUUsage;
         }
 
         public DisplayStatus GetDisplayStatus()
@@ -204,6 +208,32 @@ namespace wordslab.manager.config
             status.Processors = ComputeStartArguments.Processors.ToString();
             status.Memory = $"{ComputeStartArguments.MemoryGB} GB";
             status.GPU = GPUStartArguments.ToString();
+
+            if (State == VirtualMachineState.Running)
+            {
+                status.ProcessorsUsage = $"{Compute.GetPercentCPUTime()}%";
+                var vmProcess = Process.GetProcessById(VmProcessId);
+                if (vmProcess != null)
+                { 
+                    status.MemoryUsage = $"{vmProcess.WorkingSet64 / 1024d / 1024d / 1024d:0.00} GB";
+                }                
+                if(GPUStartArguments.GPUCount > 0)
+                {
+                    foreach(var gpuUsage in Compute.GetNvidiaGPUsUsage())
+                    {
+                        if(status.GPUUsage == null) 
+                        {
+                            status.GPUUsage = "";
+                        }
+                        else
+                        {
+                            status.GPUUsage += " | ";
+                        }
+                        status.GPUUsage += $"{gpuUsage.PercentGPUTime}% and {gpuUsage.MemoryUsedMB/1024d:0.00} GB used";
+                    }
+                }
+            }
+
             return status;
         }
     }
