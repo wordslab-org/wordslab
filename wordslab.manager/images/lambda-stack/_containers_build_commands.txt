@@ -1,3 +1,9 @@
+# Get the latest versions to define tag names with the following command:
+# apt update
+# apt-cache policy lambda-server
+# apt-cache policy lambda-stack-cpu
+# apt-cache policy lambda-stack-cuda
+
 export CR_PAT=mytoken
 echo $CR_PAT | nerdctl login ghcr.io -u mylogin --password-stdin
 

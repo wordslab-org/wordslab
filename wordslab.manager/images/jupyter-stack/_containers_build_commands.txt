@@ -1,3 +1,6 @@
+# Get the latest versions to define tag names with the following command:
+# https://pypi.org/project/jupyterlab/
+
 export CR_PAT=mytoken
 echo $CR_PAT | nerdctl login ghcr.io -u mylogin --password-stdin
 
@@ -8,4 +11,4 @@ nerdctl build --no-cache -t ghcr.io/wordslab-org/jupyter-stack-cuda:lab-3.6.1-la
 nerdctl push ghcr.io/wordslab-org/jupyter-stack-cuda:lab-3.6.1-lambda-0.1.13-22.04.2
 
 # ghcr.io/wordslab-org/jupyter-stack-cpu      lab-3.6.1-lambda-0.1.13-22.04.2   4.7 GiB      1.4 GiB
-# ghcr.io/wordslab-org/jupyter-stack-cuda     lab-3.6.1-lambda-0.1.13-22.04.    14.7 GiB     7.2 GiB
+# ghcr.io/wordslab-org/jupyter-stack-cuda     lab-3.6.1-lambda-0.1.13-22.04.2   14.7 GiB     7.2 GiB

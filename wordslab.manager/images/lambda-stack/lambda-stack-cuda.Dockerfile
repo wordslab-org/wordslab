@@ -30,7 +30,10 @@ RUN apt-get update && \
 		lambda-stack-cuda=$LAMBDA_STACK_CUDA_VERSION && \
 	rm -rf /var/lib/apt/lists/*
 
+# PATH to the CUDA libraries - necessary for some Python packages
+ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/"
+
 # Setup for nvidia-docker
-# ENV NVIDIA_VISIBLE_DEVICES all
-# ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
-# ENV NVIDIA_REQUIRE_CUDA "cuda>=11.8"
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_REQUIRE_CUDA "cuda>=11.8"

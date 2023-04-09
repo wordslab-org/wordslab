@@ -225,7 +225,11 @@ ENV SHELL="/bin/bash"
 # - Jupyter file explorer root directory: /workspace${JUPYTER_ROOT_DIR}
 ENV JUPYTER_ROOT_DIR="/"
 # - Optional script launched at container startup to install additional system packages: /workspace${JUPYTER_CONTAINER_SETUP_SCRIPT}
-ENV JUPYTER_CONTAINER_SETUP_SCRIPT="/setup.sh"
+ENV JUPYTER_SETUP_SCRIPT="/setup.sh"
+
+# - Make sur the Jupyter config is stored in the persistent volume
+ENV JUPYTER_DATA_DIR="/workspace/.jupyter"
+ENV JUPYTER_RUNTIME_DIR="/workspace/.jupyter/runtime"
 
 # Workspace start script
 RUN echo -e '\
@@ -259,11 +263,6 @@ deactivate\n\
 # Delete project directory\n\
 rm -rf /workspace/$projectname\n\
 ' > /usr/local/bin/delete-workspace-project && chmod u+x /usr/local/bin/delete-workspace-project
-
-# Compatibility with nvidia-container-runtime build environment
-RUN umount /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1 ; rm -f /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1 ; \
-    umount /usr/lib/x86_64-linux-gnu/libcuda.so.1 ; rm -f usr/lib/x86_64-linux-gnu/libcuda.so.1 ; \
-    umount /usr/lib/x86_64-linux-gnu/libdxcore.so ; rm -f /usr/lib/x86_64-linux-gnu/libdxcore.so
 
 # Configure container startup
 ENTRYPOINT ["tini", "-g", "--"]
