@@ -1,4 +1,4 @@
-name: Create wordslab manager release
+name: Publish wordslab.manager release
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "v*"
 
 env:
-  DOTNET_VERSION: '7.0.102' # The .NET SDK version to use
+  DOTNET_VERSION: '7.0.202' # The .NET SDK version to use
 
 jobs:
   publish:

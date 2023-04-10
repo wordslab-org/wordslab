@@ -1,0 +1,37 @@
+name: Build and Publish lambnda-server Image
+
+on:
+  push:
+    tags:
+      - 'lambda-stack-server_v*'
+
+env:
+  IMAGE_NAME: lambda-stack-server
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: ./images/lambda-stack
+        file: lambda-stack-server.Dockerfile
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.ref.replace('refs/tags/lambda-stack-server_v', '') }}
+
+    - name: Clean up Docker images
+      run: docker image prune -f

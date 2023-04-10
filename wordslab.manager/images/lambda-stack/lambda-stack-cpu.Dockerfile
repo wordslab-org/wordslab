@@ -2,6 +2,8 @@
 # https://lambdalabs.com/lambda-stack-deep-learning-software
 # https://github.com/lambdal/lambda-stack-dockerfiles
 
+LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
+
 FROM ghcr.io/wordslab-org/lambda-stack-server:22.04.2
 
 WORKDIR $HOME

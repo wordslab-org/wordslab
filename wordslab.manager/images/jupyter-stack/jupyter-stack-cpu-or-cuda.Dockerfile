@@ -2,6 +2,8 @@
 # https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html
 # https://github.com/jupyter/docker-stacks/
 
+LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
+
 # Build this image twice:
 # --build-arg TARGET="cpu"
 # --build-arg TARGET="cuda"
