@@ -2,8 +2,6 @@
 # https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html
 # https://github.com/jupyter/docker-stacks/
 
-LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
-
 # Build this image twice:
 # --build-arg TARGET="cpu"
 # --build-arg TARGET="cuda"
@@ -12,6 +10,8 @@ ARG BASE_IMAGE_VERSION=0.1.13-22.04.2
 ARG BASE_IMAGE=ghcr.io/wordslab-org/lambda-stack-$TARGET:$BASE_IMAGE_VERSION
 
 FROM $BASE_IMAGE
+
+LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
 
 RUN git clone https://github.com/jupyter/docker-stacks.git /var/cache/docker-stacks
 

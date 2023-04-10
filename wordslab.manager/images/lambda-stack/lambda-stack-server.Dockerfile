@@ -2,9 +2,9 @@
 # https://lambdalabs.com/lambda-stack-deep-learning-software
 # https://github.com/lambdal/lambda-stack-dockerfiles
 
-LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
-
 FROM ubuntu:22.04
+
+LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
 
 WORKDIR $HOME
 

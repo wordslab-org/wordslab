@@ -45,7 +45,7 @@ jobs:
         context: ./wordslab.manager/images/lambda-stack
         file: ./wordslab.manager/images/lambda-stack/lambda-stack-server.Dockerfile
         push: true
-        tags: ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
+        tags: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
 
     - name: Clean up Docker images
       run: docker image prune -f
