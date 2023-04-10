@@ -42,7 +42,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
-        context: ./images/lambda-stack
+        context: ./wordslab.manager/images/lambda-stack
         file: lambda-stack-server.Dockerfile
         push: true
         tags: ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
