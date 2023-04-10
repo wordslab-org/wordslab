@@ -1,4 +1,4 @@
-name: Build and Publish lambnda-server Image
+name: Build and Publish lambda-stack-server Image
 
 on:
   push:
@@ -9,29 +9,43 @@ env:
   IMAGE_NAME: lambda-stack-server
 
 jobs:
-  build-and-publish:
+
+  variables: 
+    outputs:
+      tag_name: ${{ steps.var.outputs.tag_name}}
     runs-on: ubuntu-latest
+    steps:
+      - name: Extracting tag name
+        uses: actions/github-script@v6
+        id: var
+        with:
+          script: |
+            core.setOutput('tag_name', '${{ github.ref_name }}'.replace(/lambda-stack-server_v/, ''));
+
+  build-and-publish:
+    needs: variables
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ needs.variables.outputs.tag_name }}
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Login to GitHub Container Registry
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build Docker image
-      uses: docker/build-push-action@v2
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
       with:
         context: ./images/lambda-stack
         file: lambda-stack-server.Dockerfile
         push: true
-        tags: |
-          ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.ref.replace('refs/tags/lambda-stack-server_v', '') }}
+        tags: ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
 
     - name: Clean up Docker images
       run: docker image prune -f
