@@ -1,0 +1,61 @@
+name: Build and Publish jupyter-stack-cpu and jupyter-stack-cuda Images
+
+on:
+  push:
+    tags:
+      - 'jupyter-stack_v*'
+
+env:
+  IMAGE_NAME_BASE: jupyter-stack-
+
+jobs:
+
+  variables: 
+    outputs:
+      tag_name: ${{ steps.var.outputs.tag_name}}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extracting tag name
+        uses: actions/github-script@v6
+        id: var
+        with:
+          script: |
+            core.setOutput('tag_name', '${{ github.ref_name }}'.replace(/jupyter-stack_v/, ''));
+
+  build-and-publish:
+    needs: variables
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ needs.variables.outputs.tag_name }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push jupyter-stack-cpu Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./wordslab.manager/images/jupyter-stack
+        file: ./wordslab.manager/images/jupyter-stack/jupyter-stack-cpu-or-cuda.Dockerfile
+        build-args: TARGET=cpu
+        push: true
+        tags: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME_BASE }}cpu:${{ env.TAG_NAME }}
+
+    - name: Build and push jupyter-stack-cuda Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./wordslab.manager/images/jupyter-stack
+        file: ./wordslab.manager/images/jupyter-stack/jupyter-stack-cpu-or-cuda.Dockerfile
+        build-args: TARGET=cuda
+        push: true
+        tags: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME_BASE }}cuda:${{ env.TAG_NAME }}
+
+    - name: Clean up Docker images
+      run: docker image prune -f

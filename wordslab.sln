@@ -238,7 +238,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{6C35BFB9-FE52-4BE3-9050-45A7827AF543}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\publish-wordslab.manager.yaml = .github\workflows\publish-wordslab.manager.yaml
+		.github\workflows\push-jupyter-stack.yaml = .github\workflows\push-jupyter-stack.yaml
 		.github\workflows\push-lambda-stack-server.yaml = .github\workflows\push-lambda-stack-server.yaml
+		.github\workflows\push-lambda-stack.yaml = .github\workflows\push-lambda-stack.yaml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "wordslab.manager.test", "wordslab.manager.test\wordslab.manager.test.csproj", "{3C0CBDFC-4B93-4D35-8D7C-FF848CA29A24}"
