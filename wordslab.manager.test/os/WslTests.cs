@@ -2,8 +2,13 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using wordslab.manager.os;
 using wordslab.manager.storage;
+
+using System.Net.Http.Json;
+using System.Collections.Generic;
 
 namespace wordslab.manager.test.os
 {
@@ -252,6 +257,99 @@ namespace wordslab.manager.test.os
 
             vmMemoryMB = Wsl.GetVirtualMachineWorkingSetMB();
             Assert.IsTrue(vmMemoryMB == 0);
+        }
+
+        [TestMethodOnWindows]
+        public async Task T25_TestWslCommandWithStreamingResult()
+        {
+            try
+            {
+                var manifest = await PullImageAsync("wordslab-org/lambda-stack-cpu", "0.1.13-22.04.2");
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return;
+            var vmName = "wordslab-test-cluster";
+            string result;
+            //Wsl.execShell("k3s crictl rmi --prune", vmName, outputHandler: output => result = output);
+            Wsl.execShell("k3s ctr images pull ghcr.io/wordslab-org/lambda-stack-server:22.04.2", vmName, timeoutSec:60, outputHandler: output => result = output);
+        }
+
+        private static readonly HttpClient _httpClient = new HttpClient();
+        
+        public static async Task<ManifestResponse> PullImageAsync(string imageName, string tag)
+        {
+            // Step 1: Authentication request
+            var authResponse = await _httpClient.GetFromJsonAsync<Dictionary<string,string>>($"https://ghcr.io/token?scope=repository:{imageName}:pull&service=ghcr.io");
+            var authToken = authResponse["token"];
+
+            // Step 2: Manifest request
+            var manifestRequest = new HttpRequestMessage(HttpMethod.Get, $"https://ghcr.io/v2/{imageName}/manifests/{tag}");
+            manifestRequest.Headers.Add("Authorization", $"Bearer {authToken}");
+            manifestRequest.Headers.Add("Accept", "application/vnd.docker.distribution.manifest.v2+json");
+            var manifestResponse = await _httpClient.SendAsync(manifestRequest);
+            manifestResponse.EnsureSuccessStatusCode();
+            var manifest = await manifestResponse.Content.ReadFromJsonAsync<ManifestResponse>();
+
+            // Step 3: Checksum requests
+            foreach (var layer in manifest.layers)
+            {                
+                var checksumRequest = new HttpRequestMessage(HttpMethod.Head, $"https://ghcr.io/v2/{imageName}/blobs/{layer.digest}");
+                checksumRequest.Headers.Add("Authorization", $"Bearer {authToken}");
+                var checksumResponse = await _httpClient.SendAsync(checksumRequest);
+                checksumResponse.EnsureSuccessStatusCode();
+                var result = await checksumResponse.Content.ReadAsStringAsync();
+            }
+
+            // https://github.com/containerd/containerd/blob/main/docs/content-flow.md
+
+            // Download :
+            // wget --header="Authorization: Bearer djE6d29yZHNsYWItb3JnL2xhbWJkYS1zdGFjay1zZXJ2ZXI6MTY4MTE0NDQ2OTcyMzQ3MDc2Mw==" https://ghcr.io/v2/wordslab-org/lambda-stack-server/blobs/sha256:1bdbbbfaf9ee012367f8103c3425fcaa74845576d919bf5f978480dc459c322f
+
+            // k3s crictl rmi --prune
+            // k3s ctr image pull ghcr.io/wordslab-org/lambda-stack-server:22.04.2
+
+            // Download in porgress with resume capability :
+            // k3s ctr content active
+            // REF SIZE    AGE
+            // layer - sha256:c781ed05e2ff0cdd3c235c9d71270b2ea2adbe86dfb2e728cfc5b12dec98ab65   1.464GB 3 hours   
+
+            // Find on disk while downloading :
+            // cat /var/lib/rancher/k3s/agent/containerd/io.containerd.content.v1.content/ingest/aa86d66378175e273c04b7adbb726b50824a64dc0783c30508ab4361f21c381a/ref
+            // k8s.io / 1 / layer - sha256:c781ed05e2ff0cdd3c235c9d71270b2ea2adbe86dfb2e728cfc5b12dec98ab65
+            // ls -al /var/lib/rancher/k3s/agent/containerd/io.containerd.content.v1.content/ingest/aa86d66378175e273c04b7adbb726b50824a64dc0783c30508ab4361f21c381a/
+            // drwxr - xr - x 3 root root       4096 Apr 10 17:39..-rw - r--r-- 1 root root 1463812096 Apr 10 17:49 data
+            // - rw - r--r-- 1 root root         86 Apr 10 17:39 ref
+
+            // Find on disk after download :
+            // ls -al /var/lib/rancher/k3s/agent/containerd/io.containerd.content.v1.content/blobs/sha256/fc4a5e1c03378ec8b1824c54bd25943af415adc040cc2071c8324c530a4962fb
+            //    -r--r--r-- 1 root root 284407131 <== size in manifest
+
+            return manifest;
+        }
+
+        public class ManifestResponse
+        {
+            public int schemaVersion { get; set; }
+            public string mediaType { get; set; }
+            public Config config { get; set; }
+            public Layer[] layers { get; set; }
+
+            public class Config
+            {
+                public string mediaType { get; set; }
+                public long size { get; set; }
+                public string digest { get; set; }
+            }
+
+            public class Layer
+            {
+                public string mediaType { get; set; }
+                public long size { get; set; }
+                public string digest { get; set; }
+            }
         }
     }
 }
