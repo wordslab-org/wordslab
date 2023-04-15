@@ -5,7 +5,7 @@ using wordslab.manager.storage;
 
 namespace wordslab.manager.vm
 {
-    public abstract class VirtualMachine
+    public abstract class VirtualMachine : IVirtualMachineShell
     {
         protected HostStorage storage;
         protected ConfigStore configStore;
@@ -109,6 +109,8 @@ namespace wordslab.manager.vm
         }
 
         protected abstract void CleanupAfterStopOrKill();
+
+        public abstract int ExecuteCommand(string command, string commandArguments = "", int timeoutSec = 10, Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null);
 
         protected VirtualMachineInstance CheckStartArgumentsAndCreateInstance(ComputeSpec computeStartArguments, GPUSpec gpuStartArguments)
         {

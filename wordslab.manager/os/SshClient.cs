@@ -91,13 +91,13 @@
             Command.Run("scp", $"-P {remotePort} {localFilePath} {remoteUser}@{remoteIpAddress}:{remoteFilePath}");
         }
 
-        public static void ExecuteRemoteCommand(string remoteUser, string remoteIpAddress, int remotePort,
+        public static int ExecuteRemoteCommand(string remoteUser, string remoteIpAddress, int remotePort,
                               string remoteCommand, string remoteCommandArguments = "", int timeoutSec = 10, bool unicodeEncoding = false, 
                               Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
         {
             if (!String.IsNullOrEmpty(remoteCommandArguments)) remoteCommandArguments = " " + remoteCommandArguments;
 
-            Command.Run("ssh", $"-p {remotePort} {remoteUser}@{remoteIpAddress} {remoteCommand}{remoteCommandArguments}",
+            return Command.Run("ssh", $"-p {remotePort} {remoteUser}@{remoteIpAddress} {remoteCommand}{remoteCommandArguments}",
                 timeoutSec: timeoutSec, unicodeEncoding: unicodeEncoding, 
                 outputHandler: outputHandler, errorHandler: errorHandler, exitCodeHandler: exitCodeHandler); 
         }

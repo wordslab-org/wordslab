@@ -117,6 +117,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="KubernetesClient.Models" Version="10.1.19" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="6.0.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />

@@ -43,5 +43,10 @@ namespace wordslab.manager.vm.googlecloud
         {
             throw new NotImplementedException();
         }
+
+        public override int ExecuteCommand(string command, string commandArguments = "", int timeoutSec = 10, Action<string> outputHandler = null, Action<string> errorHandler = null, Action<int> exitCodeHandler = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
