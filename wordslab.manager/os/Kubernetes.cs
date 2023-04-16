@@ -1,23 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc.Formatters;
-using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
-using Spectre.Console;
-using System.Collections.Generic;
-using System.Drawing;
-using System;
-using System.Reflection.PortableExecutable;
-using static System.Net.Mime.MediaTypeNames;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using wordslab.manager.web;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Model;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Text.RegularExpressions;
-using static wordslab.manager.console.host.ConfigInfoCommand;
-using Microsoft.Extensions.Configuration;
-using System.Reflection.Metadata;
-using k8s;
+﻿using k8s;
+using k8s.Models;
+using System.Text.Json.Serialization;
 
 namespace wordslab.manager.os
 {
@@ -36,31 +19,462 @@ namespace wordslab.manager.os
 
     public class KubernetesApp
     {
-        public static async Task<KubernetesApp> GetPropertiesFromYamlFileURL(string yamlFileURL)
+        // Mandatory on all resources
+        public const string APP_NAME_LABEL          = "app.wordslab.org/name";
+        public const string APP_COMPONENT_LABEL     = "app.wordslab.org/component";
+        // Mandatory only once on the first resource of the file
+        public const string APP_TITLE_LABEL         = "app.wordslab.org/title";
+        public const string APP_DESCRIPTION_LABEL   = "app.wordslab.org/description";
+        public const string APP_VERSION_LABEL       = "app.wordslab.org/version";
+        public const string APP_DATE_LABEL          = "app.wordslab.org/date";
+        public const string APP_HOMEPAGE_LABEL      = "app.wordslab.org/homepage";
+        public const string APP_SOURCE_LABEL        = "app.wordslab.org/source";
+        public const string APP_AUTHOR_LABEL        = "app.wordslab.org/author";
+        public const string APP_LICENSE_LABEL       = "app.wordslab.org/license";
+        // Mandatory on all IngressRoutes
+        public const string ROUTE_PREFIX_PLACEHOLDER    = "app.wordslab.org/route/prefix";
+        public const string ROUTE_PREFIX_DELIMITER      = "$$";
+        public const string ROUTE_PATH_TITLE_LABEL      = "app.wordslab.org/route/path";// path1, path2 ... if several needed
+        public const string ROUTE_PATH_TITLE_SEPARATOR  = "||";
+
+        internal static readonly HttpClient _httpClient = new HttpClient();
+     
+        private static Dictionary<string, Type> traefikTypeMap = new Dictionary<string, Type>()
+        {
+            { "traefik.containo.us/v1alpha1/IngressRoute", typeof(TraefikV1alpha1IngressRoute) }
+        };
+
+        public static async Task<KubernetesApp> GetMetadataFromYamlFileAsync(string yamlFileURL)
         {
             var app = new KubernetesApp();
             app.YamlFileContent = await _httpClient.GetStringAsync(yamlFileURL);
 
-            List<object> resources = KubernetesYaml.LoadAllFromString(app.YamlFileContent);
+            var resources = KubernetesYaml.LoadAllFromString(app.YamlFileContent, traefikTypeMap);
+            foreach (var resource in resources)
+            {
+                var resourceMetadata = (IMetadata<V1ObjectMeta>)resource;
+                if (resourceMetadata.Namespace() != null)
+                {
+                    throw new FormatException("In wordslab yaml app files, explicit namespaces are not allowed: all resources will be inserted in the same user-defined namespace at install time");
+                }
+                var appName = resourceMetadata.GetLabel(APP_NAME_LABEL);
+                var appComponent = resourceMetadata.GetLabel(APP_COMPONENT_LABEL);
+                if (appName == null || appComponent == null)
+                {
+                    throw new FormatException("In wordslab yaml app files, the labels 'app.wordslab.org/name' and 'app.wordslab.org/component' are mandatory on all resources");
+                }
+                if(app.Name == null)
+                {
+                    app.Name = appName;
+
+                    // First resource of the file, read all app properties
+                    app.Title = resourceMetadata.GetLabel(APP_TITLE_LABEL);
+                    if(app.Title == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_TITLE_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.Description = resourceMetadata.GetLabel(APP_DESCRIPTION_LABEL);
+                    if (app.Description == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_DESCRIPTION_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.Version = resourceMetadata.GetLabel(APP_VERSION_LABEL);
+                    if (app.Version == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_VERSION_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.Date = resourceMetadata.GetLabel(APP_DATE_LABEL);
+                    if (app.Date == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_DATE_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.HomePage = resourceMetadata.GetLabel(APP_HOMEPAGE_LABEL);
+                    if (app.HomePage == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_HOMEPAGE_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.Source = resourceMetadata.GetLabel(APP_SOURCE_LABEL);
+                    if (app.Source == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_SOURCE_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.Author = resourceMetadata.GetLabel(APP_AUTHOR_LABEL);
+                    if (app.Author == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_AUTHOR_LABEL}' is mandatory on the first resource of the file");
+                    }
+                    app.Licence = resourceMetadata.GetLabel(APP_LICENSE_LABEL);
+                    if (app.Licence == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the label '{APP_LICENSE_LABEL}' is mandatory on the first resource of the file");
+                    }
+                }
+                else
+                {
+                    if(appName != app.Name)
+                    {
+                        throw new FormatException($"Inconsistent application name in 'app.wordslab.org/name' labels on different resources: ");
+                    }
+                }
+                switch (resource)
+                {
+                    // Pod: A pod is the smallest deployable unit in Kubernetes and can contain one or more containers.
+                    // The container spec is defined within the spec.containers field of a pod.
+                    case V1Pod pod:
+                        var resourceName = $"pod/{pod.Name()}";
+                        await app.AddPodSpec(resourceName, pod.Spec);
+                        break;
+                    // ReplicationController: A replication controller ensures that a specified number of pod replicas are running at any given time.
+                    // The container spec is defined within the spec.template.spec.containers field of a replication controller.
+                    case V1ReplicationController replicaCtrl:
+                        resourceName = $"replicationcontroller/{replicaCtrl.Name()}";
+                        await app.AddPodSpec(resourceName, replicaCtrl.Spec?.Template?.Spec);
+                        break;
+                    // ReplicaSet: A replica set is similar to a replication controller but provides more advanced selectors for managing pods.
+                    // The container spec is defined within the spec.template.spec.containers field of a replica set.
+                    case V1ReplicaSet replicaSet:
+                        resourceName = $"replicaset.apps/{replicaSet.Name()}";
+                        await app.AddPodSpec(resourceName, replicaSet.Spec?.Template?.Spec);
+                        break;
+                    // Deployment: A deployment manages the rollout and scaling of a set of replicas.
+                    // The container spec is defined within the spec.template.spec.containers field of a deployment.
+                    case V1Deployment deployment:
+                        resourceName = $"deployment.apps/{deployment.Name()}";
+                        await app.AddPodSpec(resourceName, deployment.Spec?.Template?.Spec);
+                        break;
+                    // StatefulSet: A stateful set manages the deployment and scaling of a set of stateful pods.
+                    // The container spec is defined within the spec.template.spec.containers field of a stateful set.
+                    case V1StatefulSet statefulSet:
+                        resourceName = $"statefulset.apps/{statefulSet.Name()}";
+                        await app.AddPodSpec(resourceName, statefulSet.Spec?.Template?.Spec);
+                        break;
+                    // DaemonSet: A daemon set ensures that all(or some) nodes run a copy of a pod.
+                    // The container spec is defined within the spec.template.spec.containers field of a daemon set.
+                    case V1DaemonSet daemonSet:
+                        resourceName = $"daemonset.apps/{daemonSet.Name()}";
+                        await app.AddPodSpec(resourceName, daemonSet.Spec?.Template?.Spec);
+                        break;
+                    // Job: A job creates one or more pods and ensures that a specified number of them successfully terminate.
+                    // The container spec is defined within the spec.template.spec.containers field of a job.
+                    case V1Job job:
+                        resourceName = $"job.batch/{job.Name()}";
+                        await app.AddPodSpec(resourceName, job.Spec?.Template?.Spec);
+                        break;
+                    // CronJob: A cron job creates a job on a repeating schedule.
+                    // The container spec is defined within the spec.jobTemplate.spec.template.spec.containers
+                    case V1CronJob cronJob:
+                        resourceName = $"cronjob.batch/{cronJob.Name()}";
+                        await app.AddPodSpec(resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec);
+                        break;
+                    case V1PersistentVolume pv:
+                        throw new NotSupportedException("PersistentVolumes are not supported in wordslab: please use a PersistentVolumeClaim with 'storageClassName: local-path'");
+                    case V1PersistentVolumeClaim pvc:
+                        var storageClassName = pvc.Spec?.StorageClassName;
+                        if (storageClassName != "local-path")
+                        {
+                            throw new NotSupportedException("In wordslab, PersistentVolumeClaims must use 'storageClassName: local-path'");
+                        }
+                        var pvcName = pvc.Name();
+                        var storageRequest = pvc.Spec?.Resources?.Requests["storage"]?.ToInt64();
+                        var storageLimit = pvc.Spec?.Resources?.Limits["storage"]?.ToInt64();
+                        app.PersistentVolumes.Add(pvcName, new PersistentVolumeInfo() { Name=pvcName, StorageRequest = storageRequest, StorageLimit = storageLimit });
+                        break;
+                    case V1Service service:
+                        var serviceType = service.Spec?.Type;
+                        if(serviceType != "ClusterIP")
+                        {
+                            throw new NotSupportedException("In wordslab, Services must use 'type: ClusterIP'");
+                        }
+                        var port = service.Spec?.Ports?.FirstOrDefault()?.Port;
+                        if (port.HasValue)
+                        {
+                            app.Services.Add(service.Name(), port.Value);
+                        }
+                        break;
+                    case V1Ingress ingress:
+                        throw new NotSupportedException("Igress resources are not supported in wordslab: please use IngressRoute instead (https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/#kind-ingressroute)");
+                    case TraefikV1alpha1IngressRoute ingressRoute:
+                        var routeInfo = new IngressRouteInfo();
+                        routeInfo.PrefixDefault = ingressRoute.GetLabel(ROUTE_PREFIX_PLACEHOLDER);
+                        if (routeInfo.PrefixDefault == null)
+                        {
+                            throw new FormatException($"In wordslab yaml app files, the label '{ROUTE_PREFIX_PLACEHOLDER}' is mandatory on all IngressRoutes");
+                        }
+                        app.IngressRoutes.Add(routeInfo);
+                        break;
+                }
+            }
+            // Check PVC references
+
+            // Check Service references
+
             return app;
         }
 
-        internal static readonly HttpClient _httpClient = new HttpClient();
+        private async Task AddPodSpec(string resourceName, V1PodSpec podSpec)
+        {
+            if (podSpec == null)
+            {
+                if (podSpec.Containers != null)
+                {
+                    foreach (var container in podSpec.Containers)
+                    {
+                        var imageName = container.Image;
+                        if (!String.IsNullOrEmpty(imageName))
+                        {
+                            ContainerImage containerImage = null;
+                            if (!ContainerImages.ContainsKey(imageName))
+                            {
+                                containerImage = await ContainerImage.GetMetadataFromRegistryAsync(imageName);
+                                ContainerImages.Add(imageName, containerImage);
+                            }
+                            else
+                            {
+                                containerImage = ContainerImages[imageName];
+                            }
+                            foreach (var layer in containerImage.Manifest.Layers())
+                            {
+                                if (!ContainerImagesLayers.ContainsKey(layer.digest))
+                                {
+                                    ContainerImagesLayers.Add(layer.digest, new ContainerImageLayerInfo(layer, containerImage));
+                                }
+                                else
+                                {
+                                    ContainerImagesLayers[layer.digest].UsedByContainerImages.Add(containerImage);
+                                }
+                                ContainerImagesLayers[layer.digest].UsedByResourceNames.Add(resourceName);
+                            }
+                        }
+                    }
+                }
+                if(podSpec.Volumes != null)
+                {
+                    foreach(var volume in podSpec.Volumes)
+                    {
+                        if( volume.EmptyDir != null ||
+                            volume.ConfigMap != null || 
+                            volume.Secret != null ||
+                            volume.DownwardAPI != null ||
+                            volume.Projected != null)
+                        {
+                            continue;
+                        }
 
-        public string AppName;
+                        var claimName = volume.PersistentVolumeClaim?.ClaimName;
+                        if(claimName == null)
+                        {
+                            throw new NotSupportedException("In wordlabs, Volumes must make a valid reference to a PersistentVolumeClaim or be of type: emptyDir, configMap, secret, downwardApi, projected.");
+                        }
+                        HashSet<string> references = null;
+                        if(!PVCReferences.ContainsKey(claimName))
+                        {
+                            references = new HashSet<string>();
+                            PVCReferences.Add(claimName, references);
+                        }
+                        else
+                        {
+                            references = PVCReferences[claimName];
+                        }
+                        references.Add(resourceName);
+                    }
+                }
+            }
+        }
 
-        public string AppTitle;
+        // Public properties of the application
+        public string Name { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Version { get; set; }
+        public string Date { get; set; }
+        public string HomePage { get; set; }
+        public string Source { get; set; }
+        public string Author { get; set; }
+        public string Licence { get; set; }
 
-        public string AppDescription;
+        // Raw text of the yaml file
+        internal string YamlFileContent;
 
-        public string YamlFileContent;
+        public List<IngressRouteInfo> IngressRoutes { get; } = new List<IngressRouteInfo>();
 
-        public Dictionary<string,string> FeatureURLs = new Dictionary<string,string>();
+        public Dictionary<string, ContainerImage> ContainerImages { get; } = new Dictionary<string, ContainerImage>();
 
-        public Dictionary<string,ContainerImage> Images = new Dictionary<string,ContainerImage>();
+        public Dictionary<string, ContainerImageLayerInfo> ContainerImagesLayers { get; } = new Dictionary<string, ContainerImageLayerInfo>();
 
-        public Dictionary<string,int> PersistentVolumes = new Dictionary<string,int>();
-    }
+        public Dictionary<string, PersistentVolumeInfo> PersistentVolumes { get; } = new Dictionary<string, PersistentVolumeInfo>();
+
+        // Used only while parsing the YAML file
+        private Dictionary<string, int> Services = new Dictionary<string, int>();
+        private Dictionary<string, HashSet<string>> ServiceReferences = new Dictionary<string, HashSet<string>>();
+        private Dictionary<string, HashSet<string>> PVCReferences = new Dictionary<string, HashSet<string>>();
+
+        /// <summary>
+        /// IngressRoute is the CRD implementation of a Traefik HTTP Router.
+        /// </summary>
+        public class TraefikV1alpha1IngressRoute : IKubernetesObject<V1ObjectMeta>
+        {
+            // https://doc.traefik.io/traefik/reference/dynamic-configuration/kubernetes-crd/
+
+
+            /// <summary>
+            /// APIVersion defines the versioned schema of this representation of an object. 
+            /// Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values.
+            /// More info: 
+            /// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            /// </summary>
+            [JsonPropertyName("apiVersion")]
+            public string ApiVersion { get; set; }
+
+            /// <summary>
+            /// Kind is a string value representing the REST resource this object represents.
+            /// Servers may infer this from the endpoint the client submits requests to. 
+            /// Cannot be updated.In CamelCase. More info: 
+            /// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            /// </summary>
+            [JsonPropertyName("kind")]
+            public string Kind { get; set; }
+
+            /// <summary>
+            /// Standard object's metadata. More info:
+            /// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+            /// </summary>
+            [JsonPropertyName("metadata")]
+            public V1ObjectMeta Metadata { get; set; }
+
+            /// <summary>
+            /// IngressRouteSpec defines the desired state of IngressRoute.
+            /// </summary>
+            public Spec spec { get; set; }
+
+            /// <summary>
+            /// IngressRouteSpec defines the desired state of IngressRoute.
+            /// </summary>
+            public class Spec
+            {
+                /// <summary>
+                /// EntryPoints defines the list of entry point names to bind to.
+                /// Entry points have to be configured in the static configuration.
+                /// More info: https://doc.traefik.io/traefik/v2.9/routing/entrypoints/
+                /// Default: all.
+                /// </summary>
+                public string[] entryPoints { get; set; }
+
+                /// <summary>
+                /// Routes defines the list of routes.
+                /// </summary>
+                public Route[] routes { get; set; }
+
+                /// <summary>
+                /// Route holds the HTTP route configuration.
+                /// </summary>
+                public class Route
+                {
+                    /// <summary>
+                    /// Kind defines the kind of the route. 
+                    /// Rule is the only supported kind.
+                    /// </summary>
+                    public string kind { get; set; }
+
+                    /// <summary>
+                    /// Match defines the router's rule. 
+                    /// More info: https://doc.traefik.io/traefik/v2.9/routing/routers/#rule
+                    /// </summary>
+                    public string match { get; set; }
+
+                    /// <summary>
+                    /// Services defines the list of Service. 
+                    /// It can contain any combination of TraefikService and/or reference to a Kubernetes Service.
+                    /// </summary>
+                    public Service[] services { get; set; }
+
+                    /// <summary>
+                    /// Service defines an upstream HTTP service to proxy traffic to.
+                    /// </summary>
+                    public class Service
+                    {
+                        /// <summary>
+                        /// Kind defines the kind of the Service.
+                        /// enum:
+                        /// - Service
+                        /// - TraefikService
+                        /// </summary>
+                        public string kind { get; set; }
+
+                        /// <summary>
+                        /// Name defines the name of the referenced Kubernetes Service or TraefikService.
+                        /// The differentiation between the two is specified in the Kind field.
+                        /// </summary>
+                        public string name { get; set; }
+
+                        /// <summary>
+                        ///  Namespace defines the namespace of the referenced Kubernetes Service or TraefikService.
+                        /// </summary>
+                        [JsonPropertyName("namespace")]
+                        public string Namespace { get; set; }
+
+                        /// <summary>
+                        /// Port defines the port of a Kubernetes Service.
+                        /// This can be a reference to a named port.
+                        /// </summary>
+                        public int port { get; set; }
+                    }
+                }
+            }
+        }
+
+        public class IngressRouteInfo
+        {
+            public string PrefixDefault { get; set; }
+
+            public List<PathInfo> Paths { get; } = new List<PathInfo>();
+
+            public class PathInfo
+            {
+                public string Path { get; }
+                public string Title { get; set; }
+            }
+
+            internal Dictionary<string, int> ServiceReferences { get; } = new Dictionary<string, int>();
+        }
+
+        public class ContainerImageLayerInfo
+        {
+            public ContainerImageLayerInfo(ContainerImage.ImageManifest.Layer layer, ContainerImage containerImage)
+            {
+                Layer = layer;
+                UsedByContainerImages.Add(containerImage);
+            }
+
+            public ContainerImage.ImageManifest.Layer Layer { get; set; }
+
+            public List<ContainerImage> UsedByContainerImages { get; set; } = new List<ContainerImage>();
+
+            public HashSet<string> UsedByResourceNames { get; set; } = new HashSet<string>();
+
+            public LayerDownloadStatus DownloadStatus { get; set; }
+
+            public long NeedToDownloadSize { get; set; }
+
+            public enum LayerDownloadStatus
+            {
+                NeedToDownload,
+                DownloadInProgress,
+                DownloadedInContentStore
+            }
+        }
+
+        public class PersistentVolumeInfo
+        {
+            public string Name { get; set; }
+
+            public long? StorageRequest { get; set; }
+
+            public long? StorageLimit { get; set; }
+
+            public HashSet<string> UsedByResourceNames { get; set; } = new HashSet<string>();
+        }
+    }   
+    
 
     public class ContainerImage
     {
@@ -72,7 +486,7 @@ namespace wordslab.manager.os
 
         public ImageManifest Manifest { get; set; }
 
-        public static async Task<ContainerImage> GetManifestFromRegistryAsync(string imageName)
+        public static async Task<ContainerImage> GetMetadataFromRegistryAsync(string imageName)
         {
             ContainerImage image = new ContainerImage();
 
@@ -365,37 +779,21 @@ namespace wordslab.manager.os
             /// The config field references a configuration object for a container, by digest. 
             /// This configuration item is a JSON blob that the runtime uses to set up the container.
             /// </summary>
-            public Config config { get; set; }
-
-            /// <summary>
-            /// This configuration item is a JSON blob that the runtime uses to set up the container. 
-            /// This new schema uses a tweaked version of this configuration to allow image content-addressability on the daemon side.
-            /// </summary>
-            public class Config
-            {
-                /// <summary>
-                /// The MIME type of the referenced object. 
-                /// This should generally be application/vnd.docker.container.image.v1+json.
-                /// </summary>
-                public string mediaType { get; set; }
-
-                /// <summary>
-                /// The size in bytes of the object. 
-                /// This field exists so that a client will have an expected size for the content before validating.
-                /// If the length of the retrieved content does not match the specified length, the content should not be trusted.
-                /// </summary>
-                public long size { get; set; }
-
-                /// <summary>
-                /// The digest of the content, as defined by the Registry V2 HTTP API Specificiation.
-                /// </summary>
-                public string digest { get; set; }
-            }
+            public Layer config { get; set; }
 
             /// <summary>
             /// The layer list is ordered starting from the base image (opposite order of schema1).
             /// </summary>
             public Layer[] layers { get; set; }
+
+            /// <summary>
+            /// Returns config then layers
+            /// </summary>
+            public IEnumerable<Layer> Layers()
+            {
+                yield return config;
+                foreach(var layer in layers) { yield return layer; }
+            }
 
             public class Layer
             {
