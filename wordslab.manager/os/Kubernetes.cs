@@ -100,12 +100,13 @@ namespace wordslab.manager.os
             // Step 1: Authentication request
             var authServer = image.Registry == "registry.docker.io" ? "auth.docker.io" : image.Registry;
             var authResponse = await KubernetesApp._httpClient.GetFromJsonAsync<Dictionary<string, object>>($"https://{authServer}/token?scope=repository:{image.Repository}:pull&service={image.Registry}");
-            var authToken = ((System.Text.Json.JsonElement)authResponse["token"]).GetRawText();
+            var authToken = ((System.Text.Json.JsonElement)authResponse["token"]).GetString();
 
             // Step 2: Manifest request
+            var manifestServer = image.Registry == "registry.docker.io" ? "registry-1.docker.io" : image.Registry;
             var manifestMediaType = "application/vnd.docker.distribution.manifest.v2+json";
             var manifestListMediaType = "application/vnd.docker.distribution.manifest.list.v2+json";
-            var manifestRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{image.Registry}/v2/{image.Repository}/manifests/{image.Tag}");
+            var manifestRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{manifestServer}/v2/{image.Repository}/manifests/{image.Tag}");
             manifestRequest.Headers.Add("Authorization", $"Bearer {authToken}");
             manifestRequest.Headers.Add("Accept", $"{manifestListMediaType}, {manifestMediaType}");
             var manifestResponse = await KubernetesApp._httpClient.SendAsync(manifestRequest);
@@ -133,7 +134,10 @@ namespace wordslab.manager.os
                     throw new KeyNotFoundException("Could not find a version of this image for linux and amd64");
                 }
                 // send a more precise request
-                manifestRequest.RequestUri = new Uri($"https://{image.Registry}/v2/{image.Repository}/manifests/{digest}");
+                manifestRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{manifestServer}/v2/{image.Repository}/manifests/{digest}");
+                manifestRequest.Headers.Add("Authorization", $"Bearer {authToken}");
+                manifestRequest.Headers.Add("Accept", $"{manifestMediaType}");
+                manifestResponse = await KubernetesApp._httpClient.SendAsync(manifestRequest);
                 manifestResponse.EnsureSuccessStatusCode();
                 mediaType = manifestResponse.Content.Headers.ContentType.MediaType;
                 if (mediaType == manifestMediaType)
@@ -268,17 +272,17 @@ namespace wordslab.manager.os
             /// This field specifies the image manifest schema version as an integer. 
             /// This schema uses the version 2.
             /// </summary>
-            public int schemaVersion;
+            public int schemaVersion { get; set; }
 
             /// <summary>
             /// The MIME type of the manifest list. This should be set to application/vnd.docker.distribution.manifest.list.v2+json.
             /// </summary>
-            public string mediaType;
+            public string mediaType { get; set; }
 
             /// <summary>
             /// The manifests field contains a list of manifests for specific platforms.
             /// </summary>
-            public ManifestListItem[] manifests;
+            public ManifestListItem[] manifests { get; set; }
 
             /// <summary>
             /// Fields of an object in the manifests list
@@ -290,23 +294,23 @@ namespace wordslab.manager.os
                 /// This will generally be application/vnd.docker.distribution.manifest.v2+json, but it could also be 
                 /// application/vnd.docker.distribution.manifest.v1+json if the manifest list references a legacy schema-1 manifest.
                 /// </summary>
-                public string mediaType;
+                public string mediaType { get; set; }
 
                 /// <summary>
                 /// The size in bytes of the object. This field exists so that a client will have an expected size for the content before validating.
                 /// If the length of the retrieved content does not match the specified length, the content should not be trusted.
                 /// </summary>
-                public int size;
+                public long size { get; set; }
 
                 /// <summary>
                 /// The digest of the content, as defined by the Registry V2 HTTP API Specification.
                 /// </summary>
-                public string digest;
+                public string digest { get; set; }
 
                 /// <summary>
                 /// The platform object describes the platform which the image in the manifest runs on. 
                 /// </summary>
-                public Platform platform;
+                public Platform platform { get; set; }
             }
 
             /// <summary>
@@ -318,12 +322,12 @@ namespace wordslab.manager.os
                 /// <summary>
                 /// The architecture field specifies the CPU architecture, for example amd64 or ppc64le.
                 /// </summary>
-                public string architecture;
+                public string architecture { get; set; }
 
                 /// <summary>
                 /// The os field specifies the operating system, for example linux or windows.
                 /// </summary>
-                public string os;
+                public string os { get; set; }
 
                 // The optional os.version field specifies the operating system version, for example 10.0.10586.
                 // public string os.version;
@@ -331,15 +335,11 @@ namespace wordslab.manager.os
                 // The optional os.features field specifies an array of strings, each listing a required OS feature (for example on Windows win32k).
                 // public string[] os.features;
 
-                /// <summary>
-                /// The optional variant field specifies a variant of the CPU, for example v6 to specify a particular CPU variant of the ARM CPU.
-                /// </summary>
-                public string? variant;
+                // The optional variant field specifies a variant of the CPU, for example v6 to specify a particular CPU variant of the ARM CPU.
+                // public string variant;
 
-                /// <summary>
-                /// The optional features field specifies an array of strings, each listing a required CPU feature (for example sse4 or aes).
-                /// </summary>
-                public string[]? features;
+                // The optional features field specifies an array of strings, each listing a required CPU feature (for example sse4 or aes).
+                // public string[] features;
             }
         }
 
@@ -353,19 +353,19 @@ namespace wordslab.manager.os
             /// This field specifies the image manifest schema version as an integer.
             /// This schema uses version 2.
             /// </summary>
-            public int schemaVersion;
+            public int schemaVersion { get; set; }
 
             /// <summary>
             /// The MIME type of the manifest.
             /// This should be set to application/vnd.docker.distribution.manifest.v2+json.
             /// </summary>
-            public string mediaType;
+            public string mediaType { get; set; }
 
             /// <summary>
             /// The config field references a configuration object for a container, by digest. 
             /// This configuration item is a JSON blob that the runtime uses to set up the container.
             /// </summary>
-            public Config config;
+            public Config config { get; set; }
 
             /// <summary>
             /// This configuration item is a JSON blob that the runtime uses to set up the container. 
@@ -377,25 +377,25 @@ namespace wordslab.manager.os
                 /// The MIME type of the referenced object. 
                 /// This should generally be application/vnd.docker.container.image.v1+json.
                 /// </summary>
-                public string mediaType;
+                public string mediaType { get; set; }
 
                 /// <summary>
                 /// The size in bytes of the object. 
                 /// This field exists so that a client will have an expected size for the content before validating.
                 /// If the length of the retrieved content does not match the specified length, the content should not be trusted.
                 /// </summary>
-                public int size;
+                public long size { get; set; }
 
                 /// <summary>
                 /// The digest of the content, as defined by the Registry V2 HTTP API Specificiation.
                 /// </summary>
-                public string digest;
+                public string digest { get; set; }
             }
 
             /// <summary>
             /// The layer list is ordered starting from the base image (opposite order of schema1).
             /// </summary>
-            public Layer[] layers;
+            public Layer[] layers { get; set; }
 
             public class Layer
             {
@@ -404,26 +404,24 @@ namespace wordslab.manager.os
                 /// This should generally be application/vnd.docker.image.rootfs.diff.tar.gzip.
                 /// Layers of type application/vnd.docker.image.rootfs.foreign.diff.tar.gzip may be pulled from a remote location but they should never be pushed.
                 /// </summary>
-                public string mediaType;
+                public string mediaType { get; set; }
 
                 /// <summary>
                 /// The size in bytes of the object. 
                 /// This field exists so that a client will have an expected size for the content before validating. 
                 /// If the length of the retrieved content does not match the specified length, the content should not be trusted.
                 /// </summary>
-                public int size;
+                public long size { get; set; }
 
                 /// <summary>
                 /// The digest of the content, as defined by the Registry V2 HTTP API Specification.
                 /// </summary>
-                public string digest;
+                public string digest { get; set; }
 
-                /// <summary>
-                /// Provides a list of URLs from which the content may be fetched. 
-                /// Content must be verified against the digest and size.
-                /// This field is optional and uncommon.
-                /// </summary>
-                public string[]? urls;
+                // Provides a list of URLs from which the content may be fetched.
+                // Content must be verified against the digest and size.
+                // This field is optional and uncommon.
+                // public string[] urls;
             }
         }
     }
