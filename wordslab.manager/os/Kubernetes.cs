@@ -34,7 +34,7 @@ namespace wordslab.manager.os
         // Mandatory on all IngressRoutes
         public const string ROUTE_PREFIX_PLACEHOLDER    = "app.wordslab.org/route/prefix";
         public const string ROUTE_PREFIX_DELIMITER      = "$$";
-        public const string ROUTE_PATH_TITLE_LABEL      = "app.wordslab.org/route/path";// path1, path2 ... if several needed
+        public const string ROUTE_PATH_TITLE_LABEL      = "app.wordslab.org/route/path+title";// path1, path2 ... if several needed
         public const string ROUTE_PATH_TITLE_SEPARATOR  = "||";
 
         internal static readonly HttpClient _httpClient = new HttpClient();
@@ -59,7 +59,7 @@ namespace wordslab.manager.os
                 }
                 var appName = resourceMetadata.GetLabel(APP_NAME_LABEL);
                 var appComponent = resourceMetadata.GetLabel(APP_COMPONENT_LABEL);
-                if (appName == null || appComponent == null)
+                /*if (appName == null || appComponent == null)
                 {
                     throw new FormatException("In wordslab yaml app files, the labels 'app.wordslab.org/name' and 'app.wordslab.org/component' are mandatory on all resources");
                 }
@@ -115,7 +115,7 @@ namespace wordslab.manager.os
                     {
                         throw new FormatException($"Inconsistent application name in 'app.wordslab.org/name' labels on different resources: ");
                     }
-                }
+                }*/
                 switch (resource)
                 {
                     // Pod: A pod is the smallest deployable unit in Kubernetes and can contain one or more containers.
@@ -175,8 +175,16 @@ namespace wordslab.manager.os
                             throw new NotSupportedException("In wordslab, PersistentVolumeClaims must use 'storageClassName: local-path'");
                         }
                         var pvcName = pvc.Name();
-                        var storageRequest = pvc.Spec?.Resources?.Requests["storage"]?.ToInt64();
-                        var storageLimit = pvc.Spec?.Resources?.Limits["storage"]?.ToInt64();
+                        long? storageRequest = null;
+                        if (pvc.Spec?.Resources?.Requests != null)
+                        {
+                            storageRequest = pvc.Spec?.Resources?.Requests["storage"]?.ToInt64();
+                        }
+                        long? storageLimit = null;
+                        if (pvc.Spec?.Resources?.Limits != null)
+                        {
+                            storageLimit = pvc.Spec?.Resources?.Limits["storage"]?.ToInt64();
+                        }
                         app.PersistentVolumes.Add(pvcName, new PersistentVolumeInfo() { Name=pvcName, StorageRequest = storageRequest, StorageLimit = storageLimit });
                         break;
                     case V1Service service:
@@ -188,27 +196,105 @@ namespace wordslab.manager.os
                         var port = service.Spec?.Ports?.FirstOrDefault()?.Port;
                         if (port.HasValue)
                         {
-                            app.Services.Add(service.Name(), port.Value);
+                            var serviceName = service.Name();
+                            var serviceInfo = new ServiceInfo() { Name = serviceName, Port = port.Value, Title = service.GetLabel(APP_TITLE_LABEL) };
+                            app.Services.Add(serviceName, serviceInfo);
                         }
                         break;
                     case V1Ingress ingress:
                         throw new NotSupportedException("Igress resources are not supported in wordslab: please use IngressRoute instead (https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/#kind-ingressroute)");
                     case TraefikV1alpha1IngressRoute ingressRoute:
+                        resourceName = $"ingressroute/{ingressRoute.Name()}";
                         var routeInfo = new IngressRouteInfo();
                         routeInfo.PrefixDefault = ingressRoute.GetLabel(ROUTE_PREFIX_PLACEHOLDER);
                         if (routeInfo.PrefixDefault == null)
                         {
                             throw new FormatException($"In wordslab yaml app files, the label '{ROUTE_PREFIX_PLACEHOLDER}' is mandatory on all IngressRoutes");
                         }
+                        if(!routeInfo.PrefixDefault.StartsWith(ROUTE_PREFIX_DELIMITER) || !routeInfo.PrefixDefault.EndsWith(ROUTE_PREFIX_DELIMITER))
+                        {
+                            throw new FormatException($"In wordslab yaml app files, the label '{ROUTE_PREFIX_PLACEHOLDER}' must contain a placeholder which starts and ends with {ROUTE_PREFIX_DELIMITER}");
+                        }
+                        routeInfo.PrefixDefault = routeInfo.PrefixDefault.Substring(2, routeInfo.PrefixDefault.Length-4);
+                        AddPathInfo(ingressRoute, routeInfo, "");
                         app.IngressRoutes.Add(routeInfo);
+                        for( var i = 1; i <= 20; i++)
+                        {
+                            var pathFound = AddPathInfo(ingressRoute, routeInfo, i.ToString());
+                            if (!pathFound) break;
+                        }
+                        if(ingressRoute.spec?.routes != null)
+                        {
+                            foreach(var route in ingressRoute.spec?.routes)
+                            {
+                                HashSet<string> resRef = null;
+                                if(app.ServiceReferences.ContainsKey(serviceRef.Key))
+                                {
+                                    resRef = app.ServiceReferences[serviceRef.Key];
+                                }
+                                else
+                                {
+                                    resRef = new HashSet<string>();
+                                    app.ServiceReferences.Add(serviceRef.Key, resRef);
+                                }
+                                resRef.Add(resourceName);
+                            }
+                        }
                         break;
                 }
             }
-            // Check PVC references
-
             // Check Service references
-
+            foreach(var serviceRef in app.ServiceReferences)
+            {
+                if(app.Services.ContainsKey(serviceRef.Key))
+                {
+                    var serviceInfo = app.Services[serviceRef.Key];
+                    foreach(var resourceName in serviceRef.Value)
+                    {
+                        serviceInfo.UsedByResourceNames.Add(resourceName);
+                    }
+                }
+                else
+                {
+                    throw new FormatException($"Resource '{serviceRef.Value.First()}' references a service named '{serviceRef.Key}' which isn't defined in the Kubernetes yaml file");
+                }
+            }
+            // Check PVC references
+            foreach (var pvcRef in app.PVCReferences)
+            {
+                if (app.PersistentVolumes.ContainsKey(pvcRef.Key))
+                {
+                    var pvInfo = app.PersistentVolumes[pvcRef.Key];
+                    foreach (var resourceName in pvcRef.Value)
+                    {
+                        pvInfo.UsedByResourceNames.Add(resourceName);
+                    }
+                }
+                else
+                {
+                    throw new FormatException($"Resource '{pvcRef.Value.First()}' references a persistent volume claim named '{pvcRef.Key}' which isn't defined in the Kubernetes yaml file");
+                }
+            }
             return app;
+        }
+
+        private static bool AddPathInfo(TraefikV1alpha1IngressRoute ingressRoute, IngressRouteInfo routeInfo, string suffixNum)
+        {
+            var pathLabel = ingressRoute.GetLabel(ROUTE_PATH_TITLE_LABEL + suffixNum);
+            if (!String.IsNullOrEmpty(pathLabel))
+            {
+                var pathLabelParts = pathLabel.Split(ROUTE_PATH_TITLE_SEPARATOR);
+                if (pathLabelParts.Length == 2)
+                {
+                    routeInfo.Paths.Add(new IngressRouteInfo.PathInfo() { Path = pathLabelParts[0], Title = pathLabelParts[1] });
+                    return true;
+                }
+                else
+                {
+                    throw new FormatException($"In wordslab yaml app files, the label {ROUTE_PATH_TITLE_SEPARATOR} must contain two parts: a path and a title, separated by {ROUTE_PATH_TITLE_SEPARATOR}");
+                }
+            }
+            return false;
         }
 
         private async Task AddPodSpec(string resourceName, V1PodSpec podSpec)
@@ -297,6 +383,8 @@ namespace wordslab.manager.os
 
         public List<IngressRouteInfo> IngressRoutes { get; } = new List<IngressRouteInfo>();
 
+        public Dictionary<string, ServiceInfo> Services { get; }  = new Dictionary<string, ServiceInfo>();
+
         public Dictionary<string, ContainerImage> ContainerImages { get; } = new Dictionary<string, ContainerImage>();
 
         public Dictionary<string, ContainerImageLayerInfo> ContainerImagesLayers { get; } = new Dictionary<string, ContainerImageLayerInfo>();
@@ -304,7 +392,6 @@ namespace wordslab.manager.os
         public Dictionary<string, PersistentVolumeInfo> PersistentVolumes { get; } = new Dictionary<string, PersistentVolumeInfo>();
 
         // Used only while parsing the YAML file
-        private Dictionary<string, int> Services = new Dictionary<string, int>();
         private Dictionary<string, HashSet<string>> ServiceReferences = new Dictionary<string, HashSet<string>>();
         private Dictionary<string, HashSet<string>> PVCReferences = new Dictionary<string, HashSet<string>>();
 
@@ -430,11 +517,23 @@ namespace wordslab.manager.os
 
             public class PathInfo
             {
-                public string Path { get; }
+                public string Path { get; set; }
+
                 public string Title { get; set; }
             }
 
             internal Dictionary<string, int> ServiceReferences { get; } = new Dictionary<string, int>();
+        }
+
+        public class ServiceInfo
+        {
+            public string Name { get; set; }
+
+            public string Title { get; set; }
+
+            public int Port { get; set; }
+
+            public HashSet<string> UsedByResourceNames { get; set; } = new HashSet<string>();
         }
 
         public class ContainerImageLayerInfo
