@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using wordslab.manager.os;
 
 namespace wordslab.manager.config
 {

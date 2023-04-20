@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
+using wordslab.manager.apps;
 using wordslab.manager.config;
 
 namespace wordslab.manager.storage
@@ -143,6 +144,40 @@ namespace wordslab.manager.storage
             return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderBy(instance => instance.StartTimestamp).ToList();
         }
 
+        public DbSet<KubernetesAppInstall> KubernetesApps { get; set; }
+
+        public List<KubernetesAppInstall> ListKubernetesAppsInstalledOn(string vmName)
+        {
+            return KubernetesApps.Where(app => app.VirtualMachineName == vmName && !app.UninstallDate.HasValue).ToList();
+        }
+
+        public void AddKubernetesApp(KubernetesAppInstall app)
+        {
+            KubernetesApps.Add(app);
+            SaveChanges();
+        }
+
+        /// <summary>
+        /// Returns null if a kubernetes app is not found on the specified virtual machine and in the specified namespace
+        /// </summary>
+        public KubernetesAppInstall TryGetKubernetesApp(string vmName, string appNamespace)
+        {
+            return KubernetesApps.Where(app => app.VirtualMachineName == vmName && app.Namespace == appNamespace && !app.UninstallDate.HasValue).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Does nothing if a kubernetes app is not found on the specified virtual machine and in the specified namespace
+        /// </summary>
+        public void RemoveKubernetesApp(string vmName, string appNamespace)
+        {
+            var app = TryGetKubernetesApp(vmName, appNamespace);
+            if (app != null)
+            {
+                app.UninstallDate = DateTime.Now;
+                SaveChanges();
+            }
+        }
+
         // Configure table name
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -150,6 +185,7 @@ namespace wordslab.manager.storage
             modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
             modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.DateTimeCreated });
+            modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp");
         }
 
         // Bootstrap the config database
