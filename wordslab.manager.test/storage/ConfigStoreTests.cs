@@ -30,7 +30,7 @@ namespace wordslab.manager.test.storage
             // Create the database if it doesn't exist and initialize the host storage directories
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
             {
-                ConfigStore.CreateDbIfNotExistsAndInitializeHostStorage(serviceProvider);
+                ConfigStore.CreateOrUpdateDbSchemaAndInitializeHostStorage(serviceProvider);
             }
 
             return serviceCollection;

@@ -1,28 +1,25 @@
-kind: "PersistentVolumeClaim"
-apiVersion: "v1"
-metadata:
-  name: wordslab-notebooks-workspace
-  labels:
-    app: wordslab-notebooks
-spec:
-  accessModes:
-    - "ReadWriteOnce"
-  storageClassName: local-path
-  resources:
-    requests:
-      storage: 50Gi
----
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: wordslab-notebooks-ingressroute
   labels:
-    app: wordslab-notebooks
+    app.wordslab.org/name: wordslab-notebooks
+    app.wordslab.org/component: jupyterlab
+    app.wordslab.org/title: "Jupyterlab notebooks (GPU)"
+    app.wordslab.org/description: "Ubuntu 22.04, Cuda 11.8, Python 3.10, Pytorch 1.13 & Tensorflow 2.11, Jupyterlab 3.6.1"
+    app.wordslab.org/version: "lab-3.6.1-lambda-0.1.13-22.04.2"
+    app.wordslab.org/date: "04/10/2023"
+    app.wordslab.org/homepage: "https://www.wordslab.org/"
+    app.wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml"
+    app.wordslab.org/author: "https://github.com/wordslab-org"
+    app.wordslab.org/license: "Apache License Version 2.0"
+    app.wordslab.org/route/prefix: "$$notebooks$$"
+    app.wordslab.org/route/path+title: "/lab||Jupterlab workspace"
 spec:
   entryPoints:
     - web
   routes:
-  - match: PathPrefix(`/notebooks`)
+  - match: PathPrefix(`/$$notebooks$$`)
     kind: Rule
     services:
     - name: wordslab-notebooks-service
@@ -33,7 +30,8 @@ kind: Service
 metadata:
   name: wordslab-notebooks-service
   labels:
-    app: wordslab-notebooks
+    app.wordslab.org/name: wordslab-notebooks
+    app.wordslab.org/component: jupyterlab
 spec:
   type: ClusterIP
   ports:
@@ -44,21 +42,39 @@ spec:
   selector:
     app: wordslab-notebooks
 ---
+kind: "PersistentVolumeClaim"
+apiVersion: "v1"
+metadata:
+  name: wordslab-notebooks-workspace
+  labels:
+    app.wordslab.org/name: wordslab-notebooks
+    app.wordslab.org/component: jupyterlab
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 50Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordslab-notebooks-deployment
   labels:
-    app: wordslab-notebooks
+    app.wordslab.org/name: wordslab-notebooks
+    app.wordslab.org/component: jupyterlab
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: wordslab-notebooks
+      app.wordslab.org/name: wordslab-notebooks
+      app.wordslab.org/component: jupyterlab
   template:
     metadata:
       labels:
-        app: wordslab-notebooks
+        app.wordslab.org/name: wordslab-notebooks
+        app.wordslab.org/component: jupyterlab
     spec:
       containers:
       - name: wordslab-jupyter-stack-container
@@ -69,7 +85,7 @@ spec:
           protocol: TCP
         env:
         - name: JUPYTER_BASE_URL
-          value: "/notebooks"
+          value: "/$$notebooks$$"
         - name: JUPYTER_PORT
           value: "8888"
         - name: JUPYTER_TOKEN

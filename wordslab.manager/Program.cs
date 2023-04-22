@@ -39,7 +39,7 @@ try
 
     using (var hostServiceProvider = builder.Services.BuildServiceProvider())
     {
-        ConfigStore.CreateDbIfNotExistsAndInitializeHostStorage(hostServiceProvider);
+        ConfigStore.CreateOrUpdateDbSchemaAndInitializeHostStorage(hostServiceProvider);
     }
 
     // Start a web application if launched without parameters or with the "manager" command

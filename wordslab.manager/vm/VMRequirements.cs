@@ -1,9 +1,13 @@
 ﻿using wordslab.manager.config;
 using wordslab.manager.os;
-using wordslab.manager.storage;
 
 namespace wordslab.manager.vm
 {
+    // Windows 11 - 22/04/2023
+    // - after wordslab host init : 1.37 GB
+    // - after wordslab vm create : 3.80 GB
+    // - after wordslab app install : 
+
     public static class VMRequirements
     {
         // Recommended Virtual Machine specs

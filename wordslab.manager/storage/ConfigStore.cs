@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.apps;
 using wordslab.manager.config;
@@ -144,7 +145,7 @@ namespace wordslab.manager.storage
             return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderBy(instance => instance.StartTimestamp).ToList();
         }
 
-        public DbSet<KubernetesAppInstall> KubernetesApps { get; set; }
+        /*public DbSet<KubernetesAppInstall> KubernetesApps { get; set; }
 
         public List<KubernetesAppInstall> ListKubernetesAppsInstalledOn(string vmName)
         {
@@ -176,16 +177,16 @@ namespace wordslab.manager.storage
                 app.UninstallDate = DateTime.Now;
                 SaveChanges();
             }
-        }
+        }*/
 
         // Configure table name
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<HostMachineConfig>().ToTable("HostMachine");
-            modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
+            // modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
             modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.DateTimeCreated });
-            modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp");
+            //modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp");
         }
 
         // Bootstrap the config database
@@ -200,8 +201,8 @@ namespace wordslab.manager.storage
         }
 
         // EF Core is not compatible with assembly trimming by default
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All,  typeof(DateOnly))]
-        public static void CreateDbIfNotExistsAndInitializeHostStorage(IServiceProvider hostServiceProvider)
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DateOnly))]
+        public static void CreateOrUpdateDbSchemaAndInitializeHostStorage(IServiceProvider hostServiceProvider)
         {
             using (var scope = hostServiceProvider.CreateScope())
             {
@@ -210,7 +211,7 @@ namespace wordslab.manager.storage
                 {
                     var dbContextFactory = servicesInScope.GetRequiredService<IDbContextFactory<ConfigStore>>();
                     using var configStore = dbContextFactory.CreateDbContext();
-                    configStore.Database.EnsureCreated();
+                    configStore.Database.Migrate();
                     configStore.InitializeHostStorage();
                 }
                 catch (Exception ex)
@@ -219,6 +220,22 @@ namespace wordslab.manager.storage
                     logger.LogError(ex, "An error occurred creating the config database.");
                 }
             }
+        }
+    }
+    
+    /// <summary>
+    /// Used only at build time to compute database migrations between versions.
+    /// </summary>
+    public class ConfigStoretFactory : IDesignTimeDbContextFactory<ConfigStore>
+    {
+        public ConfigStore CreateDbContext(string[] args)
+        {
+            var hostStorage = new HostStorage();
+            var databasePath = Path.Combine(hostStorage.ConfigDirectory, "wordslab-config.db");
+            
+            var optionsBuilder = new DbContextOptionsBuilder<ConfigStore>();
+            optionsBuilder.UseSqlite($"Data Source={databasePath}");
+            return new ConfigStore(optionsBuilder.Options, hostStorage);
         }
     }
 }

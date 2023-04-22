@@ -1,6 +1,5 @@
 ﻿namespace wordslab.manager;
 
-using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
@@ -9,7 +8,7 @@ using wordslab.manager.console.host;
 
 public static class ConsoleApp
 {
-    public static readonly Version Version = new Version(0, 8, 2);
+    public static readonly Version Version = new Version(0, 8, 3);
 
     public static int Run(WebApplicationBuilder builder, string[] args)
     {
@@ -29,136 +28,6 @@ public static class ConsoleApp
         config.AddCommand<ManagerCommand>("manager")
             .WithDescription("Launch the wordslab manager web application");
         // ---
-
-        /* Commands hierarchy
-         
-        manager
-
-        host
-          install
-          config
-            info
-            update
-          vm
-            list
-            status [machinename]
-            create [machinename] [cores] [memory] [gpu] [disksizes]
-            update [machinename] [cores] [memory] [gpu] [disksizes]
-            start [machinename] ([cores] [memory] [gpu]) 
-            stop [machinename] 
-            delete [machinename]
-          system
-            info
-            status
-          storage
-            info
-            status
-            quota [disk] [size]
-            move [storagearea] [directory]
-            analyze [storagearea]
-            clean [storagearea] [retentionperiod]
-          compute
-            info
-            status
-            quota [cpu|gpu|memory] [number|size]
-            analyze [cpu|gpu|memory]
-          network
-            info
-            status
-            config [platformservice] [portnumber] [exposelan]
-          os
-            info
-            hypervisor [enable|disable]
-            update [packagename]
-        cloud
-          install
-          config
-            info
-            update
-          account
-            list 
-            connect [servicename]
-            status [accountname]            
-            forget [accountname]           
-          bill
-          vm
-            list
-            budget [accountname] [cores] [memory] [gpu] [disksizes]
-            status [machinename]
-            create [accountname] [machinename] [cores] [memory] [gpu] [disksizes]
-            update [machinename] [cores] [memory] [gpu] [disksizes]
-            start [machinename] [timeout] ([cores] [memory] [gpu])
-            stop [machinename]
-            delete [machinename]
-        cluster
-          list
-          status [clustername]
-          storage
-            status [clustername]            
-            analyze [clustername] [storagearea]
-            clean [clustername] [storagearea] [retentionperiod]
-          compute
-            status [clustername]
-            analyze [clustername] [cpu|gpu|memory]    
-          imagepack
-            list
-            install [imagepackfile]
-            uninstall [imagepackname]
-          environment
-            list
-            create [user|org|exec] [envname] [quotas]
-            update [envname] [quotas]
-            delete [envname]
-        execenv
-          list
-          status [envname]
-          storage
-            status [envname]            
-            analyze [envname] [storagearea]
-            clean [envname] [storagearea] [retentionperiod]
-          compute
-            status [envname]
-            analyze [envname] [cpu|gpu|memory]    
-          app
-            list
-            install [appchartfile] [appchartparams] [ingressmappings]
-            uninstall [appname]
-          orglink
-            create [envname] [orglinkname] [out:execenvkeyfile]
-            connect [envname] [orglinkname] [in:orgenvkeyfile]
-            delete [envname] [orglinkname]
-          adminuser
-            list
-            create
-            delete
-        orgenv
-          list
-          status [envname]
-          storage
-            status [envname]            
-            analyze [envname] [storagearea]
-            clean [envname] [storagearea] [retentionperiod]
-          compute
-            status [envname]
-            analyze [envname] [cpu|gpu|memory]
-          identitylink
-            list
-            create [envname] [identitylinkname] [identityproviderproperties]
-          githublink
-            list
-            create [envname] [githubreponame] [githubrepoproperties]
-          execlink
-            create [envname] [execlinkname] [out:execenvkeyfile]
-            connect [envname] [execlinkname] [in:orgenvkeyfile]
-            delete [envname] [execlinkname]
-          adminuser
-            list
-            create
-            delete
-
-        version
-
-        */
 
         config.AddBranch("host", config =>
         {
