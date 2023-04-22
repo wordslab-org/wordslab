@@ -7,7 +7,7 @@ metadata:
     app.wordslab.org/component: jupyterlab
     app.wordslab.org/title: "Jupyterlab notebooks (GPU)"
     app.wordslab.org/description: "Ubuntu 22.04, Cuda 11.8, Python 3.10, Pytorch 1.13 & Tensorflow 2.11, Jupyterlab 3.6.1"
-    app.wordslab.org/version: "lab-3.6.1-lambda-0.1.13-22.04.2"
+    app.wordslab.org/version: "jupyterlab-3.6.3-lambda-0.1.13-22.04.2"
     app.wordslab.org/date: "04/10/2023"
     app.wordslab.org/homepage: "https://www.wordslab.org/"
     app.wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml"
@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
       - name: wordslab-jupyter-stack-container
-        image: ghcr.io/wordslab-org/jupyter-stack-cuda:lab-3.6.1-lambda-0.1.13-22.04.2
+        image: ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.3-lambda-0.1.13-22.04.2
         ports:
         - name: http
           containerPort: 8888
