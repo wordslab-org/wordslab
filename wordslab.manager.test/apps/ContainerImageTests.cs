@@ -2,10 +2,10 @@
 using System.Threading.Tasks;
 using wordslab.manager.apps;
 
-namespace wordslab.manager.test.os
+namespace wordslab.manager.test.apps
 {
     [TestClass]
-    public class KubernetesTests
+    public class ContainerImageTests
     {
         [TestMethod]
         public async Task T01_TestContainerImage_GetMetadataFromRegistryAsync()
@@ -21,13 +21,6 @@ namespace wordslab.manager.test.os
 
             var jupyterImage = await ContainerImage.GetMetadataFromRegistryAsync("ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.3-lambda-0.1.13-22.04.2");
             Assert.IsTrue(jupyterImage.Layers.Count > 3);
-        }
-
-        [TestMethod]
-        public async Task T02_TestKubernetesApp_GetMetadataFromYamlFileAsync()
-        {
-            var app = await KubernetesApp.GetMetadataFromYamlFileAsync("https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/images/jupyter-stack/wordslab-notebooks-deployment.yaml");
-            Assert.IsTrue(!string.IsNullOrEmpty(app.Name));
         }
     }
 }

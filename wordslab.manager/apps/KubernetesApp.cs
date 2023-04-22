@@ -27,6 +27,10 @@ namespace wordslab.manager.apps
         public const string ROUTE_PATH_TITLE_LABEL = "app.wordslab.org/route/path+title"; // path1, path2 ... if several needed
         public const string ROUTE_PATH_TITLE_SEPARATOR = "||";
 
+        // Built-in wordslab apps
+        public const string WORDSLAB_NOTEBOOKS_GPU_APP_URL = "https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml";
+        public const string WORDSLAB_NOTEBOOKS_CPU_APP_URL = "https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/apps/notebooks/wordslab-notebooks-cpu-app.yaml";
+
         private static Dictionary<string, Type> traefikTypeMap = new Dictionary<string, Type>()
         {
             { "traefik.containo.us/v1alpha1/IngressRoute", typeof(TraefikV1alpha1IngressRoute) }
@@ -38,6 +42,7 @@ namespace wordslab.manager.apps
         {
             var app = new KubernetesAppSpec();
             app.YamlFileContent = await httpClient.GetStringAsync(yamlFileURL);
+            app.ComputeHash();
 
 
             // Used only while parsing the YAML file
@@ -300,7 +305,7 @@ namespace wordslab.manager.apps
 
         private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences)
         {
-            if (podSpec == null)
+            if (podSpec != null)
             {
                 if (podSpec.Containers != null)
                 {

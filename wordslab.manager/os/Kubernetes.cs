@@ -113,11 +113,11 @@ namespace wordslab.manager.os
             return remainingBytes;
         }
 
-        public static int ApplyYamlFileAndWaitForResources(string yamlFileContent, string yamlFileName, IVirtualMachineShell vmShell, int timeoutSec=30)
+        public static int ApplyYamlFileAndWaitForResources(string yamlFileContent, string yamlFileName, string deploymentNamespace, IVirtualMachineShell vmShell, int timeoutSec=30)
         {
             vmShell.ExecuteCommand("mkdir", "-p KubernetesApps");
             vmShell.ExecuteCommand("echo", $"-e \"{ToLiteral(yamlFileContent)}\" > KubernetesApps/{yamlFileName}");
-            return vmShell.ExecuteCommand("kubectl", $"apply -f KubernetesApps/{yamlFileName} --wait", timeoutSec);
+            return vmShell.ExecuteCommand("kubectl", $"apply -f KubernetesApps/{yamlFileName} -n {deploymentNamespace} --wait", timeoutSec);
         }
 
         private static string ToLiteral(string input)

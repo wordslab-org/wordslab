@@ -1,27 +1,40 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace wordslab.manager.config
 {
+    [Owned]
     public class KubernetesAppSpec
     {
         // Public properties of the application
-        [Key]
         public string Name { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        [Key]
         public string Version { get; set; }
         public string Date { get; set; }
         public string HomePage { get; set; }
-        [Key]
         public string Source { get; set; }
         public string Author { get; set; }
         public string Licence { get; set; }
 
         // Raw text of the yaml file
         public string YamlFileContent { get; set; }
+
+        public void ComputeHash()
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = Encoding.UTF8.GetBytes(YamlFileContent);
+                var hashBytes = sha256.ComputeHash(bytes);
+                YamlFileHash = Convert.ToBase64String(hashBytes);
+            }
+        }
+
+        // Unique hash of the yaml file content
+        public string YamlFileHash { get; set; }
+
+        // Structured view on the contents of the yaml file
 
         public List<IngressRouteInfo> IngressRoutes { get; } = new List<IngressRouteInfo>();
 
@@ -34,7 +47,6 @@ namespace wordslab.manager.config
         public Dictionary<string, PersistentVolumeInfo> PersistentVolumes { get; } = new Dictionary<string, PersistentVolumeInfo>();
     }
 
-    [Owned]
     public class IngressRouteInfo
     {
         public string PrefixDefault { get; set; }
@@ -51,7 +63,6 @@ namespace wordslab.manager.config
         internal Dictionary<string, int> ServiceReferences { get; } = new Dictionary<string, int>();
     }
 
-    [Owned]
     public class ServiceInfo
     {
         public string Name { get; set; }
@@ -63,7 +74,6 @@ namespace wordslab.manager.config
         public HashSet<string> UsedByResourceNames { get; set; } = new HashSet<string>();
     }
 
-    [Owned]
     public class ContainerImageInfo
     {
         public string Registry { get; set; }
@@ -114,7 +124,6 @@ namespace wordslab.manager.config
         }
     }
 
-    [Owned]
     public class ContainerImageLayerInfo
     {
         public ContainerImageLayerInfo(ContainerImageInfo.LayerInfo layer, ContainerImageInfo containerImage)
@@ -141,7 +150,6 @@ namespace wordslab.manager.config
         }
     }
 
-    [Owned]
     public class PersistentVolumeInfo
     {
         public string Name { get; set; }

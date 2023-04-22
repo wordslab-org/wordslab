@@ -6,7 +6,8 @@ namespace wordslab.manager.vm
     // Windows 11 - 22/04/2023
     // - after wordslab host init : 1.37 GB
     // - after wordslab vm create : 3.80 GB
-    // - after wordslab app install : 
+    // - after wordslab notebooks app download : 25.8 GB / Download time 878 sec
+    // - after wordslab notebooks app deployment : 
 
     public static class VMRequirements
     {

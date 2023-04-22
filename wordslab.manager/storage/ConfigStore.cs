@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using System.Diagnostics.CodeAnalysis;
-using wordslab.manager.apps;
 using wordslab.manager.config;
 
 namespace wordslab.manager.storage
@@ -145,7 +144,7 @@ namespace wordslab.manager.storage
             return VirtualMachineInstances.Where(instance => instance.Name == vmName).OrderBy(instance => instance.StartTimestamp).ToList();
         }
 
-        /*public DbSet<KubernetesAppInstall> KubernetesApps { get; set; }
+        public DbSet<KubernetesAppInstall> KubernetesApps { get; set; }
 
         public List<KubernetesAppInstall> ListKubernetesAppsInstalledOn(string vmName)
         {
@@ -159,25 +158,54 @@ namespace wordslab.manager.storage
         }
 
         /// <summary>
-        /// Returns null if a kubernetes app is not found on the specified virtual machine and in the specified namespace
+        /// Returns null if a kubernetes app is not found on the specified virtual machine and with the specified content hash
         /// </summary>
-        public KubernetesAppInstall TryGetKubernetesApp(string vmName, string appNamespace)
+        public KubernetesAppInstall TryGetKubernetesApp(string vmName, string yamlFileHash)
         {
-            return KubernetesApps.Where(app => app.VirtualMachineName == vmName && app.Namespace == appNamespace && !app.UninstallDate.HasValue).FirstOrDefault();
+            return KubernetesApps.Where(app => app.VirtualMachineName == vmName && app.YamlFileHash == yamlFileHash).FirstOrDefault();
         }
 
         /// <summary>
-        /// Does nothing if a kubernetes app is not found on the specified virtual machine and in the specified namespace
+        /// Does nothing if a kubernetes app is not found on the specified virtual machine and with the specified content hash
         /// </summary>
-        public void RemoveKubernetesApp(string vmName, string appNamespace)
+        public void RemoveKubernetesApp(string vmName, string yamlFileHash)
         {
-            var app = TryGetKubernetesApp(vmName, appNamespace);
+            var app = TryGetKubernetesApp(vmName, yamlFileHash);
             if (app != null)
             {
                 app.UninstallDate = DateTime.Now;
                 SaveChanges();
             }
-        }*/
+        }
+
+        public DbSet<KubernetesAppDeployment> KubernetesAppDeployments { get; set; }
+
+        public void AddAppDeployment(KubernetesAppDeployment app)
+        {
+            KubernetesAppDeployments.Add(app);
+            SaveChanges();
+        }
+
+        /// <summary>
+        /// Returns null if a kubernetes app deployment is not found on the specified virtual machine and in the specified namespace
+        /// </summary>
+        public KubernetesAppDeployment TryGetKubernetesAppDeployment(string vmName, string deploymentNamespace)
+        {
+            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && app.Namespace == deploymentNamespace).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Does nothing if a kubernetes app is not found on the specified virtual machine and in the specified namespace
+        /// </summary>
+        public void RemoveKubernetesAppDeployment(string vmName, string deploymentNamespace)
+        {
+            var app = TryGetKubernetesAppDeployment(vmName, deploymentNamespace);
+            if (app != null)
+            {
+                app.RemovalDate = DateTime.Now;
+                SaveChanges();
+            }
+        }
 
         // Configure table name
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -185,8 +213,9 @@ namespace wordslab.manager.storage
             modelBuilder.Entity<HostMachineConfig>().ToTable("HostMachine");
             // modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
-            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.DateTimeCreated });
-            //modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp");
+            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.StartTimestamp });
+            modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp").HasKey(app => new { app.VirtualMachineName, app.YamlFileHash });
+            modelBuilder.Entity<KubernetesAppDeployment>().ToTable("AppDeployment").HasKey(app => new { app.VirtualMachineName, app.Namespace });
         }
 
         // Bootstrap the config database
