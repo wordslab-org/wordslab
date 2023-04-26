@@ -1,5 +1,5 @@
 ﻿using wordslab.manager.config;
-using wordslab.manager.os;
+using wordslab.manager.storage;
 
 namespace wordslab.manager.apps
 {
@@ -7,10 +7,14 @@ namespace wordslab.manager.apps
     {
         private static readonly HttpClient httpClient = new HttpClient();
 
-        public static async Task<ContainerImageInfo> GetMetadataFromRegistryAsync(string imageName)
+        public static string NormalizeImageName(string imageName)
         {
             ContainerImageInfo image = new ContainerImageInfo();
-
+            ExtractImageNameParts(imageName, image);
+            return image.Name;
+        }
+        private static void ExtractImageNameParts(string imageName, ContainerImageInfo image)
+        {
             // Split the image name into its component parts
             string[] parts = imageName.Trim().Split(':');
             var registryNamespaceRepository = parts[0];
@@ -31,6 +35,24 @@ namespace wordslab.manager.apps
             {
                 image.Repository = parts[1] + "/" + parts[2];
             }
+
+            // Normalize the image name
+            image.Name = $"{image.Registry}/{image.Repository}:{image.Tag}";
+        }
+
+        public static async Task<ContainerImageInfo> GetMetadataFromCacheOrFromRegistryAsync(string imageName, ConfigStore configStore)
+        {
+            // Try to find the container info locally in the config database
+            imageName = NormalizeImageName(imageName);
+            ContainerImageInfo image = configStore.TryGetContainerImage(imageName);
+            if(image != null) 
+            { 
+                return image; 
+            }
+
+            // This is a new image, we need to get the data from the repository
+            image = new ContainerImageInfo();
+            ExtractImageNameParts(imageName, image);
 
             // Step 1: Authentication request
             var authServer = image.Registry == "registry.docker.io" ? "auth.docker.io" : image.Registry;
@@ -87,25 +109,38 @@ namespace wordslab.manager.apps
             }
             else
             {
-                image.Config.MediaType = imageManifest.config.mediaType;
-                image.Config.Size = imageManifest.config.size;
-                image.Config.Digest = imageManifest.config.digest;  
+                var configLayer = GetContainerImageLayer(imageManifest.config, configStore);
+                image.Layers.Add(configLayer);
+                configLayer.UsedByContainerImages.Add(image);
 
-                foreach(var imageLayer in imageManifest.layers)
+                foreach (var imageLayer in imageManifest.layers)
                 {
-                    var layer = new ContainerImageInfo.LayerInfo();
-                    layer.MediaType = imageLayer.mediaType; 
-                    layer.Size = imageLayer.size; 
-                    layer.Digest = imageLayer.digest;
+                    var layer = GetContainerImageLayer(imageLayer, configStore);
                     image.Layers.Add(layer);
+                    layer.UsedByContainerImages.Add(image);
                 }
             }
+
+            // Save in cache
+            configStore.AddContainerImage(image);
 
             // Note: if you want to test downloading a layer
             // wget --header="Authorization: Bearer djE6d29yZHNsYWItb3JnL2xhbWJkYS1zdGFjay1zZXJ2ZXI6MTY4MTE0NDQ2OTcyMzQ3MDc2Mw==" https://ghcr.io/v2/wordslab-org/lambda-stack-server/blobs/sha256:1bdbbbfaf9ee012367f8103c3425fcaa74845576d919bf5f978480dc459c322f
 
             return image;
-        }     
+        }
+
+        private static ContainerImageLayerInfo GetContainerImageLayer(ImageManifest.Layer layer, ConfigStore configStore)
+        {
+            ContainerImageLayerInfo imageLayer = configStore.TryGetContainerImageLayer(layer.digest);
+            if(imageLayer == null) 
+            { 
+                imageLayer = new ContainerImageLayerInfo(layer.digest, layer.mediaType, layer.size);
+                // Save in cache
+                configStore.AddContainerImageLayer(imageLayer);
+            }
+            return imageLayer;
+        }
 
         // https://docs.docker.com/registry/spec/manifest-v2-2/
 
@@ -114,7 +149,7 @@ namespace wordslab.manager.apps
         /// Its use is optional, and relatively few images will use one of these manifests. 
         /// A client will distinguish a manifest list from an image manifest based on the Content-Type returned in the HTTP response.
         /// </summary>
-        public class ImageManifestList
+        private class ImageManifestList
         {
             /// <summary>
             /// This field specifies the image manifest schema version as an integer. 
@@ -195,7 +230,7 @@ namespace wordslab.manager.apps
         /// The image manifest provides a configuration and a set of layers for a container image.
         /// It’s the direct replacement for the schema-1 manifest.
         /// </summary>
-        public class ImageManifest
+        private class ImageManifest
         {
             /// <summary>
             /// This field specifies the image manifest schema version as an integer.

@@ -1,7 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection.Emit;
 using wordslab.manager.config;
+using static System.Net.Mime.MediaTypeNames;
+using static wordslab.manager.apps.KubernetesApp.TraefikV1alpha1IngressRoute;
 
 namespace wordslab.manager.storage
 {
@@ -207,15 +211,53 @@ namespace wordslab.manager.storage
             }
         }
 
+        /// <summary>
+        /// Installed container images
+        /// </summary>
+        public DbSet<ContainerImageInfo> ContainerImages { get; set; }
+        
+        public void AddContainerImage(ContainerImageInfo image)
+        {
+            ContainerImages.Add(image);
+            SaveChanges();
+        }
+              
+        public ContainerImageInfo TryGetContainerImage(string normalizedImageName)
+        {
+            return ContainerImages.Where(image => image.Name == normalizedImageName).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Installed container image layers
+        /// </summary>
+        public DbSet<ContainerImageLayerInfo> ContainerImageLayers { get; set; }
+
+        public void AddContainerImageLayer(ContainerImageLayerInfo layer)
+        {
+            ContainerImageLayers.Add(layer);
+        }
+
+        public ContainerImageLayerInfo TryGetContainerImageLayer(string digest)
+        {
+            return ContainerImageLayers.Where(layer => layer.Digest == digest).FirstOrDefault();
+        }
+
         // Configure table name
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Set table names
             modelBuilder.Entity<HostMachineConfig>().ToTable("HostMachine");
             // modelBuilder.Entity<CloudAccountConfig>().ToTable("CloudAccount");
             modelBuilder.Entity<VirtualMachineConfig>().ToTable("VirtualMachine");
-            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance").HasKey(instance => new { instance.Name, instance.StartTimestamp });
-            modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp").HasKey(app => new { app.VirtualMachineName, app.YamlFileHash });
-            modelBuilder.Entity<KubernetesAppDeployment>().ToTable("AppDeployment").HasKey(app => new { app.VirtualMachineName, app.Namespace });
+            modelBuilder.Entity<VirtualMachineInstance>().ToTable("VMInstance");
+            modelBuilder.Entity<KubernetesAppInstall>().ToTable("KubernetesApp");
+            modelBuilder.Entity<KubernetesAppDeployment>().ToTable("AppDeployment");
+            modelBuilder.Entity<ContainerImageInfo>().ToTable("ContainerImage");
+            modelBuilder.Entity<ContainerImageLayerInfo>().ToTable("ImageLayer");
+
+            // Describe entities many to many relationships
+            modelBuilder.Entity<KubernetesAppInstall>(app => app.HasMany(app => app.ContainerImages).WithMany(image => image.UsedByKubernetesApps));
+            modelBuilder.Entity<ContainerImageInfo>(image => image.HasMany(image => image.Layers).WithMany(layer => layer.UsedByContainerImages));
         }
 
         // Bootstrap the config database
@@ -240,7 +282,7 @@ namespace wordslab.manager.storage
                 {
                     var dbContextFactory = servicesInScope.GetRequiredService<IDbContextFactory<ConfigStore>>();
                     using var configStore = dbContextFactory.CreateDbContext();
-                    configStore.Database.Migrate();
+                    //configStore.Database.Migrate();
                     configStore.InitializeHostStorage();
                 }
                 catch (Exception ex)

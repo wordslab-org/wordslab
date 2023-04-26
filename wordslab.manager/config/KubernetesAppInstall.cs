@@ -1,35 +1,33 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace wordslab.manager.config
 {
-    public class KubernetesAppInstall : BaseConfig
-    {
+    [PrimaryKey(nameof(VirtualMachineName),nameof(YamlFileHash))]
+    public class KubernetesAppInstall : KubernetesAppSpec
+    { 
         public KubernetesAppInstall() { }
 
-        public KubernetesAppInstall(string vmName, string yamlFileURL, KubernetesAppSpec appSpec) 
+        public KubernetesAppInstall(string vmName, string yamlFileURL) 
         {
             VirtualMachineName = vmName;
-            YamlFileHash = appSpec.YamlFileHash;
             YamlFileURL = yamlFileURL;
-            Spec = appSpec;
             InstallDate = DateTime.Now;
         }
 
-        [Key]
         public string VirtualMachineName { get; private set; }
-
-        [Key]
-        public string YamlFileHash { get; private set; }
 
         public string YamlFileURL { get; private set; }
 
-        public KubernetesAppSpec Spec { get; private set; }
-
         public DateTime InstallDate { get; private set; }
+
+        public bool IsFullyDownloadedInContentStore { get; set; } = false;
+
+        public long RemainingDownloadSize { get; set; }
 
         public DateTime? UninstallDate { get; set; }
     }
 
+    [PrimaryKey(nameof(VirtualMachineName),nameof(Namespace))]
     public class KubernetesAppDeployment : BaseConfig
     {
         public KubernetesAppDeployment() { }
@@ -42,10 +40,8 @@ namespace wordslab.manager.config
             DeploymentDate = DateTime.Now;
         }
 
-        [Key]
         public string VirtualMachineName { get; private set; }
 
-        [Key]
         public string Namespace { get; private set; }
 
         public KubernetesAppInstall App { get; private set; }

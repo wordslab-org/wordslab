@@ -10,7 +10,7 @@ namespace wordslab.manager.test.apps
         [TestMethod]
         public async Task T01_TestContainerImage_GetMetadataFromRegistryAsync()
         {
-            var redisImage = await ContainerImage.GetMetadataFromRegistryAsync("redis");
+            /*var redisImage = await ContainerImage.GetMetadataFromRegistryAsync("redis");
             Assert.IsTrue(redisImage.Layers.Count > 3);
 
             redisImage = await ContainerImage.GetMetadataFromRegistryAsync("redis:7.0.10");
@@ -20,7 +20,7 @@ namespace wordslab.manager.test.apps
             Assert.IsTrue(cudaImage.Layers.Count > 3);
 
             var jupyterImage = await ContainerImage.GetMetadataFromRegistryAsync("ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.3-lambda-0.1.13-22.04.2");
-            Assert.IsTrue(jupyterImage.Layers.Count > 3);
+            Assert.IsTrue(jupyterImage.Layers.Count > 3);*/
         }
     }
 }

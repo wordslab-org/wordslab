@@ -2,30 +2,35 @@
 using k8s.Models;
 using System.Text.Json.Serialization;
 using wordslab.manager.config;
+using wordslab.manager.storage;
+using static wordslab.manager.apps.KubernetesApp.TraefikV1alpha1IngressRoute.Spec.Route;
+using static wordslab.manager.config.KubernetesAppSpec;
 
 namespace wordslab.manager.apps
 {
     public static class KubernetesApp
     {
-        // Mandatory on all resources
-        public const string APP_NAME_LABEL = "app.wordslab.org/name";
-        public const string APP_COMPONENT_LABEL = "app.wordslab.org/component";
+        // LABELS mandatory on all resources
+        public const string APP_NAME_LABEL = "wordslab.org/app";
+        public const string APP_COMPONENT_LABEL = "wordslab.org/component";
 
-        // Mandatory only once on the first resource of the file
-        public const string APP_TITLE_LABEL = "app.wordslab.org/title";
-        public const string APP_DESCRIPTION_LABEL = "app.wordslab.org/description";
-        public const string APP_VERSION_LABEL = "app.wordslab.org/version";
-        public const string APP_DATE_LABEL = "app.wordslab.org/date";
-        public const string APP_HOMEPAGE_LABEL = "app.wordslab.org/homepage";
-        public const string APP_SOURCE_LABEL = "app.wordslab.org/source";
-        public const string APP_AUTHOR_LABEL = "app.wordslab.org/author";
-        public const string APP_LICENSE_LABEL = "app.wordslab.org/license";
+        // ANNOTATIONS mandatory only once on the first resource of the file
+        public const string APP_NAMESPACE_DEFAULT_ANNOT = "wordslab.org/namespace-default";
+        public const string APP_TITLE_ANNOT = "wordslab.org/title";
+        public const string APP_DESCRIPTION_ANNOT = "wordslab.org/description";
+        public const string APP_VERSION_ANNOT = "wordslab.org/version";
+        public const string APP_DATE_ANNOT = "wordslab.org/date";
+        public const string APP_HOMEPAGE_ANNOT = "wordslab.org/homepage";
+        public const string APP_SOURCE_ANNOT = "wordslab.org/source";
+        public const string APP_AUTHOR_ANNOT = "wordslab.org/author";
+        public const string APP_LICENSE_ANNOT = "wordslab.org/license";
 
-        // Mandatory on all IngressRoutes
-        public const string ROUTE_PREFIX_PLACEHOLDER = "app.wordslab.org/route/prefix";
-        public const string ROUTE_PREFIX_DELIMITER = "$$";
-        public const string ROUTE_PATH_TITLE_LABEL = "app.wordslab.org/route/path+title"; // path1, path2 ... if several needed
-        public const string ROUTE_PATH_TITLE_SEPARATOR = "||";
+        // NAMESPACE placeholder: will be replaced by the install namespace
+        public const string NAMESPACE_PLACEHOLDER = "$$namespace$$";
+
+        // ANNOTATIONS mandatory on all IngressRoutes
+        public const string ROUTE_PATH_TITLE_LABEL = "wordslab.org/route-path-title"; // path1, path2 ... if several needed
+        public const string ROUTE_PATH_TITLE_SEPARATOR = "|";
 
         // Built-in wordslab apps
         public const string WORDSLAB_NOTEBOOKS_GPU_APP_URL = "https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml";
@@ -38,12 +43,17 @@ namespace wordslab.manager.apps
 
         private static readonly HttpClient httpClient = new HttpClient();
 
-        public static async Task<KubernetesAppSpec> GetMetadataFromYamlFileAsync(string yamlFileURL)
+        public static async Task<KubernetesAppInstall> ImportMetadataFromYamlFileAsync(string vmName, string yamlFileURL, ConfigStore configStore)
         {
-            var app = new KubernetesAppSpec();
+            var app = new KubernetesAppInstall(vmName, yamlFileURL);
             app.YamlFileContent = await httpClient.GetStringAsync(yamlFileURL);
             app.ComputeHash();
 
+            var existingApp = configStore.TryGetKubernetesApp(vmName, app.YamlFileHash);
+            if (existingApp != null)
+            {
+                throw new InvalidOperationException($"A Kubernetes app install already exists in the virtual machine {vmName} for the yaml file {yamlFileURL}");
+            }
 
             // Used only while parsing the YAML file
             var serviceReferences = new Dictionary<string, HashSet<string>>();
@@ -61,59 +71,70 @@ namespace wordslab.manager.apps
                 var appComponent = resourceMetadata.GetLabel(APP_COMPONENT_LABEL);
                 if (appName == null || appComponent == null)
                 {
-                    throw new FormatException("In wordslab yaml app files, the labels 'app.wordslab.org/name' and 'app.wordslab.org/component' are mandatory on all resources");
+                    throw new FormatException($"In wordslab yaml app files, the labels '{APP_NAME_LABEL}' and '{APP_COMPONENT_LABEL}' are mandatory on all resources");
                 }
                 if (app.Name == null)
                 {
                     app.Name = appName;
 
+                    // First resource of the file must be an ingressroute
+                    if(!(resource is TraefikV1alpha1IngressRoute))
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the first resource declared must be the IngressRoute for the application (here it is {resource.GetType().Name})");
+                    }
+
                     // First resource of the file, read all app properties
-                    app.Title = resourceMetadata.GetLabel(APP_TITLE_LABEL);
+                    app.NamespaceDefault = resourceMetadata.GetAnnotation(APP_NAMESPACE_DEFAULT_ANNOT);
+                    if (app.NamespaceDefault == null)
+                    {
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_NAMESPACE_DEFAULT_ANNOT}' is mandatory on the first resource of the file");
+                    }
+                    app.Title = resourceMetadata.GetAnnotation(APP_TITLE_ANNOT);
                     if (app.Title == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_TITLE_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_TITLE_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.Description = resourceMetadata.GetLabel(APP_DESCRIPTION_LABEL);
+                    app.Description = resourceMetadata.GetAnnotation(APP_DESCRIPTION_ANNOT);
                     if (app.Description == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_DESCRIPTION_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_DESCRIPTION_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.Version = resourceMetadata.GetLabel(APP_VERSION_LABEL);
+                    app.Version = resourceMetadata.GetAnnotation(APP_VERSION_ANNOT);
                     if (app.Version == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_VERSION_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_VERSION_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.Date = resourceMetadata.GetLabel(APP_DATE_LABEL);
+                    app.Date = resourceMetadata.GetAnnotation(APP_DATE_ANNOT);
                     if (app.Date == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_DATE_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_DATE_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.HomePage = resourceMetadata.GetLabel(APP_HOMEPAGE_LABEL);
+                    app.HomePage = resourceMetadata.GetAnnotation(APP_HOMEPAGE_ANNOT);
                     if (app.HomePage == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_HOMEPAGE_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_HOMEPAGE_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.Source = resourceMetadata.GetLabel(APP_SOURCE_LABEL);
+                    app.Source = resourceMetadata.GetAnnotation(APP_SOURCE_ANNOT);
                     if (app.Source == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_SOURCE_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_SOURCE_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.Author = resourceMetadata.GetLabel(APP_AUTHOR_LABEL);
+                    app.Author = resourceMetadata.GetAnnotation(APP_AUTHOR_ANNOT);
                     if (app.Author == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_AUTHOR_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_AUTHOR_ANNOT}' is mandatory on the first resource of the file");
                     }
-                    app.Licence = resourceMetadata.GetLabel(APP_LICENSE_LABEL);
+                    app.Licence = resourceMetadata.GetAnnotation(APP_LICENSE_ANNOT);
                     if (app.Licence == null)
                     {
-                        throw new FormatException($"In wordslab yaml app files, the label '{APP_LICENSE_LABEL}' is mandatory on the first resource of the file");
+                        throw new FormatException($"In wordslab yaml app files, the annotation '{APP_LICENSE_ANNOT}' is mandatory on the first resource of the file");
                     }
                 }
                 else
                 {
                     if (appName != app.Name)
                     {
-                        throw new FormatException($"Inconsistent application name in 'app.wordslab.org/name' labels on different resources: ");
+                        throw new FormatException($"Inconsistent application name in '{APP_NAME_LABEL}' labels on different resources: ");
                     }
                 }
                 switch (resource)
@@ -122,49 +143,49 @@ namespace wordslab.manager.apps
                     // The container spec is defined within the spec.containers field of a pod.
                     case V1Pod pod:
                         var resourceName = $"pod/{pod.Name()}";
-                        await AddPodSpec(app, resourceName, pod.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, pod.Spec, pvcReferences, configStore);
                         break;
                     // ReplicationController: A replication controller ensures that a specified number of pod replicas are running at any given time.
                     // The container spec is defined within the spec.template.spec.containers field of a replication controller.
                     case V1ReplicationController replicaCtrl:
                         resourceName = $"replicationcontroller/{replicaCtrl.Name()}";
-                        await AddPodSpec(app, resourceName, replicaCtrl.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, replicaCtrl.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     // ReplicaSet: A replica set is similar to a replication controller but provides more advanced selectors for managing pods.
                     // The container spec is defined within the spec.template.spec.containers field of a replica set.
                     case V1ReplicaSet replicaSet:
                         resourceName = $"replicaset.apps/{replicaSet.Name()}";
-                        await AddPodSpec(app, resourceName, replicaSet.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, replicaSet.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     // Deployment: A deployment manages the rollout and scaling of a set of replicas.
                     // The container spec is defined within the spec.template.spec.containers field of a deployment.
                     case V1Deployment deployment:
                         resourceName = $"deployment.apps/{deployment.Name()}";
-                        await AddPodSpec(app, resourceName, deployment.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, deployment.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     // StatefulSet: A stateful set manages the deployment and scaling of a set of stateful pods.
                     // The container spec is defined within the spec.template.spec.containers field of a stateful set.
                     case V1StatefulSet statefulSet:
                         resourceName = $"statefulset.apps/{statefulSet.Name()}";
-                        await AddPodSpec(app, resourceName, statefulSet.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, statefulSet.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     // DaemonSet: A daemon set ensures that all(or some) nodes run a copy of a pod.
                     // The container spec is defined within the spec.template.spec.containers field of a daemon set.
                     case V1DaemonSet daemonSet:
                         resourceName = $"daemonset.apps/{daemonSet.Name()}";
-                        await AddPodSpec(app, resourceName, daemonSet.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, daemonSet.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     // Job: A job creates one or more pods and ensures that a specified number of them successfully terminate.
                     // The container spec is defined within the spec.template.spec.containers field of a job.
                     case V1Job job:
                         resourceName = $"job.batch/{job.Name()}";
-                        await AddPodSpec(app, resourceName, job.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, job.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     // CronJob: A cron job creates a job on a repeating schedule.
                     // The container spec is defined within the spec.jobTemplate.spec.template.spec.containers
                     case V1CronJob cronJob:
                         resourceName = $"cronjob.batch/{cronJob.Name()}";
-                        await AddPodSpec(app, resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec, pvcReferences);
+                        await AddPodSpec(app, resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec, pvcReferences, configStore);
                         break;
                     case V1PersistentVolume pv:
                         throw new NotSupportedException("PersistentVolumes are not supported in wordslab: please use a PersistentVolumeClaim with 'storageClassName: local-path'");
@@ -185,7 +206,11 @@ namespace wordslab.manager.apps
                         {
                             storageLimit = pvc.Spec?.Resources?.Limits["storage"]?.ToInt64();
                         }
-                        app.PersistentVolumes.Add(pvcName, new PersistentVolumeInfo() { Name = pvcName, StorageRequest = storageRequest, StorageLimit = storageLimit });
+                        var persistentVolumeInfo = new PersistentVolumeInfo() { Name = pvcName, StorageRequest = storageRequest, StorageLimit = storageLimit };
+                        // Optional title and description if the service is public
+                        persistentVolumeInfo.Title = pvc.GetAnnotation(APP_TITLE_ANNOT);
+                        persistentVolumeInfo.Description = pvc.GetAnnotation(APP_DESCRIPTION_ANNOT);
+                        app.PersistentVolumes.Add(pvcName,persistentVolumeInfo);
                         break;
                     case V1Service service:
                         var serviceType = service.Spec?.Type;
@@ -197,55 +222,70 @@ namespace wordslab.manager.apps
                         if (port.HasValue)
                         {
                             var serviceName = service.Name();
-                            var serviceInfo = new ServiceInfo() { Name = serviceName, Port = port.Value, Title = service.GetLabel(APP_TITLE_LABEL) };
-                            app.Services.Add(serviceInfo);
+                            var serviceInfo = new ServiceInfo() { Name = serviceName, Port = port.Value };
+                            // Optional title and description if the service is public
+                            serviceInfo.Title = service.GetAnnotation(APP_TITLE_ANNOT);
+                            serviceInfo.Description = service.GetAnnotation(APP_DESCRIPTION_ANNOT);
+                            app.Services.Add(serviceName, serviceInfo);
                         }
                         break;
                     case V1Ingress ingress:
-                        throw new NotSupportedException("Igress resources are not supported in wordslab: please use IngressRoute instead (https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/#kind-ingressroute)");
+                        throw new NotSupportedException("Ingress resources are not supported in wordslab: please use IngressRoute instead (https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/#kind-ingressroute)");
                     case TraefikV1alpha1IngressRoute ingressRoute:
                         resourceName = $"ingressroute/{ingressRoute.Name()}";
+                        // Metadata for all routes
                         var routeInfo = new IngressRouteInfo();
-                        routeInfo.PrefixDefault = ingressRoute.GetLabel(ROUTE_PREFIX_PLACEHOLDER);
-                        if (routeInfo.PrefixDefault == null)
-                        {
-                            throw new FormatException($"In wordslab yaml app files, the label '{ROUTE_PREFIX_PLACEHOLDER}' is mandatory on all IngressRoutes");
-                        }
-                        if (!routeInfo.PrefixDefault.StartsWith(ROUTE_PREFIX_DELIMITER) || !routeInfo.PrefixDefault.EndsWith(ROUTE_PREFIX_DELIMITER))
-                        {
-                            throw new FormatException($"In wordslab yaml app files, the label '{ROUTE_PREFIX_PLACEHOLDER}' must contain a placeholder which starts and ends with {ROUTE_PREFIX_DELIMITER}");
-                        }
-                        routeInfo.PrefixDefault = routeInfo.PrefixDefault.Substring(2, routeInfo.PrefixDefault.Length - 4);
                         AddPathInfo(ingressRoute, routeInfo, "");
-                        app.IngressRoutes.Add(routeInfo);
                         for (var i = 1; i <= 20; i++)
                         {
                             var pathFound = AddPathInfo(ingressRoute, routeInfo, i.ToString());
                             if (!pathFound) break;
                         }
-                        if (ingressRoute.spec?.routes != null)
+                        // Entrypoints
+                        if (ingressRoute.spec.entryPoints == null || ingressRoute.spec.entryPoints.Length == 0)
                         {
-                            foreach (var route in ingressRoute.spec?.routes)
+                            throw new FormatException("At least one entrypoint must be specified in IngressResource spec");
+                        }
+                        var isHttp = false;
+                        var isHttps = false;
+                        foreach(var entrypoint in ingressRoute.spec?.entryPoints)
+                        {
+                            if (entrypoint == "web") routeInfo.IsHttp = true;
+                            else if (entrypoint == "websecure") routeInfo.IsHttps = true;
+                            else throw new FormatException("Only two entrypoints can be specified in IngressResource: 'web' (VM http port) or 'websecure' (VM https port)");
+                        }
+                        // Routes
+                        if (ingressRoute.spec?.routes == null || ingressRoute.spec.routes.Length == 0)
+                        {
+                            throw new FormatException("At least one route must be specified in IngressResource spec");
+                        }
+                        foreach (var route in ingressRoute.spec.routes)
+                        {
+                            if(route.kind != "Rule" || route.match == null || !route.match.StartsWith("PathPrefix(`/$$namespace$$/"))
                             {
-                                if (route.services != null)
+                                throw new FormatException("IngressResource routes must be of kind 'Rule' and they match property MUST start with: \"PathPrefix(`/$$namespace$$/\". This is to ensure that the URLs for this application will all stay inside the deployment namespace.");
+                            }
+                            // Services
+                            if (route.services == null || route.services.Length == 0)
+                            {
+                                throw new FormatException("At least one service must be specified inside IngressResource spec.routes.services");
+                            }
+                            foreach (var serviceRef in route.services)
+                            {
+                                HashSet<string> resRef = null;
+                                if (serviceReferences.ContainsKey(serviceRef.name))
                                 {
-                                    foreach (var serviceRef in route.services)
-                                    {
-                                        HashSet<string> resRef = null;
-                                        if (serviceReferences.ContainsKey(serviceRef.name))
-                                        {
-                                            resRef = serviceReferences[serviceRef.name];
-                                        }
-                                        else
-                                        {
-                                            resRef = new HashSet<string>();
-                                            serviceReferences.Add(serviceRef.name, resRef);
-                                        }
-                                        resRef.Add(resourceName);
-                                    }
+                                    resRef = serviceReferences[serviceRef.name];
                                 }
+                                else
+                                {
+                                    resRef = new HashSet<string>();
+                                    serviceReferences.Add(serviceRef.name, resRef);
+                                }
+                                resRef.Add(resourceName);
                             }
                         }
+                        app.IngressRoutes.Add(routeInfo);
                         break;
                 }
             }
@@ -281,6 +321,9 @@ namespace wordslab.manager.apps
                     throw new FormatException($"Resource '{pvcRef.Value.First()}' references a persistent volume claim named '{pvcRef.Key}' which isn't defined in the Kubernetes yaml file");
                 }
             }
+            // Everything OK -> register in database
+            app.RemainingDownloadSize = app.ContainerImagesLayers().Sum(layer => layer.Size);
+            configStore.AddKubernetesApp(app);
             return app;
         }
 
@@ -303,38 +346,26 @@ namespace wordslab.manager.apps
             return false;
         }
 
-        private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences)
+        private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences, ConfigStore configStore)
         {
             if (podSpec != null)
             {
                 if (podSpec.Containers != null)
                 {
                     foreach (var container in podSpec.Containers)
-                    {
-                        var imageName = container.Image;
-                        if (!String.IsNullOrEmpty(imageName))
+                    {                        
+                        if (!String.IsNullOrEmpty(container.Image))
                         {
+                            var imageName = ContainerImage.NormalizeImageName(container.Image);
                             ContainerImageInfo containerImage = null;
-                            if (!app.ContainerImages.ContainsKey(imageName))
+                            if (!app.ContainerImages.Any(image => image.Name == imageName))
                             {
-                                containerImage = await ContainerImage.GetMetadataFromRegistryAsync(imageName);
-                                app.ContainerImages.Add(imageName, containerImage);
+                                containerImage = await ContainerImage.GetMetadataFromCacheOrFromRegistryAsync(imageName, configStore);
+                                app.ContainerImages.Add(containerImage);
                             }
                             else
                             {
-                                containerImage = app.ContainerImages[imageName];
-                            }
-                            foreach (var layer in containerImage.ConfigAndLayers())
-                            {
-                                if (!app.ContainerImagesLayers.ContainsKey(layer.Digest))
-                                {
-                                    app.ContainerImagesLayers.Add(layer.Digest, new ContainerImageLayerInfo(layer, containerImage));
-                                }
-                                else
-                                {
-                                    app.ContainerImagesLayers[layer.Digest].UsedByContainerImages.Add(containerImage);
-                                }
-                                app.ContainerImagesLayers[layer.Digest].UsedByResourceNames.Add(resourceName);
+                                containerImage = app.ContainerImages.First(image => image.Name == imageName);
                             }
                         }
                     }

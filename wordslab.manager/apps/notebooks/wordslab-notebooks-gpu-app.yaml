@@ -3,23 +3,24 @@ kind: IngressRoute
 metadata:
   name: wordslab-notebooks-ingressroute
   labels:
-    app.wordslab.org/name: wordslab-notebooks
-    app.wordslab.org/component: jupyterlab
-    app.wordslab.org/title: "Jupyterlab notebooks (GPU)"
-    app.wordslab.org/description: "Ubuntu 22.04, Cuda 11.8, Python 3.10, Pytorch 1.13 & Tensorflow 2.11, Jupyterlab 3.6.1"
-    app.wordslab.org/version: "jupyterlab-3.6.3-lambda-0.1.13-22.04.2"
-    app.wordslab.org/date: "04/10/2023"
-    app.wordslab.org/homepage: "https://www.wordslab.org/"
-    app.wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml"
-    app.wordslab.org/author: "https://github.com/wordslab-org"
-    app.wordslab.org/license: "Apache License Version 2.0"
-    app.wordslab.org/route/prefix: "$$notebooks$$"
-    app.wordslab.org/route/path+title: "/lab||Jupterlab workspace"
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+  annotations:
+    wordslab.org/namespace-default: "notebooks"
+    wordslab.org/title: "Jupyterlab notebooks (GPU)"
+    wordslab.org/description: "Ubuntu 22.04, Cuda 11.8, Python 3.10, Pytorch 1.13 & Tensorflow 2.11, Jupyterlab 3.6.1"
+    wordslab.org/version: "jupyterlab-3.6.3-lambda-0.1.13-22.04.2"
+    wordslab.org/date: "04/10/2023"
+    wordslab.org/homepage: "https://www.wordslab.org/"
+    wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml"
+    wordslab.org/author: "https://github.com/wordslab-org"
+    wordslab.org/license: "Apache License Version 2.0"
+    wordslab.org/ingressroute-path: "/lab | Jupyterlab interactive development environment"
 spec:
   entryPoints:
     - web
   routes:
-  - match: PathPrefix(`/$$notebooks$$`)
+  - match: PathPrefix(`/$$namespace$$`)
     kind: Rule
     services:
     - name: wordslab-notebooks-service
@@ -30,8 +31,8 @@ kind: Service
 metadata:
   name: wordslab-notebooks-service
   labels:
-    app.wordslab.org/name: wordslab-notebooks
-    app.wordslab.org/component: jupyterlab
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
 spec:
   type: ClusterIP
   ports:
@@ -45,36 +46,55 @@ spec:
 kind: "PersistentVolumeClaim"
 apiVersion: "v1"
 metadata:
-  name: wordslab-notebooks-workspace
+  name: wordslab-notebooks-workspace-volume
   labels:
-    app.wordslab.org/name: wordslab-notebooks
-    app.wordslab.org/component: jupyterlab
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: workspace-volume
+    wordslab.org/title: "User projects files and data"
+    wordslab.org/description: "Volume where the user projects repositories are stored"
 spec:
   accessModes:
     - "ReadWriteOnce"
   storageClassName: local-path
   resources:
     requests:
-      storage: 50Gi
+      storage: 5Gi
+---
+kind: "PersistentVolumeClaim"
+apiVersion: "v1"
+metadata:
+  name: wordslab-notebooks-models-volume
+  labels:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: models-volume
+    wordslab.org/title: "Shared models and datasets files"
+    wordslab.org/description: "Volume where the shared models and datasets are stored"
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordslab-notebooks-deployment
   labels:
-    app.wordslab.org/name: wordslab-notebooks
-    app.wordslab.org/component: jupyterlab
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.wordslab.org/name: wordslab-notebooks
-      app.wordslab.org/component: jupyterlab
+      wordslab.org/app: wordslab-notebooks
+      wordslab.org/component: jupyterlab
   template:
     metadata:
       labels:
-        app.wordslab.org/name: wordslab-notebooks
-        app.wordslab.org/component: jupyterlab
+        wordslab.org/app: wordslab-notebooks
+        wordslab.org/component: jupyterlab
     spec:
       containers:
       - name: wordslab-jupyter-stack-container
@@ -85,7 +105,7 @@ spec:
           protocol: TCP
         env:
         - name: JUPYTER_BASE_URL
-          value: "/$$notebooks$$"
+          value: "/$$namespace$$"
         - name: JUPYTER_PORT
           value: "8888"
         - name: JUPYTER_TOKEN
@@ -100,15 +120,44 @@ spec:
           value: "compute,utility"
         - name: NVIDIA_REQUIRE_CUDA
           value: "cuda>=11.8"
+# https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables#hfhome
+# https://huggingface.co/transformers/v4.0.1/installation.html#caching-models
+# https://huggingface.co/docs/datasets/v1.18.2/cache.html#cache-directory
+        - name: HF_HOME
+          value: "/models/huggingface"
+        - name: TRANSFORMERS_CACHE
+          value: "/models/huggingface/transformers"
+        - name: HF_DATASETS_CACHE
+          value: "/models/huggingface/datasets"
+# https://docs.fast.ai/data.external.html#config
+        - name: FASTAI_HOME
+          value: "/models/fastai"
+# https://pytorch.org/docs/stable/hub.html#where-are-my-downloaded-models-saved
+        - name: TORCH_HOME
+          value: "/models/torch"
+# There is no way to set the cache directory in Keras: 
+# https://github.com/keras-team/keras/blob/f9336cc5114b4a9429a242deb264b707379646b7/keras/utils/data_utils.py#L268
+# But we can store the config in the shared directory:
+# https://github.com/tensorflow/tensorflow/blob/9a679fd0fdd807be9d0c0a2c7846e61364f70625/tensorflow/python/keras/backend.py#L6374
+        - name: KERAS_HOME
+          value: "/models/keras"
+# https://www.tensorflow.org/hub/caching?hl=fr
+        - name: TFHUB_CACHE_DIR
+          value: /models/tfhub_modules"
         volumeMounts:
           - name: dshm
             mountPath: /dev/shm
           - name: workspace
             mountPath: /workspace
+          - name: models
+            mountPath: /models
       volumes:
         - name: dshm
           emptyDir:
             medium: Memory
         - name: workspace
           persistentVolumeClaim:
-            claimName: wordslab-notebooks-workspace
+            claimName: wordslab-notebooks-workspace-volume
+        - name: models
+          persistentVolumeClaim:
+            claimName: wordslab-notebooks-models-volume

@@ -172,19 +172,60 @@ namespace wordslab.manager.Migrations
 
             modelBuilder.Entity("wordslab.manager.config.VirtualMachineConfig", b =>
                 {
-                    b.OwnsOne("wordslab.manager.config.VirtualMachineSpec", "Spec", b1 =>
+                    b.OwnsOne("wordslab.manager.config.VirtualMachineConfig.Spec#wordslab.manager.config.VirtualMachineSpec", "Spec", b1 =>
                         {
                             b1.Property<string>("VirtualMachineConfigName")
                                 .HasColumnType("TEXT");
 
                             b1.HasKey("VirtualMachineConfigName");
 
-                            b1.ToTable("VirtualMachine");
+                            b1.ToTable("VirtualMachine", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("VirtualMachineConfigName");
 
-                            b1.OwnsOne("wordslab.manager.config.NetworkSpec", "Network", b2 =>
+                            b1.OwnsOne("wordslab.manager.config.VirtualMachineConfig.Spec#wordslab.manager.config.VirtualMachineSpec.Compute#wordslab.manager.config.ComputeSpec", "Compute", b2 =>
+                                {
+                                    b2.Property<string>("VirtualMachineSpecVirtualMachineConfigName")
+                                        .HasColumnType("TEXT");
+
+                                    b2.Property<int>("MemoryGB")
+                                        .HasColumnType("INTEGER");
+
+                                    b2.Property<int>("Processors")
+                                        .HasColumnType("INTEGER");
+
+                                    b2.HasKey("VirtualMachineSpecVirtualMachineConfigName");
+
+                                    b2.ToTable("VirtualMachine", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("VirtualMachineSpecVirtualMachineConfigName");
+                                });
+
+                            b1.OwnsOne("wordslab.manager.config.VirtualMachineConfig.Spec#wordslab.manager.config.VirtualMachineSpec.GPU#wordslab.manager.config.GPUSpec", "GPU", b2 =>
+                                {
+                                    b2.Property<string>("VirtualMachineSpecVirtualMachineConfigName")
+                                        .HasColumnType("TEXT");
+
+                                    b2.Property<int>("GPUCount")
+                                        .HasColumnType("INTEGER");
+
+                                    b2.Property<int>("MemoryGB")
+                                        .HasColumnType("INTEGER");
+
+                                    b2.Property<string>("ModelName")
+                                        .HasColumnType("TEXT");
+
+                                    b2.HasKey("VirtualMachineSpecVirtualMachineConfigName");
+
+                                    b2.ToTable("VirtualMachine", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("VirtualMachineSpecVirtualMachineConfigName");
+                                });
+
+                            b1.OwnsOne("wordslab.manager.config.VirtualMachineConfig.Spec#wordslab.manager.config.VirtualMachineSpec.Network#wordslab.manager.config.NetworkSpec", "Network", b2 =>
                                 {
                                     b2.Property<string>("VirtualMachineSpecVirtualMachineConfigName")
                                         .HasColumnType("TEXT");
@@ -203,13 +244,13 @@ namespace wordslab.manager.Migrations
 
                                     b2.HasKey("VirtualMachineSpecVirtualMachineConfigName");
 
-                                    b2.ToTable("VirtualMachine");
+                                    b2.ToTable("VirtualMachine", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("VirtualMachineSpecVirtualMachineConfigName");
                                 });
 
-                            b1.OwnsOne("wordslab.manager.config.StorageSpec", "Storage", b2 =>
+                            b1.OwnsOne("wordslab.manager.config.VirtualMachineConfig.Spec#wordslab.manager.config.VirtualMachineSpec.Storage#wordslab.manager.config.StorageSpec", "Storage", b2 =>
                                 {
                                     b2.Property<string>("VirtualMachineSpecVirtualMachineConfigName")
                                         .HasColumnType("TEXT");
@@ -228,48 +269,7 @@ namespace wordslab.manager.Migrations
 
                                     b2.HasKey("VirtualMachineSpecVirtualMachineConfigName");
 
-                                    b2.ToTable("VirtualMachine");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("VirtualMachineSpecVirtualMachineConfigName");
-                                });
-
-                            b1.OwnsOne("wordslab.manager.config.ComputeSpec", "Compute", b2 =>
-                                {
-                                    b2.Property<string>("VirtualMachineSpecVirtualMachineConfigName")
-                                        .HasColumnType("TEXT");
-
-                                    b2.Property<int>("MemoryGB")
-                                        .HasColumnType("INTEGER");
-
-                                    b2.Property<int>("Processors")
-                                        .HasColumnType("INTEGER");
-
-                                    b2.HasKey("VirtualMachineSpecVirtualMachineConfigName");
-
-                                    b2.ToTable("VirtualMachine");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("VirtualMachineSpecVirtualMachineConfigName");
-                                });
-
-                            b1.OwnsOne("wordslab.manager.config.GPUSpec", "GPU", b2 =>
-                                {
-                                    b2.Property<string>("VirtualMachineSpecVirtualMachineConfigName")
-                                        .HasColumnType("TEXT");
-
-                                    b2.Property<int>("GPUCount")
-                                        .HasColumnType("INTEGER");
-
-                                    b2.Property<int>("MemoryGB")
-                                        .HasColumnType("INTEGER");
-
-                                    b2.Property<string>("ModelName")
-                                        .HasColumnType("TEXT");
-
-                                    b2.HasKey("VirtualMachineSpecVirtualMachineConfigName");
-
-                                    b2.ToTable("VirtualMachine");
+                                    b2.ToTable("VirtualMachine", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("VirtualMachineSpecVirtualMachineConfigName");
@@ -300,7 +300,7 @@ namespace wordslab.manager.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("wordslab.manager.config.ComputeSpec", "ComputeStartArguments", b1 =>
+                    b.OwnsOne("wordslab.manager.config.VirtualMachineInstance.ComputeStartArguments#wordslab.manager.config.ComputeSpec", "ComputeStartArguments", b1 =>
                         {
                             b1.Property<string>("VirtualMachineInstanceName")
                                 .HasColumnType("TEXT");
@@ -316,13 +316,13 @@ namespace wordslab.manager.Migrations
 
                             b1.HasKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
 
-                            b1.ToTable("VMInstance");
+                            b1.ToTable("VMInstance", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
                         });
 
-                    b.OwnsOne("wordslab.manager.config.GPUSpec", "GPUStartArguments", b1 =>
+                    b.OwnsOne("wordslab.manager.config.VirtualMachineInstance.GPUStartArguments#wordslab.manager.config.GPUSpec", "GPUStartArguments", b1 =>
                         {
                             b1.Property<string>("VirtualMachineInstanceName")
                                 .HasColumnType("TEXT");
@@ -341,7 +341,7 @@ namespace wordslab.manager.Migrations
 
                             b1.HasKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
 
-                            b1.ToTable("VMInstance");
+                            b1.ToTable("VMInstance", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");

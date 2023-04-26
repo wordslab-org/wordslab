@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using wordslab.manager.os;
 using wordslab.manager.vm.qemu;
@@ -14,6 +14,7 @@ namespace wordslab.manager.config
         Killed
     }
 
+    [PrimaryKey(nameof(Name),nameof(StartTimestamp))]
     public class VirtualMachineInstance : BaseConfig
     {
         private VirtualMachineInstance() { }
@@ -62,10 +63,8 @@ namespace wordslab.manager.config
             ExecutionMessages = executionMessages;
         }
 
-        [Key]
         public string Name { get; set; }
 
-        [Key]
         public DateTime StartTimestamp { get; set; }
 
         // Config and start arguments overrides
