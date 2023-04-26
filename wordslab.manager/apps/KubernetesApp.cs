@@ -198,7 +198,7 @@ namespace wordslab.manager.apps
                         {
                             var serviceName = service.Name();
                             var serviceInfo = new ServiceInfo() { Name = serviceName, Port = port.Value, Title = service.GetLabel(APP_TITLE_LABEL) };
-                            app.Services.Add(serviceName, serviceInfo);
+                            app.Services.Add(serviceInfo);
                         }
                         break;
                     case V1Ingress ingress:
