@@ -6,13 +6,22 @@ namespace wordslab.manager.config
     public class ContainerImageInfo
     {
         [Key]
-        public string Name { get; set; }
+        public string Digest 
+        { 
+            get { return _digest; } 
+            set
+            {
+                _digest = value;
+                Name = $"{Registry}/{Repository}:{Digest}";
+            }
+        }
+        private string _digest;
 
         public string Registry { get; set; }
-
         public string Repository { get; set; }
-
         public string Tag { get; set; }
+
+        public string Name { get; set; }
 
         /// <summary>
         /// The Config field references a configuration object for a container, by digest. 

@@ -41,7 +41,8 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: wordslab-notebooks
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
 ---
 kind: "PersistentVolumeClaim"
 apiVersion: "v1"
@@ -50,6 +51,7 @@ metadata:
   labels:
     wordslab.org/app: wordslab-notebooks
     wordslab.org/component: workspace-volume
+  annotations:
     wordslab.org/title: "User projects files and data"
     wordslab.org/description: "Volume where the user projects repositories are stored"
 spec:
@@ -67,6 +69,7 @@ metadata:
   labels:
     wordslab.org/app: wordslab-notebooks
     wordslab.org/component: models-volume
+  annotations:
     wordslab.org/title: "Shared models and datasets files"
     wordslab.org/description: "Volume where the shared models and datasets are stored"
 spec:

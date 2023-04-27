@@ -7,7 +7,7 @@ namespace wordslab.manager.vm
     // - after wordslab host init : 1.37 GB
     // - after wordslab vm create : 3.80 GB
     // - after wordslab notebooks app download : 25.8 GB / Download time 878 sec
-    // - after wordslab notebooks app deployment : 
+    // - after wordslab notebooks app deployment : 26.0 GB
 
     public static class VMRequirements
     {

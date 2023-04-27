@@ -55,6 +55,15 @@ namespace wordslab.manager.apps
                 throw new InvalidOperationException($"A Kubernetes app install already exists in the virtual machine {vmName} for the yaml file {yamlFileURL}");
             }
 
+            await ParseYamlFileContent(app, isCalledFromImportMetada:true, configStore);
+            // Everything OK -> register in database
+            app.RemainingDownloadSize = app.ContainerImagesLayers().Sum(layer => layer.Size);
+            configStore.AddKubernetesApp(app);
+            return app;
+        }
+
+        public static async Task ParseYamlFileContent(KubernetesAppInstall app, bool isCalledFromImportMetada = false, ConfigStore configStore = null)
+        {
             // Used only while parsing the YAML file
             var serviceReferences = new Dictionary<string, HashSet<string>>();
             var pvcReferences = new Dictionary<string, HashSet<string>>();
@@ -78,7 +87,7 @@ namespace wordslab.manager.apps
                     app.Name = appName;
 
                     // First resource of the file must be an ingressroute
-                    if(!(resource is TraefikV1alpha1IngressRoute))
+                    if (!(resource is TraefikV1alpha1IngressRoute))
                     {
                         throw new FormatException($"In wordslab yaml app files, the first resource declared must be the IngressRoute for the application (here it is {resource.GetType().Name})");
                     }
@@ -143,49 +152,49 @@ namespace wordslab.manager.apps
                     // The container spec is defined within the spec.containers field of a pod.
                     case V1Pod pod:
                         var resourceName = $"pod/{pod.Name()}";
-                        await AddPodSpec(app, resourceName, pod.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, pod.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // ReplicationController: A replication controller ensures that a specified number of pod replicas are running at any given time.
                     // The container spec is defined within the spec.template.spec.containers field of a replication controller.
                     case V1ReplicationController replicaCtrl:
                         resourceName = $"replicationcontroller/{replicaCtrl.Name()}";
-                        await AddPodSpec(app, resourceName, replicaCtrl.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, replicaCtrl.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // ReplicaSet: A replica set is similar to a replication controller but provides more advanced selectors for managing pods.
                     // The container spec is defined within the spec.template.spec.containers field of a replica set.
                     case V1ReplicaSet replicaSet:
                         resourceName = $"replicaset.apps/{replicaSet.Name()}";
-                        await AddPodSpec(app, resourceName, replicaSet.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, replicaSet.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // Deployment: A deployment manages the rollout and scaling of a set of replicas.
                     // The container spec is defined within the spec.template.spec.containers field of a deployment.
                     case V1Deployment deployment:
                         resourceName = $"deployment.apps/{deployment.Name()}";
-                        await AddPodSpec(app, resourceName, deployment.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, deployment.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // StatefulSet: A stateful set manages the deployment and scaling of a set of stateful pods.
                     // The container spec is defined within the spec.template.spec.containers field of a stateful set.
                     case V1StatefulSet statefulSet:
                         resourceName = $"statefulset.apps/{statefulSet.Name()}";
-                        await AddPodSpec(app, resourceName, statefulSet.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, statefulSet.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // DaemonSet: A daemon set ensures that all(or some) nodes run a copy of a pod.
                     // The container spec is defined within the spec.template.spec.containers field of a daemon set.
                     case V1DaemonSet daemonSet:
                         resourceName = $"daemonset.apps/{daemonSet.Name()}";
-                        await AddPodSpec(app, resourceName, daemonSet.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, daemonSet.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // Job: A job creates one or more pods and ensures that a specified number of them successfully terminate.
                     // The container spec is defined within the spec.template.spec.containers field of a job.
                     case V1Job job:
                         resourceName = $"job.batch/{job.Name()}";
-                        await AddPodSpec(app, resourceName, job.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, job.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     // CronJob: A cron job creates a job on a repeating schedule.
                     // The container spec is defined within the spec.jobTemplate.spec.template.spec.containers
                     case V1CronJob cronJob:
                         resourceName = $"cronjob.batch/{cronJob.Name()}";
-                        await AddPodSpec(app, resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec, pvcReferences, configStore);
+                        await AddPodSpec(app, resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
                         break;
                     case V1PersistentVolume pv:
                         throw new NotSupportedException("PersistentVolumes are not supported in wordslab: please use a PersistentVolumeClaim with 'storageClassName: local-path'");
@@ -210,7 +219,7 @@ namespace wordslab.manager.apps
                         // Optional title and description if the service is public
                         persistentVolumeInfo.Title = pvc.GetAnnotation(APP_TITLE_ANNOT);
                         persistentVolumeInfo.Description = pvc.GetAnnotation(APP_DESCRIPTION_ANNOT);
-                        app.PersistentVolumes.Add(pvcName,persistentVolumeInfo);
+                        app.PersistentVolumes.Add(pvcName, persistentVolumeInfo);
                         break;
                     case V1Service service:
                         var serviceType = service.Spec?.Type;
@@ -248,7 +257,7 @@ namespace wordslab.manager.apps
                         }
                         var isHttp = false;
                         var isHttps = false;
-                        foreach(var entrypoint in ingressRoute.spec?.entryPoints)
+                        foreach (var entrypoint in ingressRoute.spec?.entryPoints)
                         {
                             if (entrypoint == "web") routeInfo.IsHttp = true;
                             else if (entrypoint == "websecure") routeInfo.IsHttps = true;
@@ -261,7 +270,7 @@ namespace wordslab.manager.apps
                         }
                         foreach (var route in ingressRoute.spec.routes)
                         {
-                            if(route.kind != "Rule" || route.match == null || !route.match.StartsWith("PathPrefix(`/$$namespace$$/"))
+                            if (route.kind != "Rule" || route.match == null || !route.match.StartsWith("PathPrefix(`/$$namespace$$/"))
                             {
                                 throw new FormatException("IngressResource routes must be of kind 'Rule' and they match property MUST start with: \"PathPrefix(`/$$namespace$$/\". This is to ensure that the URLs for this application will all stay inside the deployment namespace.");
                             }
@@ -321,10 +330,6 @@ namespace wordslab.manager.apps
                     throw new FormatException($"Resource '{pvcRef.Value.First()}' references a persistent volume claim named '{pvcRef.Key}' which isn't defined in the Kubernetes yaml file");
                 }
             }
-            // Everything OK -> register in database
-            app.RemainingDownloadSize = app.ContainerImagesLayers().Sum(layer => layer.Size);
-            configStore.AddKubernetesApp(app);
-            return app;
         }
 
         private static bool AddPathInfo(TraefikV1alpha1IngressRoute ingressRoute, IngressRouteInfo routeInfo, string suffixNum)
@@ -346,17 +351,22 @@ namespace wordslab.manager.apps
             return false;
         }
 
-        private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences, ConfigStore configStore)
+        private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences, bool isCalledFromImportMetada, ConfigStore configStore)
         {
             if (podSpec != null)
             {
-                if (podSpec.Containers != null)
+                if (podSpec.Containers != null && isCalledFromImportMetada)
                 {
                     foreach (var container in podSpec.Containers)
                     {                        
                         if (!String.IsNullOrEmpty(container.Image))
                         {
                             var imageName = ContainerImage.NormalizeImageName(container.Image);
+                            // Check if the image reference is specific enough
+                            if (imageName.EndsWith(":latest"))
+                            {
+                                throw new FormatException($"Invalid Docker image reference {container.Image} in resource {resourceName}: a more specific tag is mandatory (for reproducibility)");
+                            }
                             ContainerImageInfo containerImage = null;
                             if (!app.ContainerImages.Any(image => image.Name == imageName))
                             {
@@ -367,6 +377,8 @@ namespace wordslab.manager.apps
                             {
                                 containerImage = app.ContainerImages.First(image => image.Name == imageName);
                             }
+                            // Replace the image reference with the unambiguous digest
+                            app.YamlFileContent.Replace(container.Image, containerImage.Name);
                         }
                     }
                 }

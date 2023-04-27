@@ -73,6 +73,7 @@ namespace wordslab.manager.apps
             if (mediaType == manifestMediaType)
             {
                 imageManifest = await manifestResponse.Content.ReadFromJsonAsync<ImageManifest>();
+                image.Digest = manifestResponse.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
             }
             else if (mediaType == manifestListMediaType)
             {
@@ -101,6 +102,7 @@ namespace wordslab.manager.apps
                 if (mediaType == manifestMediaType)
                 {
                     imageManifest = await manifestResponse.Content.ReadFromJsonAsync<ImageManifest>();
+                    image.Digest = manifestResponse.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
                 }
             }
             if (imageManifest == null)

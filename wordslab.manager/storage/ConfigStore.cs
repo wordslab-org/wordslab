@@ -1,11 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Emit;
 using wordslab.manager.config;
-using static System.Net.Mime.MediaTypeNames;
-using static wordslab.manager.apps.KubernetesApp.TraefikV1alpha1IngressRoute;
 
 namespace wordslab.manager.storage
 {
@@ -282,7 +278,7 @@ namespace wordslab.manager.storage
                 {
                     var dbContextFactory = servicesInScope.GetRequiredService<IDbContextFactory<ConfigStore>>();
                     using var configStore = dbContextFactory.CreateDbContext();
-                    //configStore.Database.Migrate();
+                    configStore.Database.Migrate();
                     configStore.InitializeHostStorage();
                 }
                 catch (Exception ex)

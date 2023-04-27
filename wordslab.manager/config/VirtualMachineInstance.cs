@@ -14,7 +14,7 @@ namespace wordslab.manager.config
         Killed
     }
 
-    [PrimaryKey(nameof(Name),nameof(StartTimestamp))]
+    [PrimaryKey(nameof(Name),nameof(DateTimeCreated))]
     public class VirtualMachineInstance : BaseConfig
     {
         private VirtualMachineInstance() { }
