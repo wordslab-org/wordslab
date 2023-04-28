@@ -117,6 +117,12 @@ spec:
           value: "/"
         - name: JUPYTER_SETUP_SCRIPT
           value: "/setup.sh"
+# Temporary fix for the first version of the jupyter-stack image: bug already fixed in the Dockerfile for the next rebuild
+        - name: JUPYTERLAB_SETTINGS_DIR
+          value: "/workspace/.jupyter/lab/user-settings/"
+        - name: JUPYTERLAB_WORKSPACES_DIR
+          value: "/workspace/.jupyter/lab/workspaces"
+# end of temporary fix
         - name: NVIDIA_VISIBLE_DEVICES
           value: "all"
         - name: NVIDIA_DRIVER_CAPABILITIES

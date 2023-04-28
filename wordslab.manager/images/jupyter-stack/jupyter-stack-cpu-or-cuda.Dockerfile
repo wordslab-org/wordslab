@@ -232,6 +232,9 @@ ENV JUPYTER_SETUP_SCRIPT="/setup.sh"
 # - Make sur the Jupyter config is stored in the persistent volume
 ENV JUPYTER_DATA_DIR="/workspace/.jupyter"
 ENV JUPYTER_RUNTIME_DIR="/workspace/.jupyter/runtime"
+# https://jupyterlab.readthedocs.io/en/stable/user/directories.html
+ENV JUPYTERLAB_SETTINGS_DIR="/workspace/.jupyter/lab/user-settings/"
+ENV JUPYTERLAB_WORKSPACES_DIR="/workspace/.jupyter/lab/workspaces"
 
 # Workspace start script
 RUN echo -e '\

@@ -11,7 +11,7 @@ using wordslab.manager.storage;
 namespace wordslab.manager.Migrations
 {
     [DbContext(typeof(ConfigStore))]
-    [Migration("20230427211517_ConfigStore_v0.9.0")]
+    [Migration("20230428161705_ConfigStore_v0.9.0")]
     partial class ConfigStore_v090
     {
         /// <inheritdoc />
@@ -326,6 +326,9 @@ namespace wordslab.manager.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("StartTimestamp")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("DateTimeCreated")
                         .HasColumnType("TEXT");
 
@@ -341,9 +344,6 @@ namespace wordslab.manager.Migrations
                     b.Property<string>("StartArgumentsMessages")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("StartTimestamp")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("State")
                         .HasColumnType("INTEGER");
 
@@ -356,7 +356,7 @@ namespace wordslab.manager.Migrations
                     b.Property<int>("VmProcessId")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("Name", "DateTimeCreated");
+                    b.HasKey("Name", "StartTimestamp");
 
                     b.ToTable("VMInstance", (string)null);
                 });
@@ -535,7 +535,7 @@ namespace wordslab.manager.Migrations
                             b1.Property<string>("VirtualMachineInstanceName")
                                 .HasColumnType("TEXT");
 
-                            b1.Property<DateTime>("VirtualMachineInstanceDateTimeCreated")
+                            b1.Property<DateTime>("VirtualMachineInstanceStartTimestamp")
                                 .HasColumnType("TEXT");
 
                             b1.Property<int>("MemoryGB")
@@ -544,12 +544,12 @@ namespace wordslab.manager.Migrations
                             b1.Property<int>("Processors")
                                 .HasColumnType("INTEGER");
 
-                            b1.HasKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
+                            b1.HasKey("VirtualMachineInstanceName", "VirtualMachineInstanceStartTimestamp");
 
                             b1.ToTable("VMInstance");
 
                             b1.WithOwner()
-                                .HasForeignKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
+                                .HasForeignKey("VirtualMachineInstanceName", "VirtualMachineInstanceStartTimestamp");
                         });
 
                     b.OwnsOne("wordslab.manager.config.GPUSpec", "GPUStartArguments", b1 =>
@@ -557,7 +557,7 @@ namespace wordslab.manager.Migrations
                             b1.Property<string>("VirtualMachineInstanceName")
                                 .HasColumnType("TEXT");
 
-                            b1.Property<DateTime>("VirtualMachineInstanceDateTimeCreated")
+                            b1.Property<DateTime>("VirtualMachineInstanceStartTimestamp")
                                 .HasColumnType("TEXT");
 
                             b1.Property<int>("GPUCount")
@@ -569,12 +569,12 @@ namespace wordslab.manager.Migrations
                             b1.Property<string>("ModelName")
                                 .HasColumnType("TEXT");
 
-                            b1.HasKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
+                            b1.HasKey("VirtualMachineInstanceName", "VirtualMachineInstanceStartTimestamp");
 
                             b1.ToTable("VMInstance");
 
                             b1.WithOwner()
-                                .HasForeignKey("VirtualMachineInstanceName", "VirtualMachineInstanceDateTimeCreated");
+                                .HasForeignKey("VirtualMachineInstanceName", "VirtualMachineInstanceStartTimestamp");
                         });
 
                     b.Navigation("ComputeStartArguments");

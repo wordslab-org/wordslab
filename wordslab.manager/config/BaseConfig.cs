@@ -5,7 +5,7 @@
         public BaseConfig()
         {
             DateTimeCreated = DateTime.Now;
-            DateTimeUpdated = DateTimeCreated;
+            DateTimeUpdated = DateTime.Now;
         }
 
         public void RefreshUpdateDateTime()

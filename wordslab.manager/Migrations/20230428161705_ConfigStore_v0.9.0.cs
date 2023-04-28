@@ -11,6 +11,15 @@ namespace wordslab.manager.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropPrimaryKey(
+                name: "PK_VMInstance",
+                table: "VMInstance");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_VMInstance",
+                table: "VMInstance",
+                columns: new[] { "Name", "StartTimestamp" });
+
             migrationBuilder.CreateTable(
                 name: "ContainerImage",
                 columns: table => new
@@ -177,6 +186,15 @@ namespace wordslab.manager.Migrations
 
             migrationBuilder.DropTable(
                 name: "KubernetesApp");
+
+            migrationBuilder.DropPrimaryKey(
+                name: "PK_VMInstance",
+                table: "VMInstance");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_VMInstance",
+                table: "VMInstance",
+                columns: new[] { "Name", "DateTimeCreated" });
         }
     }
 }

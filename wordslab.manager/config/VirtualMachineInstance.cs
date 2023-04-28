@@ -14,7 +14,7 @@ namespace wordslab.manager.config
         Killed
     }
 
-    [PrimaryKey(nameof(Name),nameof(DateTimeCreated))]
+    [PrimaryKey(nameof(Name),nameof(StartTimestamp))]
     public class VirtualMachineInstance : BaseConfig
     {
         private VirtualMachineInstance() { }
@@ -65,7 +65,7 @@ namespace wordslab.manager.config
 
         public string Name { get; set; }
 
-        public DateTime StartTimestamp { get; set; }
+        public DateTime StartTimestamp { get; internal set; }
 
         // Config and start arguments overrides
 
