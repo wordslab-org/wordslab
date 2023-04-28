@@ -1,7 +1,9 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Linq;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 using wordslab.manager.apps;
+using wordslab.manager.storage;
+using wordslab.manager.test.storage;
 
 namespace wordslab.manager.test.apps
 {
@@ -9,13 +11,28 @@ namespace wordslab.manager.test.apps
     public class KubernetesAppTests
     {
         [TestMethod]
-        public async Task T01_TestKubernetesApp_GetMetadataFromYamlFileAsync()
+        public async Task T01_TestKubernetesApp_ImportMetadataFromYamlFileAsync()
         {
-            /*var app = await KubernetesApp.GetMetadataFromYamlFileAsync(KubernetesApp.WORDSLAB_NOTEBOOKS_GPU_APP_URL);
-            Assert.IsTrue(!string.IsNullOrEmpty(app.Name));
-            Assert.IsTrue(app.ContainerImages.Count == 1);
-            Assert.IsTrue(app.Services.First().UsedByResourceNames.Any());
-            Assert.IsTrue(app.PersistentVolumes.First().UsedByResourceNames.Any());*/
+            var serviceCollection = ConfigStoreTests.GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var storage = serviceProvider.GetService<HostStorage>();
+                var configStore = serviceProvider.GetService<ConfigStore>();
+
+                var app = await KubernetesApp.ImportMetadataFromYamlFileAsync("test", KubernetesApp.WORDSLAB_NOTEBOOKS_GPU_APP_URL, configStore);
+                Assert.IsTrue(!string.IsNullOrEmpty(app.Name));
+                Assert.IsTrue(app.ContainerImages.Count == 1);
+                Assert.IsTrue(app.Services.Count == 1);
+                Assert.IsTrue(app.PersistentVolumes.Count == 2);
+                Assert.IsTrue(app.ContainerImages[0].Layers.Count >= 3);
+
+                var existingApp = configStore.TryGetKubernetesApp("test", app.YamlFileHash);
+                Assert.IsTrue(!string.IsNullOrEmpty(app.Name));
+                Assert.IsTrue(app.ContainerImages.Count == 1);
+                Assert.IsTrue(app.Services.Count == 1);
+                Assert.IsTrue(app.PersistentVolumes.Count == 2);
+                Assert.IsTrue(app.ContainerImages[0].Layers.Count >= 3);
+            }
         }
     }
 }

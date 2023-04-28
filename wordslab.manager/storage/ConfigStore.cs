@@ -162,7 +162,7 @@ namespace wordslab.manager.storage
         /// </summary>
         public KubernetesAppInstall TryGetKubernetesApp(string vmName, string yamlFileHash)
         {
-            return KubernetesApps.Where(app => app.VirtualMachineName == vmName && app.YamlFileHash == yamlFileHash).FirstOrDefault();
+            return KubernetesApps.Where(app => app.VirtualMachineName == vmName && app.YamlFileHash == yamlFileHash).Include(app => app.ContainerImages).ThenInclude(image => image.Layers).FirstOrDefault();
         }
 
         /// <summary>
@@ -218,10 +218,15 @@ namespace wordslab.manager.storage
             SaveChanges();
         }
               
-        public ContainerImageInfo TryGetContainerImage(string normalizedImageName)
+        public ContainerImageInfo TryGetContainerImageByName(string normalizedImageName)
         {
-            return ContainerImages.Where(image => image.Name == normalizedImageName).FirstOrDefault();
+            return ContainerImages.Where(image => image.Name == normalizedImageName).Include(image => image.Layers).FirstOrDefault();
         }
+
+        public ContainerImageInfo TryGetContainerImageByDigest(string digest)
+        {
+            return ContainerImages.Where(image => image.Digest == digest).Include(image => image.Layers).FirstOrDefault();
+        }        
 
         /// <summary>
         /// Installed container image layers

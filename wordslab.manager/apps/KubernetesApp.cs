@@ -29,7 +29,7 @@ namespace wordslab.manager.apps
         public const string NAMESPACE_PLACEHOLDER = "$$namespace$$";
 
         // ANNOTATIONS mandatory on all IngressRoutes
-        public const string ROUTE_PATH_TITLE_LABEL = "wordslab.org/route-path-title"; // path1, path2 ... if several needed
+        public const string ROUTE_PATH_TITLE_LABEL = "wordslab.org/ingressroute-path"; // path1, path2 ... if several needed
         public const string ROUTE_PATH_TITLE_SEPARATOR = "|";
 
         // Built-in wordslab apps
@@ -270,7 +270,7 @@ namespace wordslab.manager.apps
                         }
                         foreach (var route in ingressRoute.spec.routes)
                         {
-                            if (route.kind != "Rule" || route.match == null || !route.match.StartsWith("PathPrefix(`/$$namespace$$/"))
+                            if (route.kind != "Rule" || route.match == null || !route.match.StartsWith("PathPrefix(`/$$namespace$$"))
                             {
                                 throw new FormatException("IngressResource routes must be of kind 'Rule' and they match property MUST start with: \"PathPrefix(`/$$namespace$$/\". This is to ensure that the URLs for this application will all stay inside the deployment namespace.");
                             }
@@ -334,13 +334,13 @@ namespace wordslab.manager.apps
 
         private static bool AddPathInfo(TraefikV1alpha1IngressRoute ingressRoute, IngressRouteInfo routeInfo, string suffixNum)
         {
-            var pathLabel = ingressRoute.GetLabel(ROUTE_PATH_TITLE_LABEL + suffixNum);
+            var pathLabel = ingressRoute.GetAnnotation(ROUTE_PATH_TITLE_LABEL + suffixNum);
             if (!String.IsNullOrEmpty(pathLabel))
             {
                 var pathLabelParts = pathLabel.Split(ROUTE_PATH_TITLE_SEPARATOR);
                 if (pathLabelParts.Length == 2)
                 {
-                    routeInfo.Paths.Add(new IngressRouteInfo.PathInfo() { Path = pathLabelParts[0], Title = pathLabelParts[1] });
+                    routeInfo.Paths.Add(new IngressRouteInfo.PathInfo() { Path = pathLabelParts[0].Trim(), Title = pathLabelParts[1].Trim() });
                     return true;
                 }
                 else

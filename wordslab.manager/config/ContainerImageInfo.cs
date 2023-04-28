@@ -6,16 +6,7 @@ namespace wordslab.manager.config
     public class ContainerImageInfo
     {
         [Key]
-        public string Digest 
-        { 
-            get { return _digest; } 
-            set
-            {
-                _digest = value;
-                Name = $"{Registry}/{Repository}:{Digest}";
-            }
-        }
-        private string _digest;
+        public string Digest { get; set; }
 
         public string Registry { get; set; }
         public string Repository { get; set; }

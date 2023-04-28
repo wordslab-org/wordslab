@@ -1,4 +1,5 @@
-﻿using wordslab.manager.config;
+﻿using Microsoft.EntityFrameworkCore;
+using wordslab.manager.config;
 using wordslab.manager.storage;
 
 namespace wordslab.manager.apps
@@ -44,7 +45,7 @@ namespace wordslab.manager.apps
         {
             // Try to find the container info locally in the config database
             imageName = NormalizeImageName(imageName);
-            ContainerImageInfo image = configStore.TryGetContainerImage(imageName);
+            ContainerImageInfo image = configStore.TryGetContainerImageByName(imageName);
             if(image != null) 
             { 
                 return image; 
@@ -105,6 +106,15 @@ namespace wordslab.manager.apps
                     image.Digest = manifestResponse.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
                 }
             }
+
+            // Now that we found a specific digest, try again to find the image in cache
+            if(!String.IsNullOrEmpty(image.Digest))
+            {
+                var cachedImage = configStore.TryGetContainerImageByDigest(image.Digest);
+                if(cachedImage != null) { return cachedImage; }
+            }
+
+            // Get all the layers metadata
             if (imageManifest == null)
             {
                 throw new NotSupportedException($"Docker image manifest format not supported: {mediaType}");
@@ -124,7 +134,10 @@ namespace wordslab.manager.apps
             }
 
             // Save in cache
-            configStore.AddContainerImage(image);
+            if (!configStore.ContainerImages.Any(cachedImage => cachedImage.Digest == image.Digest))
+            {
+                configStore.AddContainerImage(image);
+            }
 
             // Note: if you want to test downloading a layer
             // wget --header="Authorization: Bearer djE6d29yZHNsYWItb3JnL2xhbWJkYS1zdGFjay1zZXJ2ZXI6MTY4MTE0NDQ2OTcyMzQ3MDc2Mw==" https://ghcr.io/v2/wordslab-org/lambda-stack-server/blobs/sha256:1bdbbbfaf9ee012367f8103c3425fcaa74845576d919bf5f978480dc459c322f
