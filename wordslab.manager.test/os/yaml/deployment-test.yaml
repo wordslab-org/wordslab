@@ -1,0 +1,72 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: wordslab-test-ingressroute
+  labels:
+    wordslab.org/app: wordslab-test
+    wordslab.org/component: nginx
+  annotations:
+    wordslab.org/namespace-default: "test"
+    wordslab.org/title: "Test deployment"
+    wordslab.org/description: "Basic nginx web server"
+    wordslab.org/version: "1.0"
+    wordslab.org/date: "05/01/2023"
+    wordslab.org/homepage: "https://www.wordslab.org/"
+    wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager.test/os/yaml/deployment-test.yaml"
+    wordslab.org/author: "https://github.com/wordslab-org"
+    wordslab.org/license: "Apache License Version 2.0"
+    wordslab.org/ingressroute-path: "/ | Test web server"
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: PathPrefix(`/test`)
+    kind: Rule
+    services:
+    - name: wordslab-test-service
+      port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordslab-test-service
+  labels:
+    wordslab.org/app: wordslab-test
+    wordslab.org/component: nginx
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    wordslab.org/app: wordslab-test
+    wordslab.org/component: nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordslab-test-deployment
+  labels:
+    wordslab.org/app: wordslab-test
+    wordslab.org/component: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      wordslab.org/app: wordslab-test
+      wordslab.org/component: nginx
+  template:
+    metadata:
+      labels:
+        wordslab.org/app: wordslab-test
+        wordslab.org/component: nginx
+    spec:
+      containers:
+      - name: wordslab-nginx-container
+        image: nginx
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP

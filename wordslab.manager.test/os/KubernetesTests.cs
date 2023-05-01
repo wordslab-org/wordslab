@@ -2,6 +2,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 using wordslab.manager.apps;
 using wordslab.manager.os;
@@ -75,7 +77,7 @@ namespace wordslab.manager.test.os
         }
 
         [TestMethod]
-        public async Task T04_DownloadImageInContentStoreWithProgress()
+        public async Task T04_TestDownloadImageInContentStoreWithProgress()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
@@ -93,6 +95,56 @@ namespace wordslab.manager.test.os
                 Assert.IsTrue(messages.Count > 10);
             }
         }
-        
+
+        [TestMethod]
+        public async Task T05_TestApplyYamlFileAndWaitForResources()
+        {
+            var serviceCollection = ConfigStoreTests.GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var storage = serviceProvider.GetService<HostStorage>();
+                var configStore = serviceProvider.GetService<ConfigStore>();
+
+                var vmManager = new VirtualMachinesManager(storage, configStore);
+                var vm = vmManager.TryFindLocalVM("test");
+
+                var yamlDir = Path.Combine(AppContext.BaseDirectory, "os", "yaml");
+                string yamlContent = File.ReadAllText(Path.Combine(yamlDir, "deployment-test.yaml"));
+
+                var result = Kubernetes.ApplyYamlFileAndWaitForResources(yamlContent, "test", vm);
+                Assert.IsTrue(result == 0);
+
+                await Task.Delay(5000);
+
+                var httpClient = new HttpClient();
+                var response = await httpClient.GetAsync("http://127.0.0.1/test");
+                var content = await response.Content.ReadAsStringAsync();
+                Assert.IsTrue(content.Contains("nginx"));
+            }
+        }
+
+        [TestMethod]
+        public async Task T06_TestDeleteResourcesFromYamlFile()
+        {
+            var serviceCollection = ConfigStoreTests.GetStorageServices();
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var storage = serviceProvider.GetService<HostStorage>();
+                var configStore = serviceProvider.GetService<ConfigStore>();
+
+                var vmManager = new VirtualMachinesManager(storage, configStore);
+                var vm = vmManager.TryFindLocalVM("test");
+
+                var result = Kubernetes.DeleteResourcesFromYamlFile("test", vm);
+                Assert.IsTrue(result == 0);
+
+                await Task.Delay(5000);
+
+                var httpClient = new HttpClient();
+                var response = await httpClient.GetAsync("http://127.0.0.1/test");
+                var content = await response.Content.ReadAsStringAsync();
+                Assert.IsFalse(content.Contains("nginx"));
+            }
+        }
     }
 }

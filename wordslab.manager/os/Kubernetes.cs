@@ -1,4 +1,6 @@
-﻿using System.Globalization;
+﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+using System;
+using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
 using wordslab.manager.config;
@@ -197,11 +199,18 @@ namespace wordslab.manager.os
         {
             // Save the yaml file content on  the VM disk
             vmShell.ExecuteCommand("mkdir", "-p KubernetesApps");
-            vmShell.ExecuteCommand("echo", $"-e \"{ToLiteral(yamlFileContent)}\" > KubernetesApps/{deploymentNamespace}.yaml");
+            vmShell.ExecuteCommand("echo", $"-e {ToLiteral(yamlFileContent)} > KubernetesApps/{deploymentNamespace}.yaml");
 
             // Create the namespace and apply the yaml file
-            vmShell.ExecuteCommand("kubectl", $"create namespace {deploymentNamespace}");
-            return vmShell.ExecuteCommand("kubectl", $"apply -f KubernetesApps/{deploymentNamespace}.yaml -n {deploymentNamespace} --wait", timeoutSec);
+            vmShell.ExecuteCommand("k3s", $"kubectl create namespace {deploymentNamespace}");
+            return vmShell.ExecuteCommand("k3s", $"kubectl apply -f KubernetesApps/{deploymentNamespace}.yaml -n {deploymentNamespace} --wait", timeoutSec);
+        }
+
+        public static int DeleteResourcesFromYamlFile(string deploymentNamespace, IVirtualMachineShell vmShell)
+        {
+            // Delete the resources from the yaml file and delete the namespace            
+            vmShell.ExecuteCommand("k3s", $"kubectl delete -f KubernetesApps/{deploymentNamespace}.yaml -n {deploymentNamespace} --wait");
+            return vmShell.ExecuteCommand("k3s", $"kubectl delete namespace {deploymentNamespace}");
         }
 
         private static string ToLiteral(string input)
@@ -213,6 +222,7 @@ namespace wordslab.manager.os
                 switch (c)
                 {
                     case '\"': literal.Append("\\\""); break;
+                    case '`': literal.Append("\\`"); break;
                     case '\\': literal.Append(@"\\"); break;
                     case '\0': literal.Append(@"\0"); break;
                     case '\a': literal.Append(@"\a"); break;
