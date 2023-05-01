@@ -3,7 +3,6 @@ using k8s.Models;
 using System.Text.Json.Serialization;
 using wordslab.manager.config;
 using wordslab.manager.storage;
-using static wordslab.manager.apps.KubernetesApp.TraefikV1alpha1IngressRoute.Spec.Route;
 using static wordslab.manager.config.KubernetesAppSpec;
 
 namespace wordslab.manager.apps

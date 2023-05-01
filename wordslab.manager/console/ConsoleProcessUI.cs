@@ -74,9 +74,9 @@ namespace wordslab.manager.console
             AnsiConsole.WriteLine();
         }
 
-        public Task<bool> DisplayQuestionAsync(string question)
+        public Task<bool> DisplayQuestionAsync(string question, bool defaultValue = true)
         {
-            var answer = AnsiConsole.Confirm(question);
+            var answer = AnsiConsole.Confirm(question, defaultValue);
             AnsiConsole.WriteLine();
             return Task.FromResult(answer);
         }

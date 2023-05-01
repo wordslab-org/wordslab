@@ -85,10 +85,10 @@ namespace wordslab.manager.test.vm
             }
         }
 
-        public Task<bool> DisplayQuestionAsync(string question)
+        public Task<bool> DisplayQuestionAsync(string question, bool defaultValue = true)
         {
             Messages.Add(question);
-            var answer = true; 
+            var answer = defaultValue; 
             if(Answers.Count > 0)
             {
                 answer = Boolean.Parse(Answers.Dequeue());

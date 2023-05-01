@@ -12,7 +12,7 @@
 
         void RunCommandsAndDisplayProgress(LongRunningCommand[] commands);
 
-        Task<bool> DisplayQuestionAsync(string question);
+        Task<bool> DisplayQuestionAsync(string question, bool defaultValue = true);
 
         Task<bool> DisplayAdminScriptQuestionAsync(string scriptDescription, string scriptContent);
 

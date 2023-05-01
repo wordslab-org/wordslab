@@ -11,7 +11,7 @@ namespace wordslab.manager.test.apps
     public class KubernetesAppTests
     {
         [TestMethod]
-        public async Task T01_TestKubernetesApp_ImportMetadataFromYamlFileAsync()
+        public async Task T01_TestImportMetadataFromYamlFileAsync()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())

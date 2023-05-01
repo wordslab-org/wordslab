@@ -248,9 +248,14 @@ else
         _timer.Start();
     }
 
+    private bool operationInProgress = false;
+
     private void OnTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
     {
-        InvokeAsync(() => StateHasChanged());
+        if (!operationInProgress)
+        {
+            InvokeAsync(() => StateHasChanged());
+        }
     }
 
     public void Dispose()
@@ -262,47 +267,69 @@ else
 
     private async Task StartLocalVM(VirtualMachine vm)
     {
-        string vmStatus;
-        vmsStatus.TryGetValue(vm.Name, out vmStatus);
-        if (vmStatus != "starting")
+        if (!operationInProgress)
         {
-            vmsStatus[vm.Name] = "starting";
-            StateHasChanged();
-            await Task.Yield();
-
+            operationInProgress = true;
             try
             {
-                vm.Start();
-                vmsStatus.Remove(vm.Name);
+                string vmStatus;
+                vmsStatus.TryGetValue(vm.Name, out vmStatus);
+                if (vmStatus != "starting")
+                {
+                    vmsStatus[vm.Name] = "starting";
+                    StateHasChanged();
+                    await Task.Yield();
+
+                    try
+                    {
+                        vm.Start();
+                        vmsStatus.Remove(vm.Name);
+                    }
+                    catch (Exception e)
+                    {
+                        vmsStatus[vm.Name] = $"Failed to start VM: {e.Message}";
+                    }
+                    StateHasChanged();
+                }
             }
-            catch (Exception e)
+            finally
             {
-                vmsStatus[vm.Name] = $"Failed to start VM: {e.Message}";
+                operationInProgress = false;
             }
-            StateHasChanged();
         }
     }
 
     private async Task StopLocalVM(VirtualMachine vm)
     {
-        string vmStatus;
-        vmsStatus.TryGetValue(vm.Name, out vmStatus);
-        if (vmStatus != "stopping")
+        if (!operationInProgress)
         {
-            vmsStatus[vm.Name] = "stopping";
-            StateHasChanged();
-            await Task.Yield();
-
+            operationInProgress = true;
             try
             {
-                vm.Stop();
-                vmsStatus.Remove(vm.Name);
+                string vmStatus;
+                vmsStatus.TryGetValue(vm.Name, out vmStatus);
+                if (vmStatus != "stopping")
+                {
+                    vmsStatus[vm.Name] = "stopping";
+                    StateHasChanged();
+                    await Task.Yield();
+
+                    try
+                    {
+                        vm.Stop();
+                        vmsStatus.Remove(vm.Name);
+                    }
+                    catch (Exception e)
+                    {
+                        vmsStatus[vm.Name] = $"Failed to stop VM: {e.Message}";
+                    }
+                    StateHasChanged();
+                }
             }
-            catch (Exception e)
+            finally
             {
-                vmsStatus[vm.Name] = $"Failed to stop VM: {e.Message}";
+                operationInProgress = false;
             }
-            StateHasChanged();
         }
     }
 }

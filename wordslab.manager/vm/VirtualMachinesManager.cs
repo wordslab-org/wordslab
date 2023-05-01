@@ -222,7 +222,7 @@ namespace wordslab.manager.vm
                         {
                             var httpPort = await installUI.DisplayInputQuestionAsync("Choose a port for HTTP ingress on the host machine", $"{hostConfig.HttpPort}");
                             hostHttpIngressPort = int.Parse(httpPort);
-                            allowHttpAccessFromLAN = await installUI.DisplayQuestionAsync("Do you want to allow acces to the HTTP ingress port from the local network (firewall config) ?");
+                            allowHttpAccessFromLAN = await installUI.DisplayQuestionAsync("Do you want to allow acces to the HTTP ingress port from the local network (firewall config) ?", defaultValue: false);
                         }
                         if (OS.IsWindows)
                         {
@@ -232,7 +232,7 @@ namespace wordslab.manager.vm
                         {
                             var httpsPort = await installUI.DisplayInputQuestionAsync("Choose a port for HTTPS ingress on the host machine", $"{hostConfig.HttpsPort}");
                             hostHttpsIngressPort = int.Parse(httpsPort);
-                            allowHttpsAccessFromLAN = await installUI.DisplayQuestionAsync("Do you want to allow acces to the HTTPS ingress port from the local network (firewall config) ?");
+                            allowHttpsAccessFromLAN = await installUI.DisplayQuestionAsync("Do you want to allow acces to the HTTPS ingress port from the local network (firewall config) ?", defaultValue: false);
                         }
                     }
 

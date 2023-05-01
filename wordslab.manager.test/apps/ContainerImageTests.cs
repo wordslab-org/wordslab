@@ -11,7 +11,7 @@ namespace wordslab.manager.test.apps
     public class ContainerImageTests
     {
         [TestMethod]
-        public async Task T01_TestContainerImage_GetMetadataFromCacheOrFromRegistryAsync()
+        public async Task T01_GetMetadataFromCacheOrFromRegistryAsync()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
