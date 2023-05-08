@@ -11,6 +11,11 @@ namespace wordslab.manager.console
             AnsiConsole.WriteLine("");
         }
 
+        public void DisplayInformationLine(string text)
+        {
+            AnsiConsole.WriteLine(text);
+        }
+
         private int lastCommandId = -1;
         private List<string> commandDescriptions = new List<string>();
 

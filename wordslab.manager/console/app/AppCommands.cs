@@ -10,10 +10,35 @@ namespace wordslab.manager.console.app
 {
     public class AppInfoCommand : Command<AppInfoCommand.Settings>
     {
+
+        private readonly ConfigStore configStore;
+
+        public AppInfoCommand(ConfigStore configStore) 
+        { 
+            this.configStore = configStore;
+        }
+
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
-            AnsiConsole.MarkupLine("app info command not yet implemented");
+            var appUrl = settings.AppURL;
+            try
+            {
+                var parsedUrl = new Uri(appUrl);  
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.WriteLine($"Kubernetes app URL is not in a valid format: {ex.Message}");
+                AnsiConsole.WriteLine();
+                return 1;
+            }
+
+            AnsiConsole.WriteLine($"Downloading kubernetes app metadata from from {appUrl} ...");
             AnsiConsole.WriteLine();
+            var appSpec = AsyncUtil.RunSync(() => KubernetesApp.GetMetadataFromYamlFileAsync(appUrl, configStore));
+
+            var ui = new ConsoleProcessUI();
+            KubernetesAppsManager.DisplayKubernetesAppSpec(appSpec, ui);  
+
             return 0;
         }
 
@@ -72,7 +97,7 @@ namespace wordslab.manager.console.app
 
             if (!vm.IsRunning())
             {
-                AnsiConsole.WriteLine($"Virtual machine {vmName} is already running");
+                AnsiConsole.WriteLine($"Virtual machine {vmName} is not running: please start it first");
                 return 1;
             }
              
@@ -87,10 +112,28 @@ namespace wordslab.manager.console.app
         public AppListCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmNameSettings settngs)
+        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmNameSettings settings)
         {
-            AnsiConsole.MarkupLine("app list command not yet implemented");
-            AnsiConsole.WriteLine();
+            var apps = appManager.ListKubernetesApps(vm);
+            if(apps.Count == 0)
+            {
+                AnsiConsole.WriteLine($"No kubernetes apps installed on virtual machine {vm.Name}.");
+                AnsiConsole.WriteLine();
+                return 0; 
+            }
+            else
+            {
+                AnsiConsole.WriteLine($"Kubernetes apps installed on virtual machine {vm.Name}:");
+                AnsiConsole.WriteLine();
+
+                var ui = new ConsoleProcessUI();
+                foreach (var app in apps )
+                {
+                    AnsiConsole.WriteLine("----------");
+                    KubernetesAppsManager.DisplayKubernetesAppInstall(app, ui);                    
+                }
+            }
+
             return 0;
         }
     }
@@ -100,10 +143,27 @@ namespace wordslab.manager.console.app
         public AppDownloadCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, Settings settngs)
+        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, Settings settings)
         {
-            AnsiConsole.MarkupLine("app download command not yet implemented");
-            AnsiConsole.WriteLine();
+            var yamlFileUrl = settings.AppURL;
+            try
+            {
+                var parsedUrl = new Uri(yamlFileUrl);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.WriteLine($"Kubernetes app URL is not in a valid format: {ex.Message}");
+                AnsiConsole.WriteLine();
+                return 1;
+            }
+
+            var ui = new ConsoleProcessUI();
+            var result = AsyncUtil.RunSync(() => appManager.InstallKubernetesApp(vm, yamlFileUrl, ui));
+            if (result == null)
+            {
+                return -1;
+            }
+            
             return 0;
         }
 
@@ -120,7 +180,7 @@ namespace wordslab.manager.console.app
         public AppRemoveCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmAndAppNameSettings settngs)
+        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmAndAppNameSettings settings)
         {
             AnsiConsole.MarkupLine("app remove command not yet implemented");
             AnsiConsole.WriteLine();

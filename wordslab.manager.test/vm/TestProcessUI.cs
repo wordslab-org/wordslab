@@ -28,6 +28,11 @@ namespace wordslab.manager.test.vm
             Messages.Add($"Step {stepNumber}/{totalSteps}: {stepDescription}");
         }
 
+        public void DisplayInformationLine(string text)
+        {
+            Messages.Add(text);
+        }
+
         private int lastCommandId = -1;
         private List<string> commandDescriptions = new List<string>();
 

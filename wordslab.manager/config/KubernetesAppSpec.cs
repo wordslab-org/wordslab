@@ -4,7 +4,7 @@ using System.Text;
 
 namespace wordslab.manager.config
 {
-    public abstract class KubernetesAppSpec : BaseConfig
+    public class KubernetesAppSpec : BaseConfig
     {
         // Public properties of the application
         public string Name { get; set; }
@@ -21,13 +21,13 @@ namespace wordslab.manager.config
         // Raw text of the yaml file
         public string YamlFileContent { get; set; }
 
-        public void ComputeHash()
+        public static string ComputeHash(string yamlFileContent)
         {
             using (var sha256 = SHA256.Create())
             {
-                var bytes = Encoding.UTF8.GetBytes(YamlFileContent);
+                var bytes = Encoding.UTF8.GetBytes(yamlFileContent);
                 var hashBytes = sha256.ComputeHash(bytes);
-                YamlFileHash = Convert.ToBase64String(hashBytes);
+                return Convert.ToBase64String(hashBytes);
             }
         }
 

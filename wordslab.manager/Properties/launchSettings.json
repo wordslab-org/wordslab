@@ -2,7 +2,7 @@
   "profiles": {
     "wordslab.manager": {
       "commandName": "Project",
-      "commandLineArgs": "app deployment create --help",
+      "commandLineArgs": "app list dev",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

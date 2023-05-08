@@ -4,6 +4,8 @@
     {
         void DisplayInstallStep(int stepNumber, int totalSteps, string stepDescription);
 
+        void DisplayInformationLine(string text = "");
+
         int DisplayCommandLaunch(string commandDescription);
 
         void DisplayCommandResult(int commandId, bool success, string? resultInfo = null, string? errorMessage = null);

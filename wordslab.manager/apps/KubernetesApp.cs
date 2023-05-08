@@ -42,11 +42,20 @@ namespace wordslab.manager.apps
 
         private static readonly HttpClient httpClient = new HttpClient();
 
+        public static async Task<KubernetesAppSpec> GetMetadataFromYamlFileAsync(string yamlFileURL, ConfigStore configStore)
+        {
+            var app = new KubernetesAppSpec();
+            app.YamlFileContent = await httpClient.GetStringAsync(yamlFileURL);
+            app.YamlFileHash = KubernetesAppSpec.ComputeHash(app.YamlFileContent);
+            await ParseYamlFileContent(app, loadContainersMetadata: true, configStore);
+            return app;
+        }
+
         public static async Task<KubernetesAppInstall> ImportMetadataFromYamlFileAsync(string vmName, string yamlFileURL, ConfigStore configStore)
         {
             var app = new KubernetesAppInstall(vmName, yamlFileURL);
             app.YamlFileContent = await httpClient.GetStringAsync(yamlFileURL);
-            app.ComputeHash();
+            app.YamlFileHash = KubernetesAppSpec.ComputeHash(app.YamlFileContent);
 
             var existingApp = configStore.TryGetKubernetesApp(vmName, app.YamlFileHash);
             if (existingApp != null)
@@ -54,14 +63,14 @@ namespace wordslab.manager.apps
                 throw new InvalidOperationException($"A Kubernetes app install already exists in the virtual machine {vmName} for the yaml file {yamlFileURL}");
             }
 
-            await ParseYamlFileContent(app, isCalledFromImportMetada:true, configStore);
+            await ParseYamlFileContent(app, loadContainersMetadata: true, configStore);
             // Everything OK -> register in database
             app.RemainingDownloadSize = app.ContainerImagesLayers().Sum(layer => layer.Size);
             configStore.AddKubernetesApp(app);
             return app;
         }
 
-        public static async Task ParseYamlFileContent(KubernetesAppInstall app, bool isCalledFromImportMetada = false, ConfigStore configStore = null)
+        public static async Task ParseYamlFileContent(KubernetesAppSpec app, bool loadContainersMetadata = false, ConfigStore configStore = null)
         {
             // Used only while parsing the YAML file
             var serviceReferences = new Dictionary<string, HashSet<string>>();
@@ -151,49 +160,49 @@ namespace wordslab.manager.apps
                     // The container spec is defined within the spec.containers field of a pod.
                     case V1Pod pod:
                         var resourceName = $"pod/{pod.Name()}";
-                        await AddPodSpec(app, resourceName, pod.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, pod.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // ReplicationController: A replication controller ensures that a specified number of pod replicas are running at any given time.
                     // The container spec is defined within the spec.template.spec.containers field of a replication controller.
                     case V1ReplicationController replicaCtrl:
                         resourceName = $"replicationcontroller/{replicaCtrl.Name()}";
-                        await AddPodSpec(app, resourceName, replicaCtrl.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, replicaCtrl.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // ReplicaSet: A replica set is similar to a replication controller but provides more advanced selectors for managing pods.
                     // The container spec is defined within the spec.template.spec.containers field of a replica set.
                     case V1ReplicaSet replicaSet:
                         resourceName = $"replicaset.apps/{replicaSet.Name()}";
-                        await AddPodSpec(app, resourceName, replicaSet.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, replicaSet.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // Deployment: A deployment manages the rollout and scaling of a set of replicas.
                     // The container spec is defined within the spec.template.spec.containers field of a deployment.
                     case V1Deployment deployment:
                         resourceName = $"deployment.apps/{deployment.Name()}";
-                        await AddPodSpec(app, resourceName, deployment.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, deployment.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // StatefulSet: A stateful set manages the deployment and scaling of a set of stateful pods.
                     // The container spec is defined within the spec.template.spec.containers field of a stateful set.
                     case V1StatefulSet statefulSet:
                         resourceName = $"statefulset.apps/{statefulSet.Name()}";
-                        await AddPodSpec(app, resourceName, statefulSet.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, statefulSet.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // DaemonSet: A daemon set ensures that all(or some) nodes run a copy of a pod.
                     // The container spec is defined within the spec.template.spec.containers field of a daemon set.
                     case V1DaemonSet daemonSet:
                         resourceName = $"daemonset.apps/{daemonSet.Name()}";
-                        await AddPodSpec(app, resourceName, daemonSet.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, daemonSet.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // Job: A job creates one or more pods and ensures that a specified number of them successfully terminate.
                     // The container spec is defined within the spec.template.spec.containers field of a job.
                     case V1Job job:
                         resourceName = $"job.batch/{job.Name()}";
-                        await AddPodSpec(app, resourceName, job.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, job.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     // CronJob: A cron job creates a job on a repeating schedule.
                     // The container spec is defined within the spec.jobTemplate.spec.template.spec.containers
                     case V1CronJob cronJob:
                         resourceName = $"cronjob.batch/{cronJob.Name()}";
-                        await AddPodSpec(app, resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec, pvcReferences, isCalledFromImportMetada, configStore);
+                        await AddPodSpec(app, resourceName, cronJob.Spec?.JobTemplate?.Spec?.Template?.Spec, pvcReferences, loadContainersMetadata, configStore);
                         break;
                     case V1PersistentVolume pv:
                         throw new NotSupportedException("PersistentVolumes are not supported in wordslab: please use a PersistentVolumeClaim with 'storageClassName: local-path'");
@@ -350,11 +359,11 @@ namespace wordslab.manager.apps
             return false;
         }
 
-        private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences, bool isCalledFromImportMetada, ConfigStore configStore)
+        private static async Task AddPodSpec(KubernetesAppSpec app, string resourceName, V1PodSpec podSpec, Dictionary<string, HashSet<string>> pvcReferences, bool loadContainersMetadata, ConfigStore configStore)
         {
             if (podSpec != null)
             {
-                if (podSpec.Containers != null && isCalledFromImportMetada)
+                if (podSpec.Containers != null && loadContainersMetadata)
                 {
                     foreach (var container in podSpec.Containers)
                     {                        
