@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
 using wordslab.manager.console;
 using wordslab.manager.console.host;
+using wordslab.manager.console.app;
 
 public static class ConsoleApp
 {
@@ -70,6 +71,33 @@ public static class ConsoleApp
                 config.AddCommand<SystemStatusCommand>("status")
                     .WithDescription("Display host machine usage metrics: cpu, memory, storage, network");
             });
+        });
+
+        config.AddBranch("app", config =>
+        {
+            config.SetDescription("Manage kubernetes applications in your virtual machines");
+            config.AddCommand<AppInfoCommand>("info")
+                        .WithDescription("Show detailed information about a kubernetes app from its URL");
+            config.AddCommand<AppListCommand>("list")
+                .WithDescription("List all kubernetes apps downloaded in a running virtual machine");
+            config.AddCommand<AppDownloadCommand>("download")
+                        .WithDescription("Download a new kubernetes app in a running virtual machine");
+            config.AddBranch("deployment", config =>
+            {
+                config.SetDescription("Manage kubernetes app deployments in your virtual machines");
+                config.AddCommand<AppDeploymentListCommand>("list")
+                    .WithDescription("List all kubernetes app deployments in a running virtual machine");
+                config.AddCommand<AppDeploymentCreateCommand>("create")
+                    .WithDescription("Deploy a previoulsy downloaded kubernetes app in a running virtual machine");
+                config.AddCommand<AppDeploymentStopCommand>("stop")
+                    .WithDescription("Temporarily free CPU and memory resources allocated to a kubernetes app deployment");
+                config.AddCommand<AppDeploymentStartCommand>("start")
+                    .WithDescription("Restart a previously stopped kubernetes app deployment in a running virtual machine");
+                config.AddCommand<AppDeploymentDeleteCommand>("delete")
+                    .WithDescription("Delete a kubernetes app deployment in a running virtual machine");
+            });
+            config.AddCommand<AppRemoveCommand>("remove")
+                    .WithDescription("Remove all files previously downloaded for a kubernetes app in a vm");
         });
 
         config.AddCommand<VersionCommand>("version")

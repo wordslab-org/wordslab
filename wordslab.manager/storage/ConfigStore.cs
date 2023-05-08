@@ -180,6 +180,11 @@ namespace wordslab.manager.storage
 
         public DbSet<KubernetesAppDeployment> KubernetesAppDeployments { get; set; }
 
+        public List<KubernetesAppDeployment> ListKubernetesAppsDeployedOn(string vmName)
+        {
+            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && !app.RemovalDate.HasValue).ToList();
+        }
+
         public void AddAppDeployment(KubernetesAppDeployment app)
         {
             KubernetesAppDeployments.Add(app);

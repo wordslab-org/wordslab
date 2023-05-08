@@ -6,7 +6,8 @@ using wordslab.manager.vm;
 using wordslab.manager.os;
 
 namespace wordslab.manager.console.host
-{    public abstract class ConfigCommand<TSettings> : Command<TSettings> where TSettings : CommandSettings
+{    
+    public abstract class ConfigCommand<TSettings> : Command<TSettings> where TSettings : CommandSettings
     {
         protected readonly HostStorage hostStorage;
         protected readonly ConfigStore configStore;
