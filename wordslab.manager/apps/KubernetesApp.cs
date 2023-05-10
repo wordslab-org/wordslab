@@ -60,7 +60,8 @@ namespace wordslab.manager.apps
             var existingApp = configStore.TryGetKubernetesApp(vmName, app.YamlFileHash);
             if (existingApp != null)
             {
-                throw new InvalidOperationException($"A Kubernetes app install already exists in the virtual machine {vmName} for the yaml file {yamlFileURL}");
+                await ParseYamlFileContent(existingApp, loadContainersMetadata: false, configStore);
+                return existingApp;
             }
 
             await ParseYamlFileContent(app, loadContainersMetadata: true, configStore);

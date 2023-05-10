@@ -2,7 +2,7 @@
   "profiles": {
     "wordslab.manager": {
       "commandName": "Project",
-      "commandLineArgs": "app list dev",
+      "commandLineArgs": "app download test https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
