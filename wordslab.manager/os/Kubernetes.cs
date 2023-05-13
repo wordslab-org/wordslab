@@ -119,7 +119,7 @@ namespace wordslab.manager.os
                     var sizeAndUnit = parts[2];
                     var multiply = 1L;
                     var unitChars = 2;
-                    if (sizeAndUnit.EndsWith("KB"))
+                    if (sizeAndUnit.EndsWith("kB"))
                     {
                         multiply = 1024L;
                     }

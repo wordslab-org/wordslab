@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using wordslab.manager.apps;
 using wordslab.manager.config;
 
 namespace wordslab.manager.storage
@@ -197,6 +199,11 @@ namespace wordslab.manager.storage
         public KubernetesAppDeployment TryGetKubernetesAppDeployment(string vmName, string deploymentNamespace)
         {
             return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && app.Namespace == deploymentNamespace).FirstOrDefault();
+        }
+
+        public List<KubernetesAppDeployment> ListKubernetesAppDeployments(string vmName, KubernetesAppSpec app)
+        {
+            return KubernetesAppDeployments.Where(depl => depl.VirtualMachineName == vmName && !depl.RemovalDate.HasValue && depl.App.YamlFileHash == app.YamlFileHash).ToList();
         }
 
         /// <summary>

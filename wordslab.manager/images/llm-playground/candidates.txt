@@ -1,0 +1,3 @@
+https://github.com/nat/openplayground
+https://github.com/huggingface/chat-ui
+https://github.com/oobabooga/text-generation-webui

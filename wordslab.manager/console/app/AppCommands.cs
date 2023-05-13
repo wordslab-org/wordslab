@@ -57,11 +57,11 @@ namespace wordslab.manager.console.app
         public string VmName { get; init; }
     }
 
-    public class VmAndAppNameSettings : VmNameSettings
+    public class VmNameAndAppIdSettings : VmNameSettings
     {
-        [Description("Kubernetes app name")]
-        [CommandArgument(1, "[app]")]
-        public string AppName { get; init; }
+        [Description("Kubernetes app ID")]
+        [CommandArgument(1, "[ID]")]
+        public string AppID { get; init; }
     }
 
     public abstract class AppCommand<TSettings> : Command<TSettings> where TSettings : VmNameSettings
@@ -158,7 +158,7 @@ namespace wordslab.manager.console.app
             }
 
             var ui = new ConsoleProcessUI();
-            var result = AsyncUtil.RunSync(() => appManager.InstallKubernetesApp(vm, yamlFileUrl, ui));
+            var result = AsyncUtil.RunSync(() => appManager.DownloadKubernetesApp(vm, yamlFileUrl, ui));
             if (result == null)
             {
                 return -1;
@@ -175,15 +175,34 @@ namespace wordslab.manager.console.app
         }
     }
 
-    public class AppRemoveCommand : AppCommand<VmAndAppNameSettings>
+    public class AppRemoveCommand : AppCommand<VmNameAndAppIdSettings>
     {
         public AppRemoveCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
         { }
 
-        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmAndAppNameSettings settings)
+        protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmNameAndAppIdSettings settings)
         {
-            AnsiConsole.MarkupLine("app remove command not yet implemented");
-            AnsiConsole.WriteLine();
+            var yamlFileHash = settings.AppID;
+            if (String.IsNullOrEmpty(yamlFileHash))
+            {
+                AnsiConsole.WriteLine("Kubernetes app ID argument is missing");
+                return 1;
+            }
+
+            var app = configStore.TryGetKubernetesApp(vm.Name, yamlFileHash);
+            if (app == null)
+            {
+                AnsiConsole.WriteLine($"Could not find a kubernetes app with ID {yamlFileHash} on virtual machine {vm.Name}");
+                return 1;
+            }
+
+            var ui = new ConsoleProcessUI();
+            var result = AsyncUtil.RunSync(() => appManager.RemoveKubernetesApp(app, vm, ui));
+            if (!result)
+            {
+                return -1;
+            }
+
             return 0;
         }
     }

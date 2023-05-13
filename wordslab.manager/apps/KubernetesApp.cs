@@ -381,6 +381,10 @@ namespace wordslab.manager.apps
                             {
                                 containerImage = await ContainerImage.GetMetadataFromCacheOrFromRegistryAsync(imageName, configStore);
                                 app.ContainerImages.Add(containerImage);
+                                if(app is KubernetesAppInstall && !containerImage.UsedByKubernetesApps.Any(containerApp => containerApp.YamlFileHash == app.YamlFileHash))
+                                {
+                                    containerImage.UsedByKubernetesApps.Add((KubernetesAppInstall)app);
+                                }
                             }
                             else
                             {

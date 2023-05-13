@@ -1,7 +1,4 @@
-﻿using Spectre.Console;
-using wordslab.manager.config;
-using wordslab.manager.console.app;
-using wordslab.manager.console;
+﻿using wordslab.manager.config;
 using wordslab.manager.storage;
 using wordslab.manager.vm;
 using wordslab.manager.os;
@@ -22,11 +19,10 @@ namespace wordslab.manager.apps
             ui.DisplayInformationLine($"App name: {appSpec.Name}");
             ui.DisplayInformationLine($"Title: {appSpec.Title}");
             ui.DisplayInformationLine($"Description: {appSpec.Description}");
-            ui.DisplayInformationLine($"Default namespace: {appSpec.NamespaceDefault}");
             ui.DisplayInformationLine();
             ui.DisplayInformationLine($"Version: {appSpec.Version}");
             ui.DisplayInformationLine($"Date: {appSpec.Date}");
-            ui.DisplayInformationLine($"File hash: {appSpec.YamlFileHash}");
+            ui.DisplayInformationLine($"ID: {appSpec.YamlFileHash}");
             ui.DisplayInformationLine();
             ui.DisplayInformationLine($"Home page: {appSpec.HomePage}");
             ui.DisplayInformationLine($"Source: {appSpec.Source}");
@@ -41,7 +37,7 @@ namespace wordslab.manager.apps
                     bool isHttps = ingressRouteInfo.IsHttps;
                     foreach (var pathInfo in ingressRouteInfo.Paths)
                     {
-                        ui.DisplayInformationLine($"- {pathInfo.Title}: http{(isHttps ? 's' : null)}://[virtualmachine]{pathInfo.Path}");
+                        ui.DisplayInformationLine($"- {pathInfo.Title}: http{(isHttps ? 's' : null)}://[virtualmachine]/{appSpec.NamespaceDefault}{pathInfo.Path}");
                     }
                 }
                 ui.DisplayInformationLine();
@@ -98,28 +94,28 @@ namespace wordslab.manager.apps
             ui.DisplayInformationLine($"Install date: {appInstall.InstallDate}");
             if (appInstall.IsFullyDownloadedInContentStore)
             {
-                ui.DisplayInformationLine($"Downloaded: ready to use");
+                ui.DisplayInformationLine($"Download status: OK - ready to use");
             }
             else
             {
-                ui.DisplayInformationLine($"Download in progress: {appInstall.RemainingDownloadSize / 1024 / 1024} MB remaining");
+                ui.DisplayInformationLine($"Download status: in progress - {appInstall.RemainingDownloadSize / 1024 / 1024} MB remaining");
             }
             ui.DisplayInformationLine();
         }
 
-        public async Task<KubernetesAppInstall> InstallKubernetesApp(VirtualMachine vm, string yamlFileUrl, InstallProcessUI ui)
+        public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, InstallProcessUI ui)
         {
             try
             {
                 // 1. Download and analyze Kubernetes application yaml file
-                var cmd1 = ui.DisplayCommandLaunch($"Downloading kubernetes app metadata from from {yamlFileUrl} ...");
+                var cmd1 = ui.DisplayCommandLaunch($"Downloading kubernetes app metadata from {yamlFileUrl} ...");
                 KubernetesAppInstall appInstall = await KubernetesApp.ImportMetadataFromYamlFileAsync(vm.Name, yamlFileUrl, configStore);
                 ui.DisplayCommandResult(cmd1, true);
 
                 // 2. Display app properties
                 DisplayKubernetesAppSpec(appInstall, ui);
 
-                // 3. Check total download size and confirm install 
+                // 3. Check total download size and confirm images download
                 var cmd2 = ui.DisplayCommandLaunch($"Checking remaining download size for app {appInstall.Name} in virtual machine {vm.Name} ...");
                 var downloadSizes = new List<long>();
                 foreach (var imageInfo in appInstall.ContainerImages)
@@ -127,36 +123,40 @@ namespace wordslab.manager.apps
                     downloadSizes.Add(Kubernetes.CheckImageBytesToDownload(imageInfo, vm));
                 }
                 appInstall.RemainingDownloadSize = downloadSizes.Sum();
+                if (appInstall.UninstallDate.HasValue) { appInstall.UninstallDate = null; }
                 configStore.SaveChanges();
 
                 var needToDownload = $"{appInstall.RemainingDownloadSize / 1024 / 1024} MB";
                 ui.DisplayCommandResult(cmd2, true, needToDownload);
 
-                var confirmInstall = await ui.DisplayQuestionAsync($"Do you confirm you want to download {needToDownload} in virtual machine {vm.Name}?");
-                if (!confirmInstall)
+                if(appInstall.RemainingDownloadSize > 0)
                 {
-                    return null;
-                }
-
-                // 3. Download container images in content store
-                var downloadCommands = new List<LongRunningCommand>();
-                for (var i = 0; i < appInstall.ContainerImages.Count; i++)
-                {
-                    var downloadSize = downloadSizes[i];
-                    if (downloadSize > 0)
+                    var confirmInstall = await ui.DisplayQuestionAsync($"Do you confirm you want to download {needToDownload} in virtual machine {vm.Name}?");
+                    if (!confirmInstall)
                     {
-                        var imageInfo = appInstall.ContainerImages[i];
-                        var c = new LongRunningCommand($"Downloading {imageInfo.Name} image", downloadSize, "Bytes",
-                            displayProgress => Kubernetes.DownloadImageInContentStoreWithProgress(imageInfo, vm,
-                                    progressHandler: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
-                            displayResult => displayResult(true)
-                            );
-                        downloadCommands.Add(c);
+                        return null;
                     }
-                }
-                if (downloadCommands.Count > 0)
-                {
-                    ui.RunCommandsAndDisplayProgress(downloadCommands.ToArray());
+
+                    // 3. Download container images in content store
+                    var downloadCommands = new List<LongRunningCommand>();
+                    for (var i = 0; i < appInstall.ContainerImages.Count; i++)
+                    {
+                        var downloadSize = downloadSizes[i];
+                        if (downloadSize > 0)
+                        {
+                            var imageInfo = appInstall.ContainerImages[i];
+                            var c = new LongRunningCommand($"{imageInfo.Name}", downloadSize, "Bytes",
+                                displayProgress => Kubernetes.DownloadImageInContentStoreWithProgress(imageInfo, vm, timeoutSec:3600,
+                                        progressHandler: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                                displayResult => displayResult(true)
+                                );
+                            downloadCommands.Add(c);
+                        }
+                    }
+                    if (downloadCommands.Count > 0)
+                    {
+                        ui.RunCommandsAndDisplayProgress(downloadCommands.ToArray());
+                    }
                 }
 
                 // 4. Saving kubernetes app install
@@ -180,16 +180,58 @@ namespace wordslab.manager.apps
             return configStore.ListKubernetesAppsInstalledOn(vm.Name);
         }
 
-        public async Task<bool> UninstallKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, InstallProcessUI ui)
+        public async Task<bool> RemoveKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, InstallProcessUI ui)
         {
-            // 1. Check that there are no active deployments
+            try
+            {
+                // 1. Check that there are no active deployments
+                var cmd1 = ui.DisplayCommandLaunch($"Checking that there are no active deployment of application {app.Name} with ID {app.YamlFileHash} in virtual machine {vm.Name} ...");
+                var appDeployments = configStore.ListKubernetesAppDeployments(vm.Name, app);
+                if(appDeployments.Count > 0)
+                {
+                    ui.DisplayCommandResult(cmd1, false, $"Active deployments of this application found in namespaces: {string.Join(',',appDeployments.Select(d=>d.Namespace))}");
+                    return false;
+                }
+                else
+                {
+                    ui.DisplayCommandResult(cmd1, true);
+                }
 
-            // 2. Display app properties, disk usage, and confirm uninstall
-            
-            // 3. Delete container images, mark KubernetesApp as uninstalled in the database
+                // 2. Display app properties, disk usage, and confirm uninstall
+                DisplayKubernetesAppInstall(app, ui);
 
-            await ui.DisplayQuestionAsync("Are you sure you want to uninstall ?");
-            throw new NotImplementedException();
+                var confirm = await ui.DisplayQuestionAsync($"Do you confirm that you want to remove the appplication {app.Name} from the virtual machine {vm.Name}?");
+                if(!confirm)
+                {
+                    return false;
+                }
+
+                // 3. Delete container images, mark KubernetesApp as uninstalled in the database
+                foreach (var imageInfo in app.ContainerImages)
+                {
+                    // Delete image only if it is not used by other applications
+                    if (!imageInfo.UsedByKubernetesApps.Any(userApp => userApp.YamlFileHash != app.YamlFileHash))
+                    {
+                        var cmd = ui.DisplayCommandLaunch($"Deleting image {imageInfo.Name} ({imageInfo.Layers.Sum(l => l.Size)/1024/1024} MB) ...");
+                        Kubernetes.DeleteImageFromContentStore(imageInfo, vm);
+                        ui.DisplayCommandResult(cmd, true);
+                    }
+                }
+
+                var cmd3 = ui.DisplayCommandLaunch($"Removing app {app.Name} from virtual machine {vm.Name} ...");
+                app.IsFullyDownloadedInContentStore = false;
+                app.RemainingDownloadSize = app.ContainerImagesLayers().Sum(l => l.Size);
+                app.UninstallDate = DateTime.Now;
+                configStore.SaveChanges();
+                ui.DisplayCommandResult(cmd3, true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ui.DisplayCommandError(ex.Message);
+                return false;
+            }
         }
 
         public async Task<KubernetesAppDeployment> DeployKubernetesApp(VirtualMachine vm, InstallProcessUI ui)
