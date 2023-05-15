@@ -112,7 +112,7 @@ namespace wordslab.manager.config
             }
         }
 
-        public string GetKubernetesServer()
+        public string GetKubernetesServerURL()
         {
             if (Config.ForwardKubernetesPortOnLocalhost)
             {
@@ -124,37 +124,41 @@ namespace wordslab.manager.config
             }
         }
 
-        public string GetHttpURL()
+        public string GetHttpAddressAndPort()
         {
             if(Config.ForwardHttpIngressPortOnLocalhost)
             {
                 var ip = "127.0.0.1";
                 if (Config.AllowHttpAccessFromLAN) 
                 {
-                    ip = Network.GetIPAddressesAvailable().Values.Where(addr => !addr.IsLoopback).First().Address;
+                    ip = Network.GetIPAddressOnLAN();
                 }
-                return $"http://{ip}:{Config.HostHttpIngressPort}/wordslab";
+                var formattedPort = Config.HostHttpIngressPort == 80 ? "" : $":{Config.HostHttpIngressPort}";
+                return $"{ip}{formattedPort}";
             }
             else
             {
-                return $"http://{VmIPAddress}:{Config.Spec.Network.HttpIngressPort}/wordslab";
+                var formattedPort = Config.Spec.Network.HttpIngressPort == 80 ? "" : $":{Config.Spec.Network.HttpIngressPort}";
+                return $"{VmIPAddress}{formattedPort}";
             }
         }
 
-        public string GetHttpsURL()
+        public string GetHttpsAddressAndPort()
         {
             if (Config.ForwardHttpsIngressPortOnLocalhost)
             {
                 var ip = "127.0.0.1";
                 if (Config.AllowHttpsAccessFromLAN)
                 {
-                    ip = Network.GetIPAddressesAvailable().Values.Where(addr => !addr.IsLoopback).First().Address;
+                    ip = Network.GetIPAddressOnLAN();
                 }
-                return $"https://{ip}:{Config.HostHttpsIngressPort}/status";
+                var formattedPort = Config.HostHttpsIngressPort == 443 ? "" : $":{Config.HostHttpsIngressPort}";
+                return $"{ip}{formattedPort}";
             }
             else
             {
-                return $"https://{VmIPAddress}:{Config.Spec.Network.HttpsIngressPort}/status";
+                var formattedPort = Config.Spec.Network.HttpsIngressPort == 443 ? "" : $":{Config.Spec.Network.HttpsIngressPort}";
+                return $"{VmIPAddress}{formattedPort}";
             }
         }
 

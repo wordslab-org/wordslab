@@ -35,7 +35,7 @@ else
                     <tr>
                         <th></th>
                         <th scope="col">Name</th>
-                        <th scope="col">URL</th>
+                        <th scope="col">Http address</th>
                         <th scope="col">Processors</th>
                         <th scope="col">Memory</th>
                         <th scope="col">GPU</th>
@@ -74,7 +74,7 @@ else
                                 }
                             </td>
                             <td class="fs-4 fw-bold">@vm.Name</td>
-                            <td><a href="@instance.GetHttpURL()" target="_blank">@instance.GetHttpURL()</a></td>                            
+                            <td>@instance.GetHttpAddressAndPort()</td>                            
                             <td>@displayStatus.Processors <div class="text-primary">@displayStatus.ProcessorsUsage used</div></td>
                             <td>@displayStatus.Memory <div class="text-primary">@displayStatus.MemoryUsage used</div></td>
                             <td>@displayStatus.GPU <div class="text-primary">@displayStatus.GPUUsage</div></td>

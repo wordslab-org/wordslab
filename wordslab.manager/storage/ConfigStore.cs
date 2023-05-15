@@ -184,7 +184,7 @@ namespace wordslab.manager.storage
 
         public List<KubernetesAppDeployment> ListKubernetesAppsDeployedOn(string vmName)
         {
-            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && !app.RemovalDate.HasValue).ToList();
+            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && !app.RemovalDate.HasValue).Include(depl => depl.App).ToList();
         }
 
         public void AddAppDeployment(KubernetesAppDeployment app)
@@ -198,12 +198,12 @@ namespace wordslab.manager.storage
         /// </summary>
         public KubernetesAppDeployment TryGetKubernetesAppDeployment(string vmName, string deploymentNamespace)
         {
-            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && app.Namespace == deploymentNamespace).FirstOrDefault();
+            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && app.Namespace == deploymentNamespace).Include(depl => depl.App).FirstOrDefault();
         }
 
         public List<KubernetesAppDeployment> ListKubernetesAppDeployments(string vmName, KubernetesAppSpec app)
         {
-            return KubernetesAppDeployments.Where(depl => depl.VirtualMachineName == vmName && !depl.RemovalDate.HasValue && depl.App.YamlFileHash == app.YamlFileHash).ToList();
+            return KubernetesAppDeployments.Where(depl => depl.VirtualMachineName == vmName && !depl.RemovalDate.HasValue && depl.App.YamlFileHash == app.YamlFileHash).Include(depl => depl.App).ToList();
         }
 
         /// <summary>

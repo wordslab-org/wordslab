@@ -46,6 +46,17 @@ namespace wordslab.manager.config
 
             public List<PathInfo> Paths { get; } = new List<PathInfo>();
 
+            public List<Tuple<string,string>> UrlsAndTitles(string vmAddressAndPort, string deploymentNamespace) 
+            {
+                var urlsAndTitles = new List<Tuple<string,string>>();
+                foreach (var pathInfo in Paths) 
+                {
+                    var url = $"http{(IsHttps ? 's' : null)}://{vmAddressAndPort}/{deploymentNamespace}{pathInfo.Path}";
+                    urlsAndTitles.Add(Tuple.Create(url, pathInfo.Title));
+                }
+                return urlsAndTitles;
+            }
+
             public class PathInfo
             {
                 public string Path { get; set; }
@@ -66,6 +77,8 @@ namespace wordslab.manager.config
             public string Description { get; set; }
 
             public int Port { get; set; }
+
+            public string Url(string deploymentNamespace) { return $"{Name}.{deploymentNamespace}.svc.cluster.local:{Port}"; } 
 
             public HashSet<string> UsedByResourceNames { get; set; } = new HashSet<string>();
         }

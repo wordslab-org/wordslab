@@ -71,6 +71,11 @@ namespace wordslab.manager.apps
             return app;
         }
 
+        public static string GetYamlFileContentForDeployment(KubernetesAppSpec app, string deploymentNamespace)
+        {
+            return app.YamlFileContent.Replace(NAMESPACE_PLACEHOLDER, deploymentNamespace);
+        }
+
         public static async Task ParseYamlFileContent(KubernetesAppSpec app, bool loadContainersMetadata = false, ConfigStore configStore = null)
         {
             // Used only while parsing the YAML file
@@ -251,14 +256,7 @@ namespace wordslab.manager.apps
                         throw new NotSupportedException("Ingress resources are not supported in wordslab: please use IngressRoute instead (https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/#kind-ingressroute)");
                     case TraefikV1alpha1IngressRoute ingressRoute:
                         resourceName = $"ingressroute/{ingressRoute.Name()}";
-                        // Metadata for all routes
                         var routeInfo = new IngressRouteInfo();
-                        AddPathInfo(ingressRoute, routeInfo, "");
-                        for (var i = 1; i <= 20; i++)
-                        {
-                            var pathFound = AddPathInfo(ingressRoute, routeInfo, i.ToString());
-                            if (!pathFound) break;
-                        }
                         // Entrypoints
                         if (ingressRoute.spec.entryPoints == null || ingressRoute.spec.entryPoints.Length == 0)
                         {
@@ -279,9 +277,9 @@ namespace wordslab.manager.apps
                         }
                         foreach (var route in ingressRoute.spec.routes)
                         {
-                            if (route.kind != "Rule" || route.match == null || !route.match.StartsWith("PathPrefix(`/$$namespace$$"))
+                            if (route.kind != "Rule" || route.match == null || !route.match.StartsWith($"PathPrefix(`/{NAMESPACE_PLACEHOLDER}"))
                             {
-                                throw new FormatException("IngressResource routes must be of kind 'Rule' and they match property MUST start with: \"PathPrefix(`/$$namespace$$/\". This is to ensure that the URLs for this application will all stay inside the deployment namespace.");
+                                throw new FormatException($"IngressResource routes must be of kind 'Rule' and they match property MUST start with: \"PathPrefix(`/{NAMESPACE_PLACEHOLDER}/\". This is to ensure that the URLs for this application will all stay inside the deployment namespace.");
                             }
                             // Services
                             if (route.services == null || route.services.Length == 0)
@@ -302,6 +300,13 @@ namespace wordslab.manager.apps
                                 }
                                 resRef.Add(resourceName);
                             }
+                        }
+                        // Metadata for all routes
+                        AddPathInfo(ingressRoute, routeInfo, "");
+                        for (var i = 1; i <= 20; i++)
+                        {
+                            var pathFound = AddPathInfo(ingressRoute, routeInfo, i.ToString());
+                            if (!pathFound) break;
                         }
                         app.IngressRoutes.Add(routeInfo);
                         break;

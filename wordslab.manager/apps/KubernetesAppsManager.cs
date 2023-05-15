@@ -2,6 +2,10 @@
 using wordslab.manager.storage;
 using wordslab.manager.vm;
 using wordslab.manager.os;
+using wordslab.manager.console;
+using Spectre.Console;
+using System.Xml.Linq;
+using wordslab.manager.web;
 
 namespace wordslab.manager.apps
 {
@@ -14,13 +18,13 @@ namespace wordslab.manager.apps
             this.configStore = configStore;
         }
 
-        public static void DisplayKubernetesAppSpec(KubernetesAppSpec appSpec, InstallProcessUI ui)
+        public static void DisplayKubernetesAppSpec(KubernetesAppSpec appSpec, InstallProcessUI ui, string vmAddressAndPort = null, string deploymentNamespace = null)
         {
-            ui.DisplayInformationLine($"App name: {appSpec.Name}");
-            ui.DisplayInformationLine($"Title: {appSpec.Title}");
-            ui.DisplayInformationLine($"Description: {appSpec.Description}");
+            if (vmAddressAndPort == null) vmAddressAndPort = "[virtualmachine]";
+            if (deploymentNamespace == null) deploymentNamespace = appSpec.NamespaceDefault;
+
+            DisplayKubernetesAppIdentity(appSpec, ui);
             ui.DisplayInformationLine();
-            ui.DisplayInformationLine($"Version: {appSpec.Version}");
             ui.DisplayInformationLine($"Date: {appSpec.Date}");
             ui.DisplayInformationLine($"ID: {appSpec.YamlFileHash}");
             ui.DisplayInformationLine();
@@ -29,31 +33,6 @@ namespace wordslab.manager.apps
             ui.DisplayInformationLine($"Author: {appSpec.Author}");
             ui.DisplayInformationLine($"Licence: {appSpec.Licence}");
             ui.DisplayInformationLine();
-            if (appSpec.IngressRoutes.Count > 0)
-            {
-                ui.DisplayInformationLine("User interface entry points:");
-                foreach (var ingressRouteInfo in appSpec.IngressRoutes)
-                {
-                    bool isHttps = ingressRouteInfo.IsHttps;
-                    foreach (var pathInfo in ingressRouteInfo.Paths)
-                    {
-                        ui.DisplayInformationLine($"- {pathInfo.Title}: http{(isHttps ? 's' : null)}://[virtualmachine]/{appSpec.NamespaceDefault}{pathInfo.Path}");
-                    }
-                }
-                ui.DisplayInformationLine();
-            }
-            if (appSpec.Services.Values.Where(s => !String.IsNullOrEmpty(s.Title)).Any())
-            {
-                ui.DisplayInformationLine("Services exposed to other apps:");
-                foreach (var serviceInfo in appSpec.Services.Values.Where(s => !String.IsNullOrEmpty(s.Title)))
-                {
-                    ui.DisplayInformationLine($"- Service: {serviceInfo.Name}");
-                    ui.DisplayInformationLine($"  . title: {serviceInfo.Title}");
-                    ui.DisplayInformationLine($"  . description: {serviceInfo.Description}");
-                    ui.DisplayInformationLine($"  . port: {serviceInfo.Port}");
-                }
-                ui.DisplayInformationLine();
-            }
             if (appSpec.ContainerImages.Count > 0)
             {
                 ui.DisplayInformationLine("Container images to download:");
@@ -85,11 +64,50 @@ namespace wordslab.manager.apps
                 }
                 ui.DisplayInformationLine();
             }
+            if (appSpec.Services.Values.Where(s => !String.IsNullOrEmpty(s.Title)).Any())
+            {
+                ui.DisplayInformationLine("Services exposed to other apps:");
+                foreach (var serviceInfo in appSpec.Services.Values.Where(s => !String.IsNullOrEmpty(s.Title)))
+                {
+                    ui.DisplayInformationLine($"- Service: {serviceInfo.Name}");
+                    ui.DisplayInformationLine($"  . title: {serviceInfo.Title}");
+                    ui.DisplayInformationLine($"  . description: {serviceInfo.Description}");
+                    ui.DisplayInformationLine($"  . port: {serviceInfo.Port}");
+                    ui.DisplayInformationLine($"  . URL: {serviceInfo.Url(deploymentNamespace)}");
+                }
+                ui.DisplayInformationLine();
+            }
+            DisplayKubernetesAppEntryPoints(appSpec, ui, vmAddressAndPort, deploymentNamespace);
         }
 
-        public static void DisplayKubernetesAppInstall(KubernetesAppInstall appInstall, InstallProcessUI ui)
+        public static void DisplayKubernetesAppIdentity(KubernetesAppSpec appSpec, InstallProcessUI ui)
         {
-            DisplayKubernetesAppSpec(appInstall, ui);
+            ui.DisplayInformationLine($"App name: {appSpec.Name}");
+            ui.DisplayInformationLine($"Title: {appSpec.Title}");
+            ui.DisplayInformationLine($"Description: {appSpec.Description}");
+            ui.DisplayInformationLine($"Version: {appSpec.Version}");
+        }
+
+        public static void DisplayKubernetesAppEntryPoints(KubernetesAppSpec appSpec, InstallProcessUI ui, string vmAddressAndPort, string deploymentNamespace)
+        {
+            if (appSpec.IngressRoutes.Count > 0)
+            {
+                ui.DisplayInformationLine("User interface entry points:");
+                foreach (var ingressRouteInfo in appSpec.IngressRoutes)
+                {
+                    var urlsAndTitles = ingressRouteInfo.UrlsAndTitles(vmAddressAndPort, deploymentNamespace);
+                    foreach (var urlAndTitle in urlsAndTitles)
+                    {
+                        ui.DisplayInformationLine($"- {urlAndTitle.Item2}: {urlAndTitle.Item1}");
+                    }
+                }
+                ui.DisplayInformationLine();
+            }
+        }
+
+        public static void DisplayKubernetesAppInstall(KubernetesAppInstall appInstall, InstallProcessUI ui, string vmAddressAndPort = null, string deploymentNamespace = null)
+        {
+            DisplayKubernetesAppSpec(appInstall, ui, vmAddressAndPort, deploymentNamespace);
 
             ui.DisplayInformationLine($"Install date: {appInstall.InstallDate}");
             if (appInstall.IsFullyDownloadedInContentStore)
@@ -101,6 +119,25 @@ namespace wordslab.manager.apps
                 ui.DisplayInformationLine($"Download status: in progress - {appInstall.RemainingDownloadSize / 1024 / 1024} MB remaining");
             }
             ui.DisplayInformationLine();
+        }
+
+        public async static Task DisplayKubernetesAppDeployments(VirtualMachine vm, InstallProcessUI ui, ConfigStore configStore)
+        {
+            var appDeployments = configStore.ListKubernetesAppsDeployedOn(vm.Name);
+            if (appDeployments.Count > 0)
+            {
+                ui.DisplayInformationLine($"Applications deployed on virtual machine {vm.Name}:");
+                ui.DisplayInformationLine();
+                foreach (var appDeployment in appDeployments)
+                {
+                    ui.DisplayInformationLine($"[Namespace: {appDeployment.Namespace}]");
+                    ui.DisplayInformationLine();
+                    DisplayKubernetesAppIdentity(appDeployment.App, ui);
+                    await KubernetesApp.ParseYamlFileContent(appDeployment.App, loadContainersMetadata: false, configStore);
+                    ui.DisplayInformationLine();
+                    DisplayKubernetesAppEntryPoints(appDeployment.App, ui, vm.RunningInstance.GetHttpAddressAndPort(), appDeployment.Namespace);
+                }
+            }
         }
 
         public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, InstallProcessUI ui)
@@ -198,7 +235,7 @@ namespace wordslab.manager.apps
                 }
 
                 // 2. Display app properties, disk usage, and confirm uninstall
-                DisplayKubernetesAppInstall(app, ui);
+                DisplayKubernetesAppInstall(app, ui, vmAddressAndPort: vm.RunningInstance.GetHttpAddressAndPort());
 
                 var confirm = await ui.DisplayQuestionAsync($"Do you confirm that you want to remove the appplication {app.Name} from the virtual machine {vm.Name}?");
                 if(!confirm)
@@ -234,33 +271,98 @@ namespace wordslab.manager.apps
             }
         }
 
-        public async Task<KubernetesAppDeployment> DeployKubernetesApp(VirtualMachine vm, InstallProcessUI ui)
+        public async Task<KubernetesAppDeployment> DeployKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, InstallProcessUI ui)
         {
-            // 1. Display app properties
+            string namespaceCreated = null;
+            try
+            {
+                // 1. Display app properties
+                var cmd1 = ui.DisplayCommandLaunch($"Checking if app {app.Name} is ready to use in virtual machine {vm.Name} ...");
+                if(app.IsFullyDownloadedInContentStore)
+                {
+                    ui.DisplayCommandResult(cmd1 , true);
+                }
+                else
+                {
+                    ui.DisplayCommandResult(cmd1, false, $"Please finish downloading this application: you still need to download {app.RemainingDownloadSize/1024/1024} MB");
+                    return null;
+                }
 
-            // 2. Choose a namespace
+                DisplayKubernetesAppInstall(app, ui);
 
-            // 3. Deploy and display test URLS
+                // 2. Choose a namespace
+                var deploymentNamespace = await ui.DisplayInputQuestionAsync($"Choose a namespace for this deployment of application {app.Name} in virtual machine {vm.Name}", app.NamespaceDefault);
 
-            await ui.DisplayQuestionAsync("What do you want to install ?");
-            throw new NotImplementedException();
-        }
+                var cmd2 = ui.DisplayCommandLaunch($"Checking if namespace {deploymentNamespace} is still free to use in virtual machine {vm.Name} ...");
+                var namespaces = Kubernetes.GetAllNamespaces(vm);
+                if(!namespaces.Contains(deploymentNamespace))
+                {
+                    ui.DisplayCommandResult(cmd2 , true);
+                }
+                else
+                {
+                    ui.DisplayCommandResult(cmd2, false, $"The following namespaces are already used {string.Join(',',namespaces.Where(n => !n.StartsWith("kube-") && n!="default"))}");
+                    return null;
+                }
+
+                // 3. Deploy and display test URLS
+                var cmd3 = ui.DisplayCommandLaunch($"Deploying application {app.Name} in namespace {deploymentNamespace} on virtual machine {vm.Name} ...");
+                namespaceCreated = deploymentNamespace;
+                var yamlFileContentForDeployment = KubernetesApp.GetYamlFileContentForDeployment(app, deploymentNamespace);
+                var exitCode = Kubernetes.ApplyYamlFileAndWaitForResources(yamlFileContentForDeployment, deploymentNamespace, vm);
+                if(exitCode != 0)
+                {
+                    throw new Exception($"kubernetes app deployment failed with exit code {exitCode}");
+                }
+                
+                var appDeployment = new KubernetesAppDeployment(vm.Name, deploymentNamespace, app);
+                configStore.AddAppDeployment(appDeployment);
+                configStore.SaveChanges();
+                ui.DisplayCommandResult(cmd3, true);
+
+                DisplayKubernetesAppEntryPoints(app, ui, vm.RunningInstance.GetHttpAddressAndPort(), deploymentNamespace);
+
+                ui.DisplayInformationLine("These entry points will be available in a few seconds (the application is starting) ...");
+                ui.DisplayInformationLine();
+
+                return appDeployment;
+            }
+            catch (Exception ex)
+            {
+                // Cleanup if an exception occurs in the middle of a deployment
+                if (namespaceCreated != null)
+                {
+                    try { Kubernetes.TryDeleteNamespace(namespaceCreated, vm); } catch { }
+                }
+
+                ui.DisplayCommandError(ex.Message);
+                return null;
+            }
+}
 
         public List<KubernetesAppDeployment> ListKubernetesAppDeployments(VirtualMachine vm)
         {
             return configStore.ListKubernetesAppsDeployedOn(vm.Name);
         }
 
-        public async Task<KubernetesAppDeployment> RemoveKubernetesAppDeployment(VirtualMachine vm, InstallProcessUI ui)
+        public async Task<KubernetesAppDeployment> RemoveKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm, InstallProcessUI ui)
         {
-            // 1. Display deployment properties
+            try 
+            { 
+                // 1. Display deployment properties
 
-            // 2. Select volumes to preserve
+                // 2. Select volumes to preserve
 
-            // 3. Remove and display preserved volumes
+                // 3. Remove and display preserved volumes
 
-            await ui.DisplayQuestionAsync("What do you want to install ?");
-            throw new NotImplementedException();
+                await ui.DisplayQuestionAsync("What do you want to install ?");
+                throw new NotImplementedException();
+            }
+            catch (Exception ex)
+            {
+                ui.DisplayCommandError(ex.Message);
+                return null;
+            }
         }
     }
 }

@@ -110,7 +110,7 @@ namespace wordslab.manager.os
             {
                 if (line.StartsWith("layer-"))
                 {
-                    var parts = line.Split(new char[] { '-', '\t' });
+                    var parts = line.Split('-','\t');
                     var digest = parts[1];
                     if(downloadedLayers.Contains(digest))
                     {
@@ -195,6 +195,31 @@ namespace wordslab.manager.os
             }
         }
 
+        public static List<string> GetAllNamespaces(IVirtualMachineShell vmShell)
+        {
+            string output = null;
+            vmShell.ExecuteCommand("k3s", "kubectl get namespaces", outputHandler: res => output = res);
+         
+            var namespaces = new List<string>();
+            foreach(var line in output.Split('\n'))
+            {
+                if (line.StartsWith("NAME")) continue;
+                var elements = line.Split('\t');
+                if (elements.Length > 0)
+                {
+                    namespaces.Add(elements[0]);
+                }
+            }
+            return namespaces;
+        }
+
+        public static bool TryDeleteNamespace(string namespaceToDelete, IVirtualMachineShell vmShell)
+        {
+            int exitCode = 0;
+            vmShell.ExecuteCommand("k3s", $"kubectl delete namespace {namespaceToDelete}", exitCodeHandler: c => exitCode = c);
+            return exitCode == 0;
+        }
+
         public static int ApplyYamlFileAndWaitForResources(string yamlFileContent, string deploymentNamespace, IVirtualMachineShell vmShell, int timeoutSec=30)
         {
             // Save the yaml file content on  the VM disk
@@ -240,5 +265,7 @@ namespace wordslab.manager.os
             literal.Append("\"");
             return literal.ToString();
         }
+
+
     }    
 }

@@ -42,6 +42,11 @@ namespace wordslab.manager.os
             return addressesStatus;
         }
 
+        public static string GetIPAddressOnLAN()
+        {
+            return GetIPAddressesAvailable().Values.Where(addr => !addr.IsLoopback).First().Address;
+        }
+
         public static Dictionary<string, HashSet<int>> GetTcpPortsInUsePerIPAddress()
         {
             var portsInUse = new Dictionary<string, HashSet<int>>();

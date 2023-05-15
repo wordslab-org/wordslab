@@ -2,6 +2,7 @@
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using wordslab.manager.apps;
 using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
@@ -182,7 +183,7 @@ namespace wordslab.manager.console.host
 
                 var table = new Table();
                 table.AddColumn("Name");
-                table.AddColumn("Address");
+                table.AddColumn("Http address");
                 table.AddColumn("Started on");
                 table.AddColumn("Running since");
                 table.AddColumn("Processors");
@@ -196,7 +197,7 @@ namespace wordslab.manager.console.host
                     var displayStatus = instance.GetDisplayStatus();
                     table.AddRow(
                         vm.Name,
-                        instance.GetHttpURL(),
+                        instance.GetHttpAddressAndPort(),
                         displayStatus.StartedOn,
                         displayStatus.RunningTime,
                         displayStatus.Processors,
@@ -305,9 +306,13 @@ namespace wordslab.manager.console.host
             }
 
             AnsiConsole.WriteLine($"Virtual machine {vmName} started:");
-            AnsiConsole.WriteLine($"- {vmi.GetHttpURL()}");
-            AnsiConsole.WriteLine($"- {vmi.GetHttpsURL()}");
+            AnsiConsole.WriteLine($"- http  address: {vmi.GetHttpAddressAndPort()}");
+            // AnsiConsole.WriteLine($"- https address: {vmi.GetHttpsAddress()}");
             AnsiConsole.WriteLine();
+
+            var ui = new ConsoleProcessUI();
+            AsyncUtil.RunSync(() => KubernetesAppsManager.DisplayKubernetesAppDeployments(vm, ui, configStore));
+
             return 0;
         }
     }
@@ -400,8 +405,8 @@ namespace wordslab.manager.console.host
                 AnsiConsole.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
                 AnsiConsole.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
                 AnsiConsole.WriteLine();
-                AnsiConsole.WriteLine($"-> {instance.GetHttpURL()}");
-                AnsiConsole.WriteLine($"-> {instance.GetHttpsURL()}");
+                AnsiConsole.WriteLine($"-> {instance.GetHttpAddressAndPort()}");
+                AnsiConsole.WriteLine($"-> {instance.GetHttpsAddressAndPort()}");
             }
             else
             {
