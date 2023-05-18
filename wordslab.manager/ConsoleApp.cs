@@ -11,13 +11,26 @@ public static class ConsoleApp
 {
     public static readonly Version Version = new Version(0, 9, 1);
 
-    public static int Run(WebApplicationBuilder builder, string[] args)
+    public static int Run(string[] args, WebApplicationBuilder builder)
     {
         // Bridge ASP.NET dependency injection system with Spectre.Console dependency injection system
         var spectreServices = new TypeRegistrar(builder.Services);
         spectreServices.RegisterInstance(typeof(WebApplicationBuilder), builder);
 
         // Initialize and run a Spectre.Console console app
+        spectreServices.RegisterInstance(typeof(ICommandsUI), new ConsoleCommandsUI());
+        var commandApp = new CommandApp<ManagerCommand>(spectreServices);
+        commandApp.Configure(config => ConfigureCommands(config));
+        return commandApp.Run(args);
+    }
+
+    public static int InvokeFromAnotherUI(string[] args, IServiceCollection services, ICommandsUI ui)
+    {
+        // Bridge the calling app dependency injection system with Spectre.Console dependency injection system
+        var spectreServices = new TypeRegistrar(services);
+
+        // Initialize and run a Spectre.Console app with a custom UI
+        spectreServices.RegisterInstance(typeof(ICommandsUI), ui);
         var commandApp = new CommandApp<ManagerCommand>(spectreServices);
         commandApp.Configure(config => ConfigureCommands(config));
         return commandApp.Run(args);
@@ -161,6 +174,7 @@ public static class ConsoleApp
             _builder.AddSingleton(service, (provider) => func());
         }
     }
+
     private class TypeResolver : ITypeResolver, IDisposable
     {
         private readonly IServiceProvider _provider;
@@ -189,3 +203,4 @@ public static class ConsoleApp
         }
     }
 }
+

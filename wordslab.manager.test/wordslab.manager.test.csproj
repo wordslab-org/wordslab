@@ -19,10 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="cli\host\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="os\outputs\multitable.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

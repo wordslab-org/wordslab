@@ -10,7 +10,7 @@ namespace wordslab.manager.vm.qemu
         // Note: before calling this method
         // - you must configure HostStorage directories location
         // - you must ask the user if they want to use a GPU
-        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, ICommandsUI ui)
         {
             try
             {
@@ -358,7 +358,7 @@ namespace wordslab.manager.vm.qemu
             }
         }
 
-        private static async Task ConfigureHostStorage(HostStorage hostStorage, InstallProcessUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
+        private static async Task ConfigureHostStorage(HostStorage hostStorage, ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
         {
             var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
             var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
@@ -384,7 +384,7 @@ namespace wordslab.manager.vm.qemu
             machineConfig.BackupPath = hostStorage.BackupDirectory;
         }
 
-        private static async Task ConfigureHostSandbox(InstallProcessUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
+        private static async Task ConfigureHostSandbox(ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
         {
             var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             var recVmSpec = vmSpecs.RecommendedVMSpec;
@@ -406,7 +406,7 @@ namespace wordslab.manager.vm.qemu
         }
 
 
-        public static async Task<HostMachineConfig> UpdateHostMachineConfig(HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<HostMachineConfig> UpdateHostMachineConfig(HostMachineConfig hostConfig, HostStorage hostStorage, ICommandsUI ui)
         {
             // 1. Configure host machine Storage
 
@@ -430,7 +430,7 @@ namespace wordslab.manager.vm.qemu
             return hostConfig;
         }
 
-        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, ICommandsUI ui)
         {
             try
             {

@@ -1,5 +1,4 @@
-﻿using Spectre.Console;
-using Spectre.Console.Cli;
+﻿using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.apps;
@@ -127,13 +126,13 @@ namespace wordslab.manager.console.host
         }
     }
 
-    public abstract class VmCommand<TSettings> : Command<TSettings> where TSettings : CommandSettings
+    public abstract class VmCommand<TSettings> : CommandWithUI<TSettings> where TSettings : CommandSettings
     {
         protected readonly HostStorage hostStorage;
         protected readonly ConfigStore configStore;
         protected readonly VirtualMachinesManager vmManager;
 
-        public VmCommand(HostStorage hostStorage, ConfigStore configStore)
+        public VmCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(ui)
         {
             this.hostStorage = hostStorage;
             this.configStore = configStore;
@@ -144,13 +143,13 @@ namespace wordslab.manager.console.host
         {
             if (configStore.HostMachineConfig == null)
             {
-                AnsiConsole.WriteLine("Host machine config not yet initialized: please execute 'wordslab host init' first");
-                AnsiConsole.WriteLine();
+                UI.WriteLine("Host machine config not yet initialized: please execute 'wordslab host init' first");
+                UI.WriteLine();
                 return 0;
             }
 
-            AnsiConsole.WriteLine("Checking local virtual machines state ...");
-            AnsiConsole.WriteLine();
+            UI.WriteLine("Checking local virtual machines state ...");
+            UI.WriteLine();
 
             var vms = vmManager.ListLocalVMs();
             return ExecuteCommand(vms, context, settings);
@@ -161,14 +160,14 @@ namespace wordslab.manager.console.host
 
     public class VmListCommand : VmCommand<NoParamsSettings>
     {
-        public VmListCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmListCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] NoParamsSettings settings)
         {           
             if (vms.Count == 0)
             {
-                AnsiConsole.WriteLine("No virtual machine found on this host: you can create one with the command \"wordslab host vm create\".");
+                UI.WriteLine("No virtual machine found on this host: you can create one with the command \"wordslab host vm create\".");
                 return 0;
             }
 
@@ -178,10 +177,10 @@ namespace wordslab.manager.console.host
             // 1. Running VMs
             if (runningVMs.Count > 0)
             {
-                AnsiConsole.WriteLine("Running virtual machines:");
-                AnsiConsole.WriteLine();
+                UI.WriteLine("Running virtual machines:");
+                UI.WriteLine();
 
-                var table = new Table();
+                var table = new TableInfo();
                 table.AddColumn("Name");
                 table.AddColumn("Http address");
                 table.AddColumn("Started on");
@@ -206,17 +205,17 @@ namespace wordslab.manager.console.host
                         vm.ClusterDisk.CurrentSizeGB + "GB",
                         vm.DataDisk.CurrentSizeGB + "GB");
                 }
-                AnsiConsole.Write(table);
-                AnsiConsole.WriteLine();
+                UI.DisplayTable(table);
+                UI.WriteLine();
             }
 
             // 2. Stopped VMs
             if (stoppedVMs.Count > 0)
             {
-                AnsiConsole.WriteLine("Stopped virtual machines:");
-                AnsiConsole.WriteLine();
+                UI.WriteLine("Stopped virtual machines:");
+                UI.WriteLine();
 
-                var table = new Table();
+                var table = new TableInfo();
                 table.AddColumn("Name");
                 table.AddColumn("First start");
                 table.AddColumn("Last stop");
@@ -242,8 +241,8 @@ namespace wordslab.manager.console.host
                         vm.ClusterDisk.CurrentSizeGB + "GB",
                         vm.DataDisk.CurrentSizeGB + "GB");
                 }
-                AnsiConsole.Write(table);
-                AnsiConsole.WriteLine();
+                UI.DisplayTable(table);
+                UI.WriteLine();
             }
 
             return 0;
@@ -252,7 +251,7 @@ namespace wordslab.manager.console.host
 
     public class VmStartCommand : VmCommand<VmComputeSettings>
     {
-        public VmStartCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmStartCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmComputeSettings vmSettings)
@@ -260,25 +259,25 @@ namespace wordslab.manager.console.host
             var vmName = vmSettings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine("Virtual machine name argument is missing");
+                UI.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
             var vm = vmManager.TryFindLocalVM(vmName);
             if(vm == null)
             {
-                AnsiConsole.WriteLine($"Could not find a local virtual machine named: {vmName}");
+                UI.WriteLine($"Could not find a local virtual machine named: {vmName}");
                 return 1;
             }
 
             if(vm.IsRunning())
             {
-                AnsiConsole.WriteLine($"Virtual machine {vmName} is already running");
+                UI.WriteLine($"Virtual machine {vmName} is already running");
                 return 0;
             }
 
-            AnsiConsole.WriteLine($"Starting virtual machine {vmName} ...");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"Starting virtual machine {vmName} ...");
+            UI.WriteLine();
 
             // Then start the VM with the merged config properties
             VirtualMachineInstance vmi = null;
@@ -287,47 +286,46 @@ namespace wordslab.manager.console.host
                 var computeSpec = vmSettings.GetComputeStartArguments(vm.Config);
                 var gpuSpec = vmSettings.GetGPUStartArguments(vm.Config);
 
-                AnsiConsole.WriteLine($"- {computeSpec.Processors} processors");
-                AnsiConsole.WriteLine($"- {computeSpec.MemoryGB} GB memory");
+                UI.WriteLine($"- {computeSpec.Processors} processors");
+                UI.WriteLine($"- {computeSpec.MemoryGB} GB memory");
                 if(gpuSpec.GPUCount > 0)
                 {
-                    AnsiConsole.WriteLine($"- {gpuSpec.ToString()}");
+                    UI.WriteLine($"- {gpuSpec.ToString()}");
                 }
-                AnsiConsole.WriteLine();
+                UI.WriteLine();
 
                 vmi = vm.Start(computeSpec, gpuSpec);
             }
             catch(Exception ex)
             {
-                AnsiConsole.WriteLine($"Failed to start virtual machine {vmName}:");
-                AnsiConsole.WriteLine(ex.Message);
-                AnsiConsole.WriteLine();
+                UI.WriteLine($"Failed to start virtual machine {vmName}:");
+                UI.WriteLine(ex.Message);
+                UI.WriteLine();
                 return -1;
             }
 
-            AnsiConsole.WriteLine($"Virtual machine {vmName} started:");
-            AnsiConsole.WriteLine($"- http  address: {vmi.GetHttpAddressAndPort()}");
+            UI.WriteLine($"Virtual machine {vmName} started:");
+            UI.WriteLine($"- http  address: {vmi.GetHttpAddressAndPort()}");
             // AnsiConsole.WriteLine($"- https address: {vmi.GetHttpsAddress()}");
-            AnsiConsole.WriteLine();
+            UI.WriteLine();
 
             var appDeployments = configStore.ListKubernetesAppsDeployedOn(vmName);
             foreach(var appDeployment in appDeployments)
             {
-                AnsiConsole.WriteLine($"Starting application {appDeployment.App.Name} in namespace {appDeployment.Namespace}: this may take up to one minute ...");
+                UI.WriteLine($"Starting application {appDeployment.App.Name} in namespace {appDeployment.Namespace}: this may take up to one minute ...");
                 var successful = AsyncUtil.RunSync(() => KubernetesAppsManager.WaitForKubernetesAppEntryPoints(appDeployment, vm));
                 if (successful)
                 {
-                    AnsiConsole.WriteLine("OK");
+                    UI.WriteLine("OK");
                 }
                 else
                 {
-                    AnsiConsole.WriteLine("The application wasn't completely ready after one minute: you may have to wait a little bit longer before you can use all user entry points");
+                    UI.WriteLine("The application wasn't completely ready after one minute: you may have to wait a little bit longer before you can use all user entry points");
                 }
-                AnsiConsole.WriteLine();
+                UI.WriteLine();
             }
 
-            var ui = new ConsoleProcessUI();
-            AsyncUtil.RunSync(() => KubernetesAppsManager.DisplayKubernetesAppDeployments(vm, ui, configStore));
+            AsyncUtil.RunSync(() => KubernetesAppsManager.DisplayKubernetesAppDeployments(vm, UI, configStore));
 
             return 0;
         }
@@ -335,7 +333,7 @@ namespace wordslab.manager.console.host
 
     public class VmStopCommand : VmCommand<VmNameSettings>
     {
-        public VmStopCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmStopCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
@@ -343,25 +341,25 @@ namespace wordslab.manager.console.host
             var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine("Virtual machine name argument is missing");
+                UI.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
             var vm = vmManager.TryFindLocalVM(vmName);
             if (vm == null)
             {
-                AnsiConsole.WriteLine($"Could not find a local virtual machine named: {vmName}");
+                UI.WriteLine($"Could not find a local virtual machine named: {vmName}");
                 return 1;
             }
 
             if (!vm.IsRunning())
             {
-                AnsiConsole.WriteLine($"Virtual machine {vmName} is already stopped");
+                UI.WriteLine($"Virtual machine {vmName} is already stopped");
                 return 0;
             }
 
-            AnsiConsole.WriteLine($"Stopping virtual machine {vmName} ...");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"Stopping virtual machine {vmName} ...");
+            UI.WriteLine();
 
             var vmInstance = vm.RunningInstance;
 
@@ -371,22 +369,22 @@ namespace wordslab.manager.console.host
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteLine($"Failed to stop virtual machine {vmName}:");
-                AnsiConsole.WriteLine(ex.Message);
-                AnsiConsole.WriteLine();
+                UI.WriteLine($"Failed to stop virtual machine {vmName}:");
+                UI.WriteLine(ex.Message);
+                UI.WriteLine();
                 return -1;
             }
 
-            AnsiConsole.WriteLine($"Virtual machine {vmName} stopped.");
-            AnsiConsole.WriteLine($"Running time: {(vmInstance.StopTimestamp.Value.Subtract(vmInstance.StartTimestamp).ToString(@"d\.hh\:mm\:ss"))}");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"Virtual machine {vmName} stopped.");
+            UI.WriteLine($"Running time: {(vmInstance.StopTimestamp.Value.Subtract(vmInstance.StartTimestamp).ToString(@"d\.hh\:mm\:ss"))}");
+            UI.WriteLine();
             return 0;
         }
     }
 
     public class VmStatusCommand : VmCommand<VmNameSettings>
     {
-        public VmStatusCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmStatusCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
@@ -394,61 +392,61 @@ namespace wordslab.manager.console.host
             var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine("Virtual machine name argument is missing");
+                UI.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
             var vm = vmManager.TryFindLocalVM(vmName);
             if (vm == null)
             {
-                AnsiConsole.WriteLine($"Could not find a local virtual machine named: {vmName}");
+                UI.WriteLine($"Could not find a local virtual machine named: {vmName}");
                 return 1;
             }
 
-            AnsiConsole.WriteLine($"Virtual machine {vmName} status:");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"Virtual machine {vmName} status:");
+            UI.WriteLine();
             if (vm.IsRunning())
             {
                 var instance = vm.RunningInstance;
                 var displayStatus = instance.GetDisplayStatus();
-                AnsiConsole.WriteLine("- state: running");
-                AnsiConsole.WriteLine($"- started on: {displayStatus.StartedOn}");
-                AnsiConsole.WriteLine($"- running since: {displayStatus.RunningTime}");
-                AnsiConsole.WriteLine();
-                AnsiConsole.WriteLine($"- processors: {displayStatus.Processors}");
-                AnsiConsole.WriteLine($"- memory: {displayStatus.Memory}");
-                AnsiConsole.WriteLine($"- GPU: {displayStatus.GPU}");
-                AnsiConsole.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
-                AnsiConsole.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
-                AnsiConsole.WriteLine();
-                AnsiConsole.WriteLine($"-> {instance.GetHttpAddressAndPort()}");
-                AnsiConsole.WriteLine($"-> {instance.GetHttpsAddressAndPort()}");
+                UI.WriteLine("- state: running");
+                UI.WriteLine($"- started on: {displayStatus.StartedOn}");
+                UI.WriteLine($"- running since: {displayStatus.RunningTime}");
+                UI.WriteLine();
+                UI.WriteLine($"- processors: {displayStatus.Processors}");
+                UI.WriteLine($"- memory: {displayStatus.Memory}");
+                UI.WriteLine($"- GPU: {displayStatus.GPU}");
+                UI.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
+                UI.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
+                UI.WriteLine();
+                UI.WriteLine($"-> {instance.GetHttpAddressAndPort()}");
+                UI.WriteLine($"-> {instance.GetHttpsAddressAndPort()}");
             }
             else
             {
                 var vmInstance = configStore.TryGetLastVirtualMachineInstance(vmName);
                 if (vmInstance == null)
                 {
-                    AnsiConsole.WriteLine("- state: never started");
+                    UI.WriteLine("- state: never started");
                 }
                 else
                 {
                     var displayStatus = vmInstance.GetDisplayStatus();
-                    AnsiConsole.WriteLine($"- state: {vmInstance.State.ToString().ToLowerInvariant()}");
-                    AnsiConsole.WriteLine($"- last stopped on: {displayStatus.StoppedOn}");
-                    AnsiConsole.WriteLine($"- last running time: {displayStatus.RunningTime}");
-                    AnsiConsole.WriteLine();
-                    AnsiConsole.WriteLine($"- processors: {vm.Config.Spec.Compute.Processors}");
-                    AnsiConsole.WriteLine($"- memory: {vm.Config.Spec.Compute.MemoryGB} GB");
+                    UI.WriteLine($"- state: {vmInstance.State.ToString().ToLowerInvariant()}");
+                    UI.WriteLine($"- last stopped on: {displayStatus.StoppedOn}");
+                    UI.WriteLine($"- last running time: {displayStatus.RunningTime}");
+                    UI.WriteLine();
+                    UI.WriteLine($"- processors: {vm.Config.Spec.Compute.Processors}");
+                    UI.WriteLine($"- memory: {vm.Config.Spec.Compute.MemoryGB} GB");
                     if (vm.Config.Spec.GPU.GPUCount > 0)
                     {
-                        AnsiConsole.WriteLine($"- GPU: {vm.Config.Spec.GPU.ToString()}");
+                        UI.WriteLine($"- GPU: {vm.Config.Spec.GPU.ToString()}");
                     }
-                    AnsiConsole.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
-                    AnsiConsole.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
+                    UI.WriteLine($"- cluster disk: {vm.ClusterDisk.CurrentSizeGB} GB");
+                    UI.WriteLine($"- data disk: {vm.DataDisk.CurrentSizeGB} GB");
                 }
             }
-            AnsiConsole.WriteLine();
+            UI.WriteLine();
 
             return 0;
         }
@@ -456,22 +454,22 @@ namespace wordslab.manager.console.host
 
     public class VmAdviseCommand : VmCommand<VmNameSettings>
     {
-        public VmAdviseCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmAdviseCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            AnsiConsole.WriteLine("Analysing host machine hardware ...");
-            AnsiConsole.WriteLine();
+            UI.WriteLine("Analysing host machine hardware ...");
+            UI.WriteLine();
 
             var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             
-            DisplayRecommendedSpec("Minimum", vmSpecs.MinimumVMSpec, vmSpecs.MinimunVMSpecErrorMessage);
+            DisplayRecommendedSpec("Minimum", vmSpecs.MinimumVMSpec, vmSpecs.MinimunVMSpecErrorMessage, UI);
             if (vmSpecs.MinimumVMSpecIsSupportedOnThisMachine)
             {
-                DisplayRecommendedSpec("Maximum", vmSpecs.MaximumVMSpecOnThisMachine, null);
+                DisplayRecommendedSpec("Maximum", vmSpecs.MaximumVMSpecOnThisMachine, null, UI);
             }
-            DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage);
+            DisplayRecommendedSpec("Recommended", vmSpecs.RecommendedVMSpec, vmSpecs.RecommendedVMSpecErrorMessage, UI);
 
             var tcpPortsInUse = Network.GetAllTcpPortsInUse();
             var sshPortAvailable = !tcpPortsInUse.Contains(VMRequirements.DEFAULT_HOST_SSH_PORT);
@@ -481,41 +479,41 @@ namespace wordslab.manager.console.host
 
             string portAvailable = "available";
             string portInUse = "already in use";
-            AnsiConsole.WriteLine("Checking if the default Host ports (VM port forward on localhost) are already used:");
-            AnsiConsole.WriteLine($"- connect to the virtual machine through SSH: {VMRequirements.DEFAULT_HOST_SSH_PORT} -> {(sshPortAvailable ? portAvailable : portInUse)}");
-            AnsiConsole.WriteLine($"- connect to the Kubernetes cluster inside the VM: {VMRequirements.DEFAULT_HOST_Kubernetes_PORT} -> {(kubernetesPortAvailable ? portAvailable : portInUse)}");
-            AnsiConsole.WriteLine($"- connect to the HTTP services inside the VM: {VMRequirements.DEFAULT_HOST_HttpIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
-            AnsiConsole.WriteLine($"- connect to the HTTPS services inside the VM: {VMRequirements.DEFAULT_HOST_HttpsIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
-            AnsiConsole.WriteLine("");
+            UI.WriteLine("Checking if the default Host ports (VM port forward on localhost) are already used:");
+            UI.WriteLine($"- connect to the virtual machine through SSH: {VMRequirements.DEFAULT_HOST_SSH_PORT} -> {(sshPortAvailable ? portAvailable : portInUse)}");
+            UI.WriteLine($"- connect to the Kubernetes cluster inside the VM: {VMRequirements.DEFAULT_HOST_Kubernetes_PORT} -> {(kubernetesPortAvailable ? portAvailable : portInUse)}");
+            UI.WriteLine($"- connect to the HTTP services inside the VM: {VMRequirements.DEFAULT_HOST_HttpIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
+            UI.WriteLine($"- connect to the HTTPS services inside the VM: {VMRequirements.DEFAULT_HOST_HttpsIngress_PORT} -> {(httpPortAvailable ? portAvailable : portInUse)}");
+            UI.WriteLine("");
 
             return 0;
         }
 
-        private static void DisplayRecommendedSpec(string specName, VirtualMachineSpec spec, string errMsg)
+        private static void DisplayRecommendedSpec(string specName, VirtualMachineSpec spec, string errMsg, ICommandsUI ui)
         {
-            AnsiConsole.WriteLine($"{specName} virtual machine configuration :");
+            ui.WriteLine($"{specName} virtual machine configuration :");
             if (!String.IsNullOrEmpty(errMsg))
             {
-                AnsiConsole.WriteLine($"=> {errMsg}");
+                ui.WriteLine($"=> {errMsg}");
             }
             else
             {
-                AnsiConsole.WriteLine($"- number of processors: {spec.Compute.Processors}");
-                AnsiConsole.WriteLine($"- memory size in GB: {spec.Compute.MemoryGB}");
+                ui.WriteLine($"- number of processors: {spec.Compute.Processors}");
+                ui.WriteLine($"- memory size in GB: {spec.Compute.MemoryGB}");
                 if (!String.IsNullOrEmpty(spec.GPU.ModelName))
                 {
-                    AnsiConsole.WriteLine($"- GPU model: {spec.GPU.ModelName} {spec.GPU.MemoryGB}GB");
+                    ui.WriteLine($"- GPU model: {spec.GPU.ModelName} {spec.GPU.MemoryGB}GB");
                 }
-                AnsiConsole.WriteLine($"- cluster disk size in GB: {spec.Storage.ClusterDiskSizeGB}" + (spec.Storage.ClusterDiskIsSSD ? " (SSD)" : ""));
-                AnsiConsole.WriteLine($"- data disk size in GB: {spec.Storage.DataDiskSizeGB}" + (spec.Storage.DataDiskIsSSD ? " (SSD)" : ""));
+                ui.WriteLine($"- cluster disk size in GB: {spec.Storage.ClusterDiskSizeGB}" + (spec.Storage.ClusterDiskIsSSD ? " (SSD)" : ""));
+                ui.WriteLine($"- data disk size in GB: {spec.Storage.DataDiskSizeGB}" + (spec.Storage.DataDiskIsSSD ? " (SSD)" : ""));
             }
-            AnsiConsole.WriteLine();
+            ui.WriteLine();
         }
     }
 
     public class VmCreateCommand : VmCommand<VmPresetSettings>
     {
-        public VmCreateCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmCreateCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmPresetSettings vmSettings)
@@ -523,7 +521,7 @@ namespace wordslab.manager.console.host
             var vmName = vmSettings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine("Virtual machine name argument is missing");
+                UI.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
@@ -548,14 +546,13 @@ namespace wordslab.manager.console.host
                 }
             }
 
-            var installUI = new ConsoleProcessUI();
-            var vmConfig = AsyncUtil.RunSync(() => vmManager.CreateLocalVMConfig(vmName, vmPresetSpec, configStore.HostMachineConfig, installUI));
+            var vmConfig = AsyncUtil.RunSync(() => vmManager.CreateLocalVMConfig(vmName, vmPresetSpec, configStore.HostMachineConfig, UI));
             if(vmConfig == null)
             {
                 return -1;
             }
 
-            var vm = AsyncUtil.RunSync(() => vmManager.CreateLocalVM(vmConfig, installUI));
+            var vm = AsyncUtil.RunSync(() => vmManager.CreateLocalVM(vmConfig, UI));
             if (vm == null)
             {
                 return -1;
@@ -567,19 +564,19 @@ namespace wordslab.manager.console.host
 
     public class VmResizeCommand : VmCommand<VmNameSettings>
     {
-        public VmResizeCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmResizeCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
         {
-            AnsiConsole.WriteLine("ERROR: host vm resize command not yet implemented");
+            UI.WriteLine("ERROR: host vm resize command not yet implemented");
             return -1;
         }
     }
         
     public class VmDeleteCommand : VmCommand<VmNameSettings>
     {
-        public VmDeleteCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public VmDeleteCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(List<VirtualMachine> vms, [NotNull] CommandContext context, [NotNull] VmNameSettings settings)
@@ -587,19 +584,18 @@ namespace wordslab.manager.console.host
             var vmName = settings.Name;
             if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine("Virtual machine name argument is missing");
+                UI.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
             var vm = vmManager.TryFindLocalVM(vmName);
             if (vm == null)
             {
-                AnsiConsole.WriteLine($"Could not find a local virtual machine named: {vmName}");
+                UI.WriteLine($"Could not find a local virtual machine named: {vmName}");
                 return 1;
             }
 
-            var installUI = new ConsoleProcessUI();
-            var success = AsyncUtil.RunSync(() => vmManager.DeleteLocalVM(vmName, installUI));
+            var success = AsyncUtil.RunSync(() => vmManager.DeleteLocalVM(vmName, UI));
             if (!success)
             {
                 return -1;

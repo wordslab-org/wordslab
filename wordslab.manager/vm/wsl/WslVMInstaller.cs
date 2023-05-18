@@ -6,7 +6,7 @@ namespace wordslab.manager.vm.wsl
 {
     public static class WslVMInstaller
     {
-        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, ICommandsUI ui)
         {
             try
             {
@@ -360,7 +360,7 @@ namespace wordslab.manager.vm.wsl
             }
         }
 
-        private static async Task ConfigureHostStorage(HostStorage hostStorage, InstallProcessUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
+        private static async Task ConfigureHostStorage(HostStorage hostStorage, ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
         {
             var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
             var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
@@ -391,7 +391,7 @@ namespace wordslab.manager.vm.wsl
             machineConfig.BackupPath = hostStorage.BackupDirectory;
         }
 
-        private static async Task ConfigureHostSandbox(InstallProcessUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
+        private static async Task ConfigureHostSandbox(ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
         {
             var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             var recVmSpec = vmSpecs.RecommendedVMSpec;
@@ -414,7 +414,7 @@ namespace wordslab.manager.vm.wsl
         }
 
 
-        public static async Task<HostMachineConfig> UpdateHostMachineConfig(HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<HostMachineConfig> UpdateHostMachineConfig(HostMachineConfig hostConfig, HostStorage hostStorage, ICommandsUI ui)
         {
             // 1. Configure host machine Storage
 
@@ -442,7 +442,7 @@ namespace wordslab.manager.vm.wsl
             return hostConfig;
         }
 
-        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, ICommandsUI ui)
         {
             try
             {

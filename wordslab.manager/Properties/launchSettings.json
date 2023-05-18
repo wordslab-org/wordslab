@@ -2,6 +2,7 @@
   "profiles": {
     "wordslab.manager": {
       "commandName": "Project",
+      "commandLineArgs": "host vm list",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

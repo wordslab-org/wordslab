@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using wordslab.manager.config;
+﻿using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.vm.qemu;
@@ -18,7 +17,7 @@ namespace wordslab.manager.vm
             this.configStore = configStore;
         }
 
-        public async Task<HostMachineConfig> ConfigureHostMachine(InstallProcessUI installUI)
+        public async Task<HostMachineConfig> ConfigureHostMachine(ICommandsUI installUI)
         {
             var cmd1 = installUI.DisplayCommandLaunch($"Checking if host machine {OS.GetMachineName()} is already configured");
             if (configStore.HostMachineConfig != null)
@@ -47,7 +46,7 @@ namespace wordslab.manager.vm
             return configStore.HostMachineConfig;
         }
 
-        public async Task<HostMachineConfig> UpdateHostMachineConfig(InstallProcessUI installUI)
+        public async Task<HostMachineConfig> UpdateHostMachineConfig(ICommandsUI installUI)
         {
             if (configStore.HostMachineConfig == null)
             {
@@ -150,7 +149,7 @@ namespace wordslab.manager.vm
             }
         }
 
-        public async Task<VirtualMachineConfig> CreateLocalVMConfig(string vmName, VirtualMachineSpec? vmPresetSpec, HostMachineConfig hostConfig, InstallProcessUI installUI)
+        public async Task<VirtualMachineConfig> CreateLocalVMConfig(string vmName, VirtualMachineSpec? vmPresetSpec, HostMachineConfig hostConfig, ICommandsUI installUI)
         {
             installUI.DisplayInstallStep(1, 2, $"Configure the new virtual machine: {vmName}");
 
@@ -250,7 +249,7 @@ namespace wordslab.manager.vm
             }
         }
 
-        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, InstallProcessUI installUI)
+        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, ICommandsUI installUI)
         {
             installUI.DisplayInstallStep(2, 2, $"Create the new virtual machine: {vmConfig.Name}");
 
@@ -372,7 +371,7 @@ namespace wordslab.manager.vm
             return vm;
         }
 
-        public async Task<bool> DeleteLocalVM(string vmName, InstallProcessUI installUI)
+        public async Task<bool> DeleteLocalVM(string vmName, ICommandsUI installUI)
         {
             try
             {

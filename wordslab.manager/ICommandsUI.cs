@@ -1,10 +1,32 @@
-﻿namespace wordslab.manager.vm
-{
-    public interface InstallProcessUI
-    {
-        void DisplayInstallStep(int stepNumber, int totalSteps, string stepDescription);
+﻿using Spectre.Console.Cli;
 
-        void DisplayInformationLine(string text = "");
+namespace wordslab.manager
+{
+    public abstract class CommandWithUI<TSettings> : Command<TSettings> where TSettings : CommandSettings
+    {
+        private ICommandsUI ui;
+
+        public CommandWithUI(ICommandsUI ui)
+        {
+            this.ui = ui;
+        }
+
+        public ICommandsUI UI { get { return ui; } }
+    }
+
+    public interface ICommandsUI
+    {
+        // Raw
+
+        void WriteLine();
+
+        void WriteLine(string line);
+
+        void DisplayTable(TableInfo tableInfo);
+
+        // Install process
+
+        void DisplayInstallStep(int stepNumber, int totalSteps, string stepDescription);
 
         int DisplayCommandLaunch(string commandDescription);
 
@@ -20,6 +42,16 @@
 
         Task<string> DisplayInputQuestionAsync(string question, string defaultValue);
     }
+
+    public class TableInfo
+    {
+        public List<string> Columns = new List<string>();
+        public List<string[]> Rows = new List<string[]>();
+
+        public void AddColumn(string column) { Columns.Add(column); }    
+
+        public void AddRow(params string[] row) { Rows.Add(row); }   
+    } 
 
     public delegate Task RunAndDisplayProgress(Action<double> displayProgress);
 
@@ -38,9 +70,9 @@
 
         public int Id;
 
-        public string   Description { get; init; }
-        public double   MaxValue { get; init; }
-        public string   Unit { get; init; }
+        public string Description { get; init; }
+        public double MaxValue { get; init; }
+        public string Unit { get; init; }
 
         public RunAndDisplayProgress RunFunction { get; init; }
 

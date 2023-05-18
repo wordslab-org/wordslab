@@ -2,7 +2,6 @@
 using wordslab.manager.storage;
 using wordslab.manager.vm;
 using wordslab.manager.os;
-using Spectre.Console;
 
 namespace wordslab.manager.apps
 {
@@ -15,116 +14,116 @@ namespace wordslab.manager.apps
             this.configStore = configStore;
         }
 
-        public static void DisplayKubernetesAppSpec(KubernetesAppSpec appSpec, InstallProcessUI ui, string vmAddressAndPort = null, string deploymentNamespace = null)
+        public static void DisplayKubernetesAppSpec(KubernetesAppSpec appSpec, ICommandsUI ui, string vmAddressAndPort = null, string deploymentNamespace = null)
         {
             if (vmAddressAndPort == null) vmAddressAndPort = "[virtualmachine]";
             if (deploymentNamespace == null) deploymentNamespace = appSpec.NamespaceDefault;
 
             DisplayKubernetesAppIdentity(appSpec, ui);
-            ui.DisplayInformationLine();
-            ui.DisplayInformationLine($"Date: {appSpec.Date}");
-            ui.DisplayInformationLine($"ID: {appSpec.YamlFileHash}");
-            ui.DisplayInformationLine();
-            ui.DisplayInformationLine($"Home page: {appSpec.HomePage}");
-            ui.DisplayInformationLine($"Source: {appSpec.Source}");
-            ui.DisplayInformationLine($"Author: {appSpec.Author}");
-            ui.DisplayInformationLine($"Licence: {appSpec.Licence}");
-            ui.DisplayInformationLine();
+            ui.WriteLine();
+            ui.WriteLine($"Date: {appSpec.Date}");
+            ui.WriteLine($"ID: {appSpec.YamlFileHash}");
+            ui.WriteLine();
+            ui.WriteLine($"Home page: {appSpec.HomePage}");
+            ui.WriteLine($"Source: {appSpec.Source}");
+            ui.WriteLine($"Author: {appSpec.Author}");
+            ui.WriteLine($"Licence: {appSpec.Licence}");
+            ui.WriteLine();
             if (appSpec.ContainerImages.Count > 0)
             {
-                ui.DisplayInformationLine("Container images to download:");
-                ui.DisplayInformationLine($"- Total download size: {appSpec.ContainerImagesLayers().Sum(l => l.Size) / 1024 / 1024} MB");
+                ui.WriteLine("Container images to download:");
+                ui.WriteLine($"- Total download size: {appSpec.ContainerImagesLayers().Sum(l => l.Size) / 1024 / 1024} MB");
                 foreach (var containerImageInfo in appSpec.ContainerImages)
                 {
-                    ui.DisplayInformationLine($"- Container: {containerImageInfo.Name}");
-                    ui.DisplayInformationLine($"  . layers size: {containerImageInfo.Layers.Sum(l => l.Size) / 1024 / 1024} MB");
-                    ui.DisplayInformationLine($"  . digest: {containerImageInfo.Digest}");
+                    ui.WriteLine($"- Container: {containerImageInfo.Name}");
+                    ui.WriteLine($"  . layers size: {containerImageInfo.Layers.Sum(l => l.Size) / 1024 / 1024} MB");
+                    ui.WriteLine($"  . digest: {containerImageInfo.Digest}");
                 }
-                ui.DisplayInformationLine();
+                ui.WriteLine();
             }
             if (appSpec.PersistentVolumes.Count > 0)
             {
-                ui.DisplayInformationLine("Persistent volumes to store application data:");
+                ui.WriteLine("Persistent volumes to store application data:");
                 foreach (var persistentVolumeInfo in appSpec.PersistentVolumes.Values)
                 {
-                    ui.DisplayInformationLine($"- Volume: {persistentVolumeInfo.Name}");
-                    ui.DisplayInformationLine($"  . title: {persistentVolumeInfo.Title}");
-                    ui.DisplayInformationLine($"  . description: {persistentVolumeInfo.Description}");
+                    ui.WriteLine($"- Volume: {persistentVolumeInfo.Name}");
+                    ui.WriteLine($"  . title: {persistentVolumeInfo.Title}");
+                    ui.WriteLine($"  . description: {persistentVolumeInfo.Description}");
                     if (persistentVolumeInfo.StorageRequest.HasValue)
                     {
-                        ui.DisplayInformationLine($"  . storage request: {persistentVolumeInfo.StorageRequest / 1024 / 1024} MB");
+                        ui.WriteLine($"  . storage request: {persistentVolumeInfo.StorageRequest / 1024 / 1024} MB");
                     }
                     if (persistentVolumeInfo.StorageLimit.HasValue)
                     {
-                        ui.DisplayInformationLine($"  . storage limit: {persistentVolumeInfo.StorageLimit / 1024 / 1024} MB");
+                        ui.WriteLine($"  . storage limit: {persistentVolumeInfo.StorageLimit / 1024 / 1024} MB");
                     }
                 }
-                ui.DisplayInformationLine();
+                ui.WriteLine();
             }
             if (appSpec.Services.Values.Where(s => !String.IsNullOrEmpty(s.Title)).Any())
             {
-                ui.DisplayInformationLine("Services exposed to other apps:");
+                ui.WriteLine("Services exposed to other apps:");
                 foreach (var serviceInfo in appSpec.Services.Values.Where(s => !String.IsNullOrEmpty(s.Title)))
                 {
-                    ui.DisplayInformationLine($"- Service: {serviceInfo.Name}");
-                    ui.DisplayInformationLine($"  . title: {serviceInfo.Title}");
-                    ui.DisplayInformationLine($"  . description: {serviceInfo.Description}");
-                    ui.DisplayInformationLine($"  . port: {serviceInfo.Port}");
-                    ui.DisplayInformationLine($"  . URL: {serviceInfo.Url(deploymentNamespace)}");
+                    ui.WriteLine($"- Service: {serviceInfo.Name}");
+                    ui.WriteLine($"  . title: {serviceInfo.Title}");
+                    ui.WriteLine($"  . description: {serviceInfo.Description}");
+                    ui.WriteLine($"  . port: {serviceInfo.Port}");
+                    ui.WriteLine($"  . URL: {serviceInfo.Url(deploymentNamespace)}");
                 }
-                ui.DisplayInformationLine();
+                ui.WriteLine();
             }
             DisplayKubernetesAppEntryPoints(appSpec, ui, vmAddressAndPort, deploymentNamespace);
         }
 
-        public static void DisplayKubernetesAppIdentity(KubernetesAppSpec appSpec, InstallProcessUI ui)
+        public static void DisplayKubernetesAppIdentity(KubernetesAppSpec appSpec, ICommandsUI ui)
         {
-            ui.DisplayInformationLine($"App name: {appSpec.Name}");
-            ui.DisplayInformationLine($"Title: {appSpec.Title}");
-            ui.DisplayInformationLine($"Description: {appSpec.Description}");
-            ui.DisplayInformationLine($"Version: {appSpec.Version}");
+            ui.WriteLine($"App name: {appSpec.Name}");
+            ui.WriteLine($"Title: {appSpec.Title}");
+            ui.WriteLine($"Description: {appSpec.Description}");
+            ui.WriteLine($"Version: {appSpec.Version}");
         }
 
-        public static void DisplayKubernetesAppEntryPoints(KubernetesAppSpec appSpec, InstallProcessUI ui, string vmAddressAndPort, string deploymentNamespace)
+        public static void DisplayKubernetesAppEntryPoints(KubernetesAppSpec appSpec, ICommandsUI ui, string vmAddressAndPort, string deploymentNamespace)
         {
             if (appSpec.IngressRoutes.Count > 0)
             {
-                ui.DisplayInformationLine("User interface entry points:");
+                ui.WriteLine("User interface entry points:");
                 foreach (var ingressRouteInfo in appSpec.IngressRoutes)
                 {
                     var urlsAndTitles = ingressRouteInfo.UrlsAndTitles(vmAddressAndPort, deploymentNamespace);
                     foreach (var urlAndTitle in urlsAndTitles)
                     {
-                        ui.DisplayInformationLine($"- {urlAndTitle.Item2}: {urlAndTitle.Item1}");
+                        ui.WriteLine($"- {urlAndTitle.Item2}: {urlAndTitle.Item1}");
                     }
                 }
-                ui.DisplayInformationLine();
+                ui.WriteLine();
             }
         }
 
-        public static void DisplayKubernetesAppInstall(KubernetesAppInstall appInstall, InstallProcessUI ui, string vmAddressAndPort = null, string deploymentNamespace = null)
+        public static void DisplayKubernetesAppInstall(KubernetesAppInstall appInstall, ICommandsUI ui, string vmAddressAndPort = null, string deploymentNamespace = null)
         {
             DisplayKubernetesAppSpec(appInstall, ui, vmAddressAndPort, deploymentNamespace);
 
-            ui.DisplayInformationLine($"Install date: {appInstall.InstallDate}");
+            ui.WriteLine($"Install date: {appInstall.InstallDate}");
             if (appInstall.IsFullyDownloadedInContentStore)
             {
-                ui.DisplayInformationLine($"Download status: OK - ready to use");
+                ui.WriteLine($"Download status: OK - ready to use");
             }
             else
             {
-                ui.DisplayInformationLine($"Download status: in progress - {appInstall.RemainingDownloadSize / 1024 / 1024} MB remaining");
+                ui.WriteLine($"Download status: in progress - {appInstall.RemainingDownloadSize / 1024 / 1024} MB remaining");
             }
-            ui.DisplayInformationLine();
+            ui.WriteLine();
         }
 
-        public async static Task DisplayKubernetesAppDeployments(VirtualMachine vm, InstallProcessUI ui, ConfigStore configStore)
+        public async static Task DisplayKubernetesAppDeployments(VirtualMachine vm, ICommandsUI ui, ConfigStore configStore)
         {
             var appDeployments = configStore.ListKubernetesAppsDeployedOn(vm.Name);
             if (appDeployments.Count > 0)
             {
-                ui.DisplayInformationLine($"Applications deployed on virtual machine {vm.Name}:");
-                ui.DisplayInformationLine();
+                ui.WriteLine($"Applications deployed on virtual machine {vm.Name}:");
+                ui.WriteLine();
                 foreach (var appDeployment in appDeployments)
                 {
                     await DisplayKubernetesAppDeployment(vm, ui, configStore, appDeployment);
@@ -132,15 +131,15 @@ namespace wordslab.manager.apps
             }
         }
 
-        public static async Task DisplayKubernetesAppDeployment(VirtualMachine vm, InstallProcessUI ui, ConfigStore configStore, KubernetesAppDeployment appDeployment)
+        public static async Task DisplayKubernetesAppDeployment(VirtualMachine vm, ICommandsUI ui, ConfigStore configStore, KubernetesAppDeployment appDeployment)
         {
-            ui.DisplayInformationLine($"[Namespace: {appDeployment.Namespace}]");
-            ui.DisplayInformationLine();
-            ui.DisplayInformationLine($"Status: {appDeployment.State} since {(appDeployment.LastStateTimestamp.Value.ToString("MM/dd/yyyy HH:mm"))}");
-            ui.DisplayInformationLine();
+            ui.WriteLine($"[Namespace: {appDeployment.Namespace}]");
+            ui.WriteLine();
+            ui.WriteLine($"Status: {appDeployment.State} since {(appDeployment.LastStateTimestamp.Value.ToString("MM/dd/yyyy HH:mm"))}");
+            ui.WriteLine();
             DisplayKubernetesAppIdentity(appDeployment.App, ui);
             await KubernetesApp.ParseYamlFileContent(appDeployment.App, loadContainersMetadata: false, configStore);
-            ui.DisplayInformationLine();
+            ui.WriteLine();
             if (appDeployment.State == AppDeploymentState.Running)
             {
                 DisplayKubernetesAppEntryPoints(appDeployment.App, ui, vm.RunningInstance.GetHttpAddressAndPort(), appDeployment.Namespace);
@@ -179,7 +178,7 @@ namespace wordslab.manager.apps
             return true;
         }
 
-        public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, InstallProcessUI ui)
+        public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, ICommandsUI ui)
         {
             try
             {
@@ -256,7 +255,7 @@ namespace wordslab.manager.apps
             return configStore.ListKubernetesAppsInstalledOn(vm.Name);
         }
 
-        public async Task<bool> RemoveKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, InstallProcessUI ui)
+        public async Task<bool> RemoveKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, ICommandsUI ui)
         {
             try
             {
@@ -310,7 +309,7 @@ namespace wordslab.manager.apps
             }
         }
 
-        public async Task<KubernetesAppDeployment> DeployKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, InstallProcessUI ui)
+        public async Task<KubernetesAppDeployment> DeployKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, ICommandsUI ui)
         {
             string namespaceCreated = null;
             try
@@ -425,7 +424,7 @@ namespace wordslab.manager.apps
             }
         }
 
-        public async Task<bool> DeleteKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm, InstallProcessUI ui)
+        public async Task<bool> DeleteKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm, ICommandsUI ui)
         {
             try 
             { 

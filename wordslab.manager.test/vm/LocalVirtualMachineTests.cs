@@ -21,7 +21,7 @@ namespace wordslab.manager.test.vm
                 var configStore = serviceProvider.GetService<ConfigStore>();
 
                 VirtualMachinesManager vmm = new VirtualMachinesManager(storage, configStore);
-                var ui = new TestProcessUI();
+                var ui = new TestCommandsUI();
 
                 // Delete the VM if it existed before
                 var vmName = "test-blank";

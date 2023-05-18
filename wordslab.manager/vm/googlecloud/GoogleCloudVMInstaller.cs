@@ -8,17 +8,17 @@ namespace wordslab.manager.vm.googlecloud
         // Note: before calling this method
         // - you must configure HostStorage directories location
         // - you must ask the user if they want to use a GPU
-        public static async Task<bool> CheckAndInstallHostMachineRequirements(HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<bool> CheckAndInstallHostMachineRequirements(HostStorage hostStorage, ICommandsUI ui)
         {
             throw new NotImplementedException();
         }
 
-        public static async Task<VirtualMachine> CreateVirtualMachine(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<VirtualMachine> CreateVirtualMachine(VirtualMachineConfig vmConfig, ConfigStore configStore, HostStorage hostStorage, ICommandsUI ui)
         {
             throw new NotImplementedException();
         }
 
-        public static async Task<bool> DeleteVirtualMachine(string vmName, ConfigStore configStore, HostStorage hostStorage, InstallProcessUI ui)
+        public static async Task<bool> DeleteVirtualMachine(string vmName, ConfigStore configStore, HostStorage hostStorage, ICommandsUI ui)
         {
             throw new NotImplementedException();
         }

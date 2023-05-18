@@ -8,7 +8,6 @@ using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.test.storage;
 using wordslab.manager.vm;
-using wordslab.manager.vm.wsl;
 
 namespace wordslab.manager.test.vm
 {
@@ -29,7 +28,7 @@ namespace wordslab.manager.test.vm
 
                 Assert.IsNull(configStore.HostMachineConfig);
 
-                var ui = new TestProcessUI();
+                var ui = new TestCommandsUI();
                 var hostMachineConfig = await vmm.ConfigureHostMachine(ui);
 
                 Assert.IsNotNull(hostMachineConfig);
@@ -59,7 +58,7 @@ namespace wordslab.manager.test.vm
                     VirtualMachineProvider.Wsl, null, false,
                     false, 0, false, 0, true, 80, false, true, 443, false);
 
-                var ui = new TestProcessUI();
+                var ui = new TestCommandsUI();
                 Exception expectedEx = null;
                 try
                 {
@@ -83,7 +82,7 @@ namespace wordslab.manager.test.vm
                     VirtualMachineProvider.Wsl, null, false,
                     false, 0, false, 0, true, 80, false, true, 443, false);
 
-                ui = new TestProcessUI();
+                ui = new TestCommandsUI();
                 var vm1 = await vmm.CreateLocalVM(config2, ui);
                 Assert.IsNotNull(vm1);
 
@@ -94,7 +93,7 @@ namespace wordslab.manager.test.vm
                 Assert.IsTrue(localvms.Count == 1);
 
                 // Virtual machine already exists
-                ui = new TestProcessUI();
+                ui = new TestCommandsUI();
                 expectedEx = null;
                 try
                 {
@@ -117,7 +116,7 @@ namespace wordslab.manager.test.vm
                     VirtualMachineProvider.Wsl, null, false,
                     false, 0, false, 0, true, 80, false, true, 443, false);
 
-                ui = new TestProcessUI();
+                ui = new TestCommandsUI();
                 var vm2 = await vmm.CreateLocalVM(config3, ui);
                 Assert.IsNotNull(vm2);
 
@@ -255,7 +254,7 @@ namespace wordslab.manager.test.vm
                 var localvms = vmm.ListLocalVMs();
                 Assert.IsTrue(localvms.Count == 2);
 
-                var ui = new TestProcessUI();
+                var ui = new TestCommandsUI();
                 var vmName = "test-blank";
                 var success = await vmm.DeleteLocalVM(vmName, ui);
                 Assert.IsTrue(success);
@@ -271,7 +270,7 @@ namespace wordslab.manager.test.vm
                 var deletedInstance = configStore.TryGetLastVirtualMachineInstance(vmName);
                 Assert.IsNull(deletedInstance);
 
-                ui = new TestProcessUI();
+                ui = new TestCommandsUI();
                 vmName = "test-blank2";
                 success = await vmm.DeleteLocalVM(vmName, ui);
                 Assert.IsTrue(success);

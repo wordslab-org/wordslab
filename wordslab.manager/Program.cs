@@ -61,7 +61,7 @@ try
     // Start a console application if launched with any other command
     else
     {        
-        return ConsoleApp.Run(builder, args);
+        return ConsoleApp.Run(args, builder);
     }
 }
 catch (Exception ex)

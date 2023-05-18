@@ -1,12 +1,14 @@
-﻿using Spectre.Console;
-using Spectre.Console.Cli;
+﻿using Spectre.Console.Cli;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.os;
 
 namespace wordslab.manager.console.host
 {
-    public class SystemInfoCommand : Command<SystemInfoCommand.Settings>
+    public class SystemInfoCommand : CommandWithUI<SystemInfoCommand.Settings>
     {
+        public SystemInfoCommand(ICommandsUI ui) : base(ui) 
+        { }
+
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
             /* TO DO
@@ -17,13 +19,13 @@ namespace wordslab.manager.console.host
                  - WSL L3 cache size very different from windows L3 cache size
             */
 
-            AnsiConsole.WriteLine($"System information for the host machine: {OS.GetMachineName()}");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"System information for the host machine: {OS.GetMachineName()}");
+            UI.WriteLine();
 
-            DisplayOSInfo();
-            DisplayComputeInfo();
-            DisplayStorageInfo();
-            DisplayNetworkInfo();
+            DisplayOSInfo(UI);
+            DisplayComputeInfo(UI);
+            DisplayStorageInfo(UI);
+            DisplayNetworkInfo(UI);
 
             return 0;
         }        
@@ -31,115 +33,118 @@ namespace wordslab.manager.console.host
         public class Settings : CommandSettings
         { }
 
-        internal static void DisplayOSInfo()
+        internal static void DisplayOSInfo(ICommandsUI ui)
         {
-            AnsiConsole.WriteLine("Operating System info:");
-            AnsiConsole.WriteLine($"- os name           : {OS.GetOSName()}");
-            AnsiConsole.WriteLine($"- os version        : {OS.GetOSVersion()}");
+            ui.WriteLine("Operating System info:");
+            ui.WriteLine($"- os name           : {OS.GetOSName()}");
+            ui.WriteLine($"- os version        : {OS.GetOSVersion()}");
             if (OS.IsLinux)
             {
                 var distrib = OS.GetLinuxDistributionInfo();
                 if (!String.IsNullOrEmpty(distrib.Name))
                 {
-                    AnsiConsole.WriteLine($"- distribution name : {distrib.Name}");
+                    ui.WriteLine($"- distribution name : {distrib.Name}");
                 }
                 if (distrib.Version > new Version())
                 {
-                    AnsiConsole.WriteLine($"- distrib. version  : {distrib.Version}");
+                    ui.WriteLine($"- distrib. version  : {distrib.Version}");
                 }
 
             }
-            AnsiConsole.WriteLine($"- x64 architecture  : {OS.IsOSArchitectureX64()}");
-            AnsiConsole.WriteLine($"- native hypervisor : {(OS.IsNativeHypervisorAvailable() ? "available" : "not available")}");
-            AnsiConsole.WriteLine();
+            ui.WriteLine($"- x64 architecture  : {OS.IsOSArchitectureX64()}");
+            ui.WriteLine($"- native hypervisor : {(OS.IsNativeHypervisorAvailable() ? "available" : "not available")}");
+            ui.WriteLine();
         }
 
-        internal static void DisplayComputeInfo()
+        internal static void DisplayComputeInfo(ICommandsUI ui)
         {
-            AnsiConsole.WriteLine("CPU info:");
+            ui.WriteLine("CPU info:");
             var cpu = Compute.GetCPUInfo();
-            AnsiConsole.WriteLine($"- manufacturer       : {cpu.Manufacturer}");
-            AnsiConsole.WriteLine($"- model name         : {cpu.ModelName}");
-            AnsiConsole.WriteLine($"- number of cores    : {cpu.NumberOfCores}");
-            AnsiConsole.WriteLine($"- logical processors : {cpu.NumberOfLogicalProcessors}");
-            AnsiConsole.WriteLine($"- max clock speed    : {cpu.MaxClockSpeedMhz} Mhz");
-            AnsiConsole.WriteLine($"- L3 cache size      : {cpu.L3CacheSizeKB} KB");
-            AnsiConsole.WriteLine($"- virtualization     : {(Compute.IsCPUVirtualizationAvailable(cpu) ? "available" : "not available")}");
-            // AnsiConsole.WriteLine($"- feature flags      : {cpu.FeatureFlags}");
-            AnsiConsole.WriteLine();
+            ui.WriteLine($"- manufacturer       : {cpu.Manufacturer}");
+            ui.WriteLine($"- model name         : {cpu.ModelName}");
+            ui.WriteLine($"- number of cores    : {cpu.NumberOfCores}");
+            ui.WriteLine($"- logical processors : {cpu.NumberOfLogicalProcessors}");
+            ui.WriteLine($"- max clock speed    : {cpu.MaxClockSpeedMhz} Mhz");
+            ui.WriteLine($"- L3 cache size      : {cpu.L3CacheSizeKB} KB");
+            ui.WriteLine($"- virtualization     : {(Compute.IsCPUVirtualizationAvailable(cpu) ? "available" : "not available")}");
+            // ui.WriteLine($"- feature flags      : {cpu.FeatureFlags}");
+            ui.WriteLine();
 
-            AnsiConsole.WriteLine("Memory info:");
+            ui.WriteLine("Memory info:");
             var mem = Memory.GetMemoryInfo();
-            AnsiConsole.WriteLine($"- total physical size : {Math.Round(mem.TotalPhysicalMB / 1024f)} GB");
-            AnsiConsole.WriteLine();
+            ui.WriteLine($"- total physical size : {Math.Round(mem.TotalPhysicalMB / 1024f)} GB");
+            ui.WriteLine();
 
             var gpus = Compute.GetNvidiaGPUsInfo();
             if (gpus.Count > 0)
             {
                 foreach (var gpu in gpus)
                 {
-                    AnsiConsole.WriteLine($"GPU {gpu.Index} info:");
-                    AnsiConsole.WriteLine($"- model name   : {gpu.ModelName}");
-                    AnsiConsole.WriteLine($"- memory       : {Math.Round(gpu.MemoryMB / 1024f)} GB");
-                    AnsiConsole.WriteLine($"- architecture : {gpu.Architecture}");
-                    AnsiConsole.WriteLine();
+                    ui.WriteLine($"GPU {gpu.Index} info:");
+                    ui.WriteLine($"- model name   : {gpu.ModelName}");
+                    ui.WriteLine($"- memory       : {Math.Round(gpu.MemoryMB / 1024f)} GB");
+                    ui.WriteLine($"- architecture : {gpu.Architecture}");
+                    ui.WriteLine();
                 }
             }
             else
             {
-                AnsiConsole.WriteLine($"GPU info: no NVIDIA GPU found on this system or driver not installed");
-                AnsiConsole.WriteLine();
+                ui.WriteLine($"GPU info: no NVIDIA GPU found on this system or driver not installed");
+                ui.WriteLine();
             }
         }
 
-        internal static void DisplayStorageInfo()
+        internal static void DisplayStorageInfo(ICommandsUI ui)
         {
             var drives = Storage.GetDrivesInfo();
             foreach (var drive in drives.Values)
             {
-                AnsiConsole.WriteLine($"Drive info: {drive.DrivePath} [{drive.VolumeName}]");
-                AnsiConsole.WriteLine($"- partition id : {drive.PartitionId}");
-                AnsiConsole.WriteLine($"- drive size   : {drive.TotalSizeMB / 1000f:F1} GB");
-                AnsiConsole.WriteLine($"- free space   : {drive.FreeSpaceMB / 1000f:F1} GB");
-                AnsiConsole.WriteLine($"- disk id      : {drive.DiskId}");
-                AnsiConsole.WriteLine($"- disk model   : {drive.DiskModel}");
-                AnsiConsole.WriteLine($"- disk size    : {drive.DiskSizeMB / 1000} GB");
-                AnsiConsole.WriteLine($"- is SSD       : {drive.IsSSD}");
-                AnsiConsole.WriteLine();
+                ui.WriteLine($"Drive info: {drive.DrivePath} [{drive.VolumeName}]");
+                ui.WriteLine($"- partition id : {drive.PartitionId}");
+                ui.WriteLine($"- drive size   : {drive.TotalSizeMB / 1000f:F1} GB");
+                ui.WriteLine($"- free space   : {drive.FreeSpaceMB / 1000f:F1} GB");
+                ui.WriteLine($"- disk id      : {drive.DiskId}");
+                ui.WriteLine($"- disk model   : {drive.DiskModel}");
+                ui.WriteLine($"- disk size    : {drive.DiskSizeMB / 1000} GB");
+                ui.WriteLine($"- is SSD       : {drive.IsSSD}");
+                ui.WriteLine();
             }
         }
 
-        internal static void DisplayNetworkInfo()
+        internal static void DisplayNetworkInfo(ICommandsUI ui)
         {
-            AnsiConsole.WriteLine($"Network info: IPv4 addresses");
+            ui.WriteLine($"Network info: IPv4 addresses");
             var addresses = Network.GetIPAddressesAvailable();
             foreach (var address in addresses.Values)
             {
-                AnsiConsole.WriteLine($"- {address.Address}");
-                AnsiConsole.WriteLine($"  . network interface name : {address.NetworkInterfaceName}");
+                ui.WriteLine($"- {address.Address}");
+                ui.WriteLine($"  . network interface name : {address.NetworkInterfaceName}");
                 if (address.IsLoopback)
                 {
-                    AnsiConsole.WriteLine($"  . loopback               : {address.IsLoopback}");
+                    ui.WriteLine($"  . loopback               : {address.IsLoopback}");
                 }
                 if (address.IsWireless)
                 {
-                    AnsiConsole.WriteLine($"  . wireless               : {address.IsWireless}");
+                    ui.WriteLine($"  . wireless               : {address.IsWireless}");
                 }
             }
-            AnsiConsole.WriteLine();
+            ui.WriteLine();
         }
     }
 
-    public class SystemStatusCommand : Command<SystemStatusCommand.Settings>
+    public class SystemStatusCommand : CommandWithUI<SystemStatusCommand.Settings>
     {
+        public SystemStatusCommand(ICommandsUI ui) : base(ui) 
+        { }
+
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
-            AnsiConsole.WriteLine($"System status for the host machine: {OS.GetMachineName()}");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"System status for the host machine: {OS.GetMachineName()}");
+            UI.WriteLine();
 
-            DisplayComputeStatus();
-            DisplayStorageStatus();
-            DisplayNetworkStatus();
+            DisplayComputeStatus(UI);
+            DisplayStorageStatus(UI);
+            DisplayNetworkStatus(UI);
 
             return 0;
         }        
@@ -147,16 +152,16 @@ namespace wordslab.manager.console.host
         public class Settings : CommandSettings
         { }
 
-        internal static void DisplayComputeStatus()
+        internal static void DisplayComputeStatus(ICommandsUI ui)
         {
             var cpu = Compute.GetCPUInfo();
-            AnsiConsole.WriteLine($"CPU usage: {cpu.ModelName}");
+            ui.WriteLine($"CPU usage: {cpu.ModelName}");
             var cpuUsage = Compute.GetPercentCPUTime();
             var mem = Memory.GetMemoryInfo();
-            AnsiConsole.WriteLine($"- cpu load    : {cpuUsage} %");
-            AnsiConsole.WriteLine($"- used memory : {mem.UsedPhysicalMB} MB");
-            AnsiConsole.WriteLine($"- free memory : {mem.FreePhysicalMB} MB");
-            AnsiConsole.WriteLine();
+            ui.WriteLine($"- cpu load    : {cpuUsage} %");
+            ui.WriteLine($"- used memory : {mem.UsedPhysicalMB} MB");
+            ui.WriteLine($"- free memory : {mem.FreePhysicalMB} MB");
+            ui.WriteLine();
 
             var gpus = Compute.GetNvidiaGPUsInfo();
             var gpuStats = Compute.GetNvidiaGPUsUsage();
@@ -164,48 +169,47 @@ namespace wordslab.manager.console.host
             {
                 foreach (var gpu in gpuStats)
                 {
-                    AnsiConsole.WriteLine($"GPU {gpu.Index} usage: {gpus[gpu.Index].ModelName}");
-                    AnsiConsole.WriteLine($"- gpu load    : {gpu.PercentGPUTime} %");
-                    AnsiConsole.WriteLine($"- used memory : {gpu.MemoryUsedMB} MB");
-                    AnsiConsole.WriteLine($"- free memory : {gpu.MemoryFreeMB} MB");
-                    AnsiConsole.WriteLine();
+                    ui.WriteLine($"GPU {gpu.Index} usage: {gpus[gpu.Index].ModelName}");
+                    ui.WriteLine($"- gpu load    : {gpu.PercentGPUTime} %");
+                    ui.WriteLine($"- used memory : {gpu.MemoryUsedMB} MB");
+                    ui.WriteLine($"- free memory : {gpu.MemoryFreeMB} MB");
+                    ui.WriteLine();
                 }
             }
             else
             {
-                AnsiConsole.WriteLine($"GPU usage: no NVIDIA GPU found on this system or driver not installed");
-                AnsiConsole.WriteLine();
+                ui.WriteLine($"GPU usage: no NVIDIA GPU found on this system or driver not installed");
+                ui.WriteLine();
             }
         }
 
-        internal static void DisplayStorageStatus()
+        internal static void DisplayStorageStatus(ICommandsUI ui)
         {
             var drives = Storage.GetDrivesInfo();
             foreach (var drive in drives.Values)
             {
-                AnsiConsole.WriteLine($"Drive info: {drive.DrivePath} [{drive.VolumeName}]");
-                AnsiConsole.WriteLine($"- used space   : {(drive.TotalSizeMB - drive.FreeSpaceMB) / 1000f:F1} GB");
-                AnsiConsole.WriteLine($"- free space   : {drive.FreeSpaceMB / 1000f:F1} GB");
-                AnsiConsole.WriteLine($"- percent used : {drive.PercentUsedSpace} %");
-                AnsiConsole.WriteLine();
+                ui.WriteLine($"Drive info: {drive.DrivePath} [{drive.VolumeName}]");
+                ui.WriteLine($"- used space   : {(drive.TotalSizeMB - drive.FreeSpaceMB) / 1000f:F1} GB");
+                ui.WriteLine($"- free space   : {drive.FreeSpaceMB / 1000f:F1} GB");
+                ui.WriteLine($"- percent used : {drive.PercentUsedSpace} %");
+                ui.WriteLine();
             }
         }
 
-        internal static void DisplayNetworkStatus()
+        internal static void DisplayNetworkStatus(ICommandsUI ui)
         {
-            AnsiConsole.WriteLine($"Network info: TCP ports in use");
+            ui.WriteLine($"Network info: TCP ports in use");
             var portsSets = Network.GetTcpPortsInUsePerIPAddress();
             foreach (var ip in portsSets.Keys)
             {
-                AnsiConsole.Write($"- {ip} : ");
+                var line = $"- {ip} : ";
                 foreach (var port in portsSets[ip])
                 {
-                    AnsiConsole.Write(port);
-                    AnsiConsole.Write(' ');
+                    line += $"{port} ";
                 }
-                AnsiConsole.WriteLine();
+                ui.WriteLine(line);
             }
-            AnsiConsole.WriteLine();
+            ui.WriteLine();
         }
     }
 }

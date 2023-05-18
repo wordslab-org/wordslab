@@ -1,5 +1,4 @@
-﻿using Spectre.Console;
-using Spectre.Console.Cli;
+﻿using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using wordslab.manager.apps;
@@ -8,12 +7,11 @@ using wordslab.manager.vm;
 
 namespace wordslab.manager.console.app
 {
-    public class AppInfoCommand : Command<AppInfoCommand.Settings>
+    public class AppInfoCommand : CommandWithUI<AppInfoCommand.Settings>
     {
-
         private readonly ConfigStore configStore;
 
-        public AppInfoCommand(ConfigStore configStore) 
+        public AppInfoCommand(ConfigStore configStore, ICommandsUI ui) : base(ui) 
         { 
             this.configStore = configStore;
         }
@@ -27,17 +25,16 @@ namespace wordslab.manager.console.app
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteLine($"Kubernetes app URL is not in a valid format: {ex.Message}");
-                AnsiConsole.WriteLine();
+                UI.WriteLine($"Kubernetes app URL is not in a valid format: {ex.Message}");
+                UI.WriteLine();
                 return 1;
             }
 
-            AnsiConsole.WriteLine($"Downloading kubernetes app metadata from from {appUrl} ...");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"Downloading kubernetes app metadata from from {appUrl} ...");
+            UI.WriteLine();
             var appSpec = AsyncUtil.RunSync(() => KubernetesApp.GetMetadataFromYamlFileAsync(appUrl, configStore));
 
-            var ui = new ConsoleProcessUI();
-            KubernetesAppsManager.DisplayKubernetesAppSpec(appSpec, ui);  
+            KubernetesAppsManager.DisplayKubernetesAppSpec(appSpec, UI);  
 
             return 0;
         }
@@ -64,14 +61,14 @@ namespace wordslab.manager.console.app
         public string AppID { get; init; }
     }
 
-    public abstract class AppCommand<TSettings> : Command<TSettings> where TSettings : VmNameSettings
+    public abstract class AppCommand<TSettings> : CommandWithUI<TSettings> where TSettings : VmNameSettings
     {
         protected readonly HostStorage hostStorage;
         protected readonly ConfigStore configStore;
         protected readonly VirtualMachinesManager vmManager;
         protected readonly KubernetesAppsManager appManager;
 
-        public AppCommand(HostStorage hostStorage, ConfigStore configStore)
+        public AppCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(ui)
         {
             this.hostStorage = hostStorage;
             this.configStore = configStore;
@@ -84,20 +81,20 @@ namespace wordslab.manager.console.app
             var vmName = settings.VmName;
             if (String.IsNullOrEmpty(vmName))
             {
-                AnsiConsole.WriteLine("Virtual machine name argument is missing");
+                UI.WriteLine("Virtual machine name argument is missing");
                 return 1;
             }
 
             var vm = vmManager.TryFindLocalVM(vmName);
             if (vm == null)
             {
-                AnsiConsole.WriteLine($"Could not find a local virtual machine named: {vmName}");
+                UI.WriteLine($"Could not find a local virtual machine named: {vmName}");
                 return 1;
             }
 
             if (!vm.IsRunning())
             {
-                AnsiConsole.WriteLine($"Virtual machine {vmName} is not running: please start it first");
+                UI.WriteLine($"Virtual machine {vmName} is not running: please start it first");
                 return 1;
             }
              
@@ -109,7 +106,7 @@ namespace wordslab.manager.console.app
 
     public class AppListCommand : AppCommand<VmNameSettings>
     {
-        public AppListCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public AppListCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmNameSettings settings)
@@ -117,20 +114,19 @@ namespace wordslab.manager.console.app
             var apps = appManager.ListKubernetesApps(vm);
             if(apps.Count == 0)
             {
-                AnsiConsole.WriteLine($"No kubernetes apps installed on virtual machine {vm.Name}.");
-                AnsiConsole.WriteLine();
+                UI.WriteLine($"No kubernetes apps installed on virtual machine {vm.Name}.");
+                UI.WriteLine();
                 return 0; 
             }
             else
             {
-                AnsiConsole.WriteLine($"Kubernetes apps installed on virtual machine {vm.Name}:");
-                AnsiConsole.WriteLine();
+                UI.WriteLine($"Kubernetes apps installed on virtual machine {vm.Name}:");
+                UI.WriteLine();
 
-                var ui = new ConsoleProcessUI();
                 foreach (var app in apps )
                 {
-                    AnsiConsole.WriteLine("----------");
-                    KubernetesAppsManager.DisplayKubernetesAppInstall(app, ui);                    
+                    UI.WriteLine("----------");
+                    KubernetesAppsManager.DisplayKubernetesAppInstall(app, UI);                    
                 }
             }
 
@@ -140,7 +136,7 @@ namespace wordslab.manager.console.app
 
     public class AppDownloadCommand : AppCommand<AppDownloadCommand.Settings>
     {
-        public AppDownloadCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public AppDownloadCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, Settings settings)
@@ -152,13 +148,12 @@ namespace wordslab.manager.console.app
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteLine($"Kubernetes app URL is not in a valid format: {ex.Message}");
-                AnsiConsole.WriteLine();
+                UI.WriteLine($"Kubernetes app URL is not in a valid format: {ex.Message}");
+                UI.WriteLine();
                 return 1;
             }
 
-            var ui = new ConsoleProcessUI();
-            var result = AsyncUtil.RunSync(() => appManager.DownloadKubernetesApp(vm, yamlFileUrl, ui));
+            var result = AsyncUtil.RunSync(() => appManager.DownloadKubernetesApp(vm, yamlFileUrl, UI));
             if (result == null)
             {
                 return -1;
@@ -177,7 +172,7 @@ namespace wordslab.manager.console.app
 
     public class AppRemoveCommand : AppCommand<VmNameAndAppIdSettings>
     {
-        public AppRemoveCommand(HostStorage hostStorage, ConfigStore configStore) : base(hostStorage, configStore)
+        public AppRemoveCommand(HostStorage hostStorage, ConfigStore configStore, ICommandsUI ui) : base(hostStorage, configStore, ui)
         { }
 
         protected override int ExecuteCommand(VirtualMachine vm, CommandContext context, VmNameAndAppIdSettings settings)
@@ -185,19 +180,18 @@ namespace wordslab.manager.console.app
             var yamlFileHash = settings.AppID;
             if (String.IsNullOrEmpty(yamlFileHash))
             {
-                AnsiConsole.WriteLine("Kubernetes app ID argument is missing");
+                UI.WriteLine("Kubernetes app ID argument is missing");
                 return 1;
             }
 
             var app = configStore.TryGetKubernetesApp(vm.Name, yamlFileHash);
             if (app == null)
             {
-                AnsiConsole.WriteLine($"Could not find a kubernetes app with ID {yamlFileHash} on virtual machine {vm.Name}");
+                UI.WriteLine($"Could not find a kubernetes app with ID {yamlFileHash} on virtual machine {vm.Name}");
                 return 1;
             }
 
-            var ui = new ConsoleProcessUI();
-            var result = AsyncUtil.RunSync(() => appManager.RemoveKubernetesApp(app, vm, ui));
+            var result = AsyncUtil.RunSync(() => appManager.RemoveKubernetesApp(app, vm, UI));
             if (!result)
             {
                 return -1;

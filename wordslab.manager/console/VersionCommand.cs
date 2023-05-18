@@ -1,18 +1,20 @@
-﻿using Spectre.Console;
-using Spectre.Console.Cli;
+﻿using Spectre.Console.Cli;
 using System.Diagnostics.CodeAnalysis;
 
 namespace wordslab.manager.console
 {    
-    public class VersionCommand : Command<VersionCommand.Settings>
+    public class VersionCommand : CommandWithUI<VersionCommand.Settings>
     {
+        public VersionCommand(ICommandsUI ui) : base(ui) 
+        { }
+
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
-            AnsiConsole.MarkupLine($"wordslab manager version: [bold yellow]{ConsoleApp.Version}[/]");
-            AnsiConsole.WriteLine();
-            AnsiConsole.WriteLine("Documentation: https://www.wordslab.org/");
-            AnsiConsole.WriteLine($"Release notes: https://github.com/wordslab-org/wordslab/releases/tag/v{ConsoleApp.Version}");
-            AnsiConsole.WriteLine();
+            UI.WriteLine($"wordslab manager version: {ConsoleApp.Version}");
+            UI.WriteLine();
+            UI.WriteLine("Documentation: https://www.wordslab.org/");
+            UI.WriteLine($"Release notes: https://github.com/wordslab-org/wordslab/releases/tag/v{ConsoleApp.Version}");
+            UI.WriteLine();
             return 0;
         }
 
