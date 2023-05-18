@@ -124,7 +124,7 @@ namespace wordslab.manager.test.os
         }
 
         [TestMethod]
-        public async Task T06_TestDeleteResourcesFromYamlFile()
+        public async Task T06_TestDeleteResourcesFromNamespace()
         {
             var serviceCollection = ConfigStoreTests.GetStorageServices();
             using (var serviceProvider = serviceCollection.BuildServiceProvider())
@@ -135,7 +135,7 @@ namespace wordslab.manager.test.os
                 var vmManager = new VirtualMachinesManager(storage, configStore);
                 var vm = vmManager.TryFindLocalVM("test");
 
-                var result = Kubernetes.DeleteResourcesFromYamlFile("test", vm);
+                var result = Kubernetes.DeleteResourcesFromNamespace("test", false, vm);
                 Assert.IsTrue(result == 0);
 
                 await Task.Delay(5000);

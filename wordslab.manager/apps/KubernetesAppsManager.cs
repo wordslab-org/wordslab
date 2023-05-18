@@ -2,10 +2,7 @@
 using wordslab.manager.storage;
 using wordslab.manager.vm;
 using wordslab.manager.os;
-using wordslab.manager.console;
 using Spectre.Console;
-using System.Xml.Linq;
-using wordslab.manager.web;
 
 namespace wordslab.manager.apps
 {
@@ -130,14 +127,56 @@ namespace wordslab.manager.apps
                 ui.DisplayInformationLine();
                 foreach (var appDeployment in appDeployments)
                 {
-                    ui.DisplayInformationLine($"[Namespace: {appDeployment.Namespace}]");
-                    ui.DisplayInformationLine();
-                    DisplayKubernetesAppIdentity(appDeployment.App, ui);
-                    await KubernetesApp.ParseYamlFileContent(appDeployment.App, loadContainersMetadata: false, configStore);
-                    ui.DisplayInformationLine();
-                    DisplayKubernetesAppEntryPoints(appDeployment.App, ui, vm.RunningInstance.GetHttpAddressAndPort(), appDeployment.Namespace);
+                    await DisplayKubernetesAppDeployment(vm, ui, configStore, appDeployment);
                 }
             }
+        }
+
+        public static async Task DisplayKubernetesAppDeployment(VirtualMachine vm, InstallProcessUI ui, ConfigStore configStore, KubernetesAppDeployment appDeployment)
+        {
+            ui.DisplayInformationLine($"[Namespace: {appDeployment.Namespace}]");
+            ui.DisplayInformationLine();
+            ui.DisplayInformationLine($"Status: {appDeployment.State} since {(appDeployment.LastStateTimestamp.Value.ToString("MM/dd/yyyy HH:mm"))}");
+            ui.DisplayInformationLine();
+            DisplayKubernetesAppIdentity(appDeployment.App, ui);
+            await KubernetesApp.ParseYamlFileContent(appDeployment.App, loadContainersMetadata: false, configStore);
+            ui.DisplayInformationLine();
+            if (appDeployment.State == AppDeploymentState.Running)
+            {
+                DisplayKubernetesAppEntryPoints(appDeployment.App, ui, vm.RunningInstance.GetHttpAddressAndPort(), appDeployment.Namespace);
+            }
+        }
+
+        public static async Task<bool> WaitForKubernetesAppEntryPoints(KubernetesAppDeployment app, VirtualMachine vm, int timeoutSec = 60)
+        {
+            var vmAddressAndPort = vm.RunningInstance.GetHttpAddressAndPort();
+            var deploymentNamespace = app.Namespace;
+            var entryPoints = app.App.IngressRoutes.SelectMany(r => r.UrlsAndTitles(vmAddressAndPort, deploymentNamespace)).Select(p => p.Item1);
+
+            using (var client = new HttpClient())
+            {
+                var startTimestamp = DateTime.Now;
+                bool allUrlsOK = false;
+                while (!allUrlsOK)
+                {
+                    if ((DateTime.Now - startTimestamp).TotalSeconds > timeoutSec)
+                    {
+                        return false;
+                    }
+                    await Task.Delay(1000);
+                    allUrlsOK = true;
+                    foreach(var url in entryPoints)
+                    {
+                        var response = await client.GetAsync(url);
+                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            allUrlsOK = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            return true;
         }
 
         public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, InstallProcessUI ui)
@@ -320,10 +359,21 @@ namespace wordslab.manager.apps
                 configStore.SaveChanges();
                 ui.DisplayCommandResult(cmd3, true);
 
-                DisplayKubernetesAppEntryPoints(app, ui, vm.RunningInstance.GetHttpAddressAndPort(), deploymentNamespace);
+                // 4. Wait until all application entrypoints are ready, for one minute max
+                var cmd4 = ui.DisplayCommandLaunch($"The application {app.Name} is starting: this may take up to one minute ...");
+                var successful = await WaitForKubernetesAppEntryPoints(appDeployment, vm);
+                appDeployment.Started();
+                configStore.SaveChanges();
+                if (successful)
+                {
+                    ui.DisplayCommandResult(cmd4 , true);
+                }
+                else
+                {
+                    ui.DisplayCommandResult(cmd4, false, "The application wasn't completely ready after one minute: you may have to wait a little bit longer before you can use all user entry points");
+                }
 
-                ui.DisplayInformationLine("These entry points will be available in a few seconds (the application is starting) ...");
-                ui.DisplayInformationLine();
+                DisplayKubernetesAppEntryPoints(app, ui, vm.RunningInstance.GetHttpAddressAndPort(), deploymentNamespace);
 
                 return appDeployment;
             }
@@ -345,23 +395,72 @@ namespace wordslab.manager.apps
             return configStore.ListKubernetesAppsDeployedOn(vm.Name);
         }
 
-        public async Task<KubernetesAppDeployment> RemoveKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm, InstallProcessUI ui)
+        public void StopKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm)
+        {
+            var exitCode = Kubernetes.DeleteResourcesFromNamespace(app.Namespace, true, vm);
+            if (exitCode != 0)
+            {
+                throw new Exception($"kubernetes app deployment stop failed with exit code {exitCode}");
+            }
+            else
+            {
+                app.Stopped();
+                configStore.SaveChanges();
+            }
+        }
+
+        public void RestartKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm)
+        {
+            var deploymentNamespace = app.Namespace;
+            var yamlFileContentForDeployment = KubernetesApp.GetYamlFileContentForDeployment(app.App, deploymentNamespace);
+            var exitCode = Kubernetes.ApplyYamlFileAndWaitForResources(yamlFileContentForDeployment, deploymentNamespace, vm, createNamespace: false);
+            if (exitCode != 0)
+            {
+                throw new Exception($"kubernetes app deployment restart failed with exit code {exitCode}");
+            }
+            else
+            {
+                app.Started();
+                configStore.SaveChanges();
+            }
+        }
+
+        public async Task<bool> DeleteKubernetesAppDeployment(KubernetesAppDeployment app, VirtualMachine vm, InstallProcessUI ui)
         {
             try 
             { 
                 // 1. Display deployment properties
+                DisplayKubernetesAppDeployment(vm, ui, configStore, app);
 
-                // 2. Select volumes to preserve
+                // 2. Confirm deletion
+                var confirm = await ui.DisplayQuestionAsync("Are you sure you want to delete this deployment - ALL USER DATA WILL BE LOST FOREVER - ?", false);
 
-                // 3. Remove and display preserved volumes
-
-                await ui.DisplayQuestionAsync("What do you want to install ?");
-                throw new NotImplementedException();
+                // 3. Delete namespace and all user data
+                if (confirm)
+                {
+                    var cmd = ui.DisplayCommandLaunch($"Deleting application deployment in namespace {app.Namespace} ...");
+                    var exitCode = Kubernetes.DeleteResourcesFromNamespace(app.Namespace, false, vm);
+                    if (exitCode != 0)
+                    {
+                        ui.DisplayCommandResult(cmd, false, $"kubernetes app deployment delete failed with exit code {exitCode}");
+                        return false;
+                    }
+                    else
+                    {
+                        configStore.RemoveKubernetesAppDeployment(vm.Name, app.Namespace);
+                        ui.DisplayCommandResult(cmd, true);
+                        return true;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
             }
             catch (Exception ex)
             {
                 ui.DisplayCommandError(ex.Message);
-                return null;
+                return false;
             }
         }
     }

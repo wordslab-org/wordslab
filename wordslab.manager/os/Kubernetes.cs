@@ -220,22 +220,32 @@ namespace wordslab.manager.os
             return exitCode == 0;
         }
 
-        public static int ApplyYamlFileAndWaitForResources(string yamlFileContent, string deploymentNamespace, IVirtualMachineShell vmShell, int timeoutSec=30)
+        public static int ApplyYamlFileAndWaitForResources(string yamlFileContent, string deploymentNamespace, IVirtualMachineShell vmShell, bool createNamespace = true, int timeoutSec=30)
         {
             // Save the yaml file content on  the VM disk
             vmShell.ExecuteCommand("mkdir", "-p KubernetesApps");
             vmShell.ExecuteCommand("echo", $"-e {ToLiteral(yamlFileContent)} > KubernetesApps/{deploymentNamespace}.yaml");
 
             // Create the namespace and apply the yaml file
-            vmShell.ExecuteCommand("k3s", $"kubectl create namespace {deploymentNamespace}");
+            if (createNamespace)
+            {
+                vmShell.ExecuteCommand("k3s", $"kubectl create namespace {deploymentNamespace}");
+            }
             return vmShell.ExecuteCommand("k3s", $"kubectl apply -f KubernetesApps/{deploymentNamespace}.yaml -n {deploymentNamespace} --wait", timeoutSec);
         }
 
-        public static int DeleteResourcesFromYamlFile(string deploymentNamespace, IVirtualMachineShell vmShell)
+        public static int DeleteResourcesFromNamespace(string deploymentNamespace, bool preservePersistentVolumes, IVirtualMachineShell vmShell)
         {
-            // Delete the resources from the yaml file and delete the namespace            
-            vmShell.ExecuteCommand("k3s", $"kubectl delete -f KubernetesApps/{deploymentNamespace}.yaml -n {deploymentNamespace} --wait");
-            return vmShell.ExecuteCommand("k3s", $"kubectl delete namespace {deploymentNamespace}");
+            // Delete the resources from the yaml file, except PersistentVolumes          
+            if (preservePersistentVolumes)
+            {
+                return vmShell.ExecuteCommand("k3s", $"kubectl delete all --all -n {deploymentNamespace} --wait", timeoutSec: 60);
+            }
+            // Delete the namespace  
+            else
+            {
+                return vmShell.ExecuteCommand("k3s", $"kubectl delete namespace {deploymentNamespace}", timeoutSec: 60);
+            }            
         }
 
         private static string ToLiteral(string input)

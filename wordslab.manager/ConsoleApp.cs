@@ -9,7 +9,7 @@ using wordslab.manager.console.app;
 
 public static class ConsoleApp
 {
-    public static readonly Version Version = new Version(0, 9, 0);
+    public static readonly Version Version = new Version(0, 9, 1);
 
     public static int Run(WebApplicationBuilder builder, string[] args)
     {

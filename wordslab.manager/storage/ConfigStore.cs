@@ -1,12 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using wordslab.manager.apps;
 using wordslab.manager.config;
 
 namespace wordslab.manager.storage
 {
+    // Each time you make changes to the data model, you must then follow the procedure below :
+    // 1. Make sure the project compiles with no errors
+    // 2. Open the Package Manager Console window in Visual Studio
+    // 3. Execute the command: 'Add-Migration ConfigStore_v0.9.1' after replacing the version number (ignore all the warnings)
+    // 4. Check the C# file generated in the ./Migrations project directory to make sure the right changes were detected
+    // 5. In case something looks wrong, execute the following command and start again: 'Remove-Migration ConfigStore_v0.9.1'
+    // 6. You can now start the application and the migration will automatically applied
+    //    or you can try to update your database manually with the command: 'Update-Database'
+
     public class ConfigStore : DbContext
     {
         private readonly HostStorage hostStorage;
@@ -184,7 +191,7 @@ namespace wordslab.manager.storage
 
         public List<KubernetesAppDeployment> ListKubernetesAppsDeployedOn(string vmName)
         {
-            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName && !app.RemovalDate.HasValue).Include(depl => depl.App).ToList();
+            return KubernetesAppDeployments.Where(app => app.VirtualMachineName == vmName).Include(depl => depl.App).ToList();
         }
 
         public void AddAppDeployment(KubernetesAppDeployment app)
@@ -203,7 +210,7 @@ namespace wordslab.manager.storage
 
         public List<KubernetesAppDeployment> ListKubernetesAppDeployments(string vmName, KubernetesAppSpec app)
         {
-            return KubernetesAppDeployments.Where(depl => depl.VirtualMachineName == vmName && !depl.RemovalDate.HasValue && depl.App.YamlFileHash == app.YamlFileHash).Include(depl => depl.App).ToList();
+            return KubernetesAppDeployments.Where(depl => depl.VirtualMachineName == vmName && depl.App.YamlFileHash == app.YamlFileHash).Include(depl => depl.App).ToList();
         }
 
         /// <summary>
@@ -214,7 +221,7 @@ namespace wordslab.manager.storage
             var app = TryGetKubernetesAppDeployment(vmName, deploymentNamespace);
             if (app != null)
             {
-                app.RemovalDate = DateTime.Now;
+                KubernetesAppDeployments.Remove(app);
                 SaveChanges();
             }
         }

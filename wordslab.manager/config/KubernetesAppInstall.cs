@@ -27,6 +27,14 @@ namespace wordslab.manager.config
         public DateTime? UninstallDate { get; set; }
     }
 
+    public enum AppDeploymentState
+    {
+        Starting,
+        Running,
+        Stopped,
+        Deleted
+    }
+
     [PrimaryKey(nameof(VirtualMachineName),nameof(Namespace))]
     public class KubernetesAppDeployment : BaseConfig
     {
@@ -38,6 +46,20 @@ namespace wordslab.manager.config
             App = app;
             Namespace = deploymentNamespace;
             DeploymentDate = DateTime.Now;
+            State = AppDeploymentState.Starting;
+            LastStateTimestamp = DateTime.Now;
+        }
+
+        public void Started()
+        {
+            State = AppDeploymentState.Running;
+            LastStateTimestamp = DateTime.Now;
+        }
+
+        public void Stopped()
+        {
+            State = AppDeploymentState.Stopped;
+            LastStateTimestamp = DateTime.Now;
         }
 
         public string VirtualMachineName { get; private set; }
@@ -48,6 +70,8 @@ namespace wordslab.manager.config
 
         public DateTime DeploymentDate { get; private set; }
 
-        public DateTime? RemovalDate { get; set; }
+        public AppDeploymentState State { get; private set; }
+
+        public DateTime? LastStateTimestamp { get; set; }
     }
 }
