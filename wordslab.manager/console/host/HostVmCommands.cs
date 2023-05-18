@@ -310,6 +310,22 @@ namespace wordslab.manager.console.host
             // AnsiConsole.WriteLine($"- https address: {vmi.GetHttpsAddress()}");
             AnsiConsole.WriteLine();
 
+            var appDeployments = configStore.ListKubernetesAppsDeployedOn(vmName);
+            foreach(var appDeployment in appDeployments)
+            {
+                AnsiConsole.WriteLine($"Starting application {appDeployment.App.Name} in namespace {appDeployment.Namespace}: this may take up to one minute ...");
+                var successful = AsyncUtil.RunSync(() => KubernetesAppsManager.WaitForKubernetesAppEntryPoints(appDeployment, vm));
+                if (successful)
+                {
+                    AnsiConsole.WriteLine("OK");
+                }
+                else
+                {
+                    AnsiConsole.WriteLine("The application wasn't completely ready after one minute: you may have to wait a little bit longer before you can use all user entry points");
+                }
+                AnsiConsole.WriteLine();
+            }
+
             var ui = new ConsoleProcessUI();
             AsyncUtil.RunSync(() => KubernetesAppsManager.DisplayKubernetesAppDeployments(vm, ui, configStore));
 
