@@ -1,0 +1,98 @@
+﻿@page "/console/{command}"
+
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<h3>wordslab console</h3>
+
+<div class="font-monospace">
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-terminal-fill" viewBox="0 0 16 16">
+          <path d="M0 3a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3zm9.5 5.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zm-6.354-.354a.5.5 0 1 0 .708.708l2-2a.5.5 0 0 0 0-.708l-2-2a.5.5 0 1 0-.708.708L4.793 6.5 3.146 8.146z"/>
+        </svg>
+        <span class="ps-2 align-middle">@command</span>
+    </p>
+</div>
+
+<div id="terminal" class="font-monospace bg-dark text-light" style="max-height: 75vh; overflow-y: auto;">
+    <p class="m-0 px-1">Executing first command ...</p>
+    <p class="m-0 px-1">Result <span class="text-success">OK</span></p>
+    <p class="m-0 px-1">&nbsp;</p>
+    <p class="m-0 px-1">Executing a very long second command, a command so long that it can't fit on a single, and so it needs to wrap to the second line' ...</p>
+    <p class="m-0 px-1">&nbsp;</p>
+    <p class="m-0 px-1 py-2">Are you sure you want to do this ? <button class="btn btn-success btn-sm">yes</button> <button class="btn btn-outline-danger btn-sm">no</button></p>
+    <p class="m-0 px-1">Executing a very long second command, a command so long th0at it can't fit on a single, and so it needs to wrap to the second line' ...</p>
+    <p class="m-0 px-1">&nbsp;</p>
+    <p class="m-0 px-1 py-2">Please select a namespace for this installation:<br/> <input class="form-control bg-dark text-light" type="text" value="notebooks" style="width: 400px; display:inline;"> <button id="okbutton" class="btn btn-success btn-sm" @onclick="OKButtonClick">OK</button></p>
+    <p class="m-0 px-1">Next command is executing ...</p>
+    <p class="m-0 px-1">&nbsp;</p>
+    <p class="m-0 px-1">This is a table:</p>
+    <div class="m-0 px-1">
+    <table class="table table-dark table-striped table-hover table-bordered border-light">
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">First</th>
+                <th scope="col">Last</th>
+                <th scope="col">Handle</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <th scope="row">1</th>
+                <td>Mark</td>
+                <td>Otto</td>
+                <td>@@mdo</td>
+            </tr>
+            <tr>
+                <th scope="row">2</th>
+                <td>Jacob</td>
+                <td>Thornton</td>
+                <td>@@fat</td>
+            </tr>
+            <tr>
+                <th scope="row">3</th>
+                <td colspan="2">Larry the Bird</td>
+                <td>@@twitter</td>
+            </tr>
+            </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="mt-4">
+    <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-house-up-fill" viewBox="0 0 16 16">
+          <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm.354-5.854 1.5 1.5a.5.5 0 0 1-.708.708L13 11.707V14.5a.5.5 0 1 1-1 0v-2.793l-.646.647a.5.5 0 0 1-.708-.707l1.5-1.5a.5.5 0 0 1 .708 0Z"/>
+          <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.707 1.5Z"/>
+          <path d="m8 3.293 4.712 4.712A4.5 4.5 0 0 0 8.758 15H3.5A1.5 1.5 0 0 1 2 13.5V9.293l6-6Z"/>
+        </svg>
+        <span class="ps-2 align-middle">Navigate back to the <a href="/">home page</a>.</span>
+    </p>
+</div>
+
+@code {
+    [Parameter]
+    public string command { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await ScrollTerminalToBottom();
+        await SetFocusOn("okbutton");
+    }
+
+    private async Task OKButtonClick()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "OK button click");
+    }
+
+    private async Task SetFocusOn(string htmlElementName)
+    {
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{htmlElementName}').focus();");
+    }
+
+    private async Task ScrollTerminalToBottom()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", $"var scrollableDiv = document.getElementById('terminal'); scrollableDiv.scrollTop = scrollableDiv.scrollHeight;");
+    }
+}
