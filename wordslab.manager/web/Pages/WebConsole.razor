@@ -233,8 +233,8 @@
         if (!String.IsNullOrEmpty(command)) 
         {
             var args = command.Split(' ','\t','\n','\r','\f');
-            commandsUIState = new WebCommandsUI(StateHasChanged);
-            ConsoleApp.Run(args, WebAppServices, commandsUIState);
+            commandsUIState = new WebCommandsUI(() => InvokeAsync(StateHasChanged));
+            Task.Run(() => ConsoleApp.Run(args, WebAppServices, commandsUIState));
         }
     }
 
