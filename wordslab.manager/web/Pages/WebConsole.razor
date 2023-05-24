@@ -1,7 +1,10 @@
 ﻿@page "/console/{command}"
 
+@inject IServiceCollection WebAppServices
+
 @using Microsoft.JSInterop
 @inject IJSRuntime JSRuntime
+
 
 <h3>wordslab console</h3>
 
@@ -10,55 +13,202 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-terminal-fill" viewBox="0 0 16 16">
           <path d="M0 3a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3zm9.5 5.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zm-6.354-.354a.5.5 0 1 0 .708.708l2-2a.5.5 0 0 0 0-.708l-2-2a.5.5 0 1 0-.708.708L4.793 6.5 3.146 8.146z"/>
         </svg>
-        <span class="ps-2 align-middle">@command</span>
+        @if (!String.IsNullOrEmpty(command))
+        {
+            <span class="ps-2 align-middle">@command</span>
+        }
+        else
+        {
+            <span class="ps-2 align-middle">No command</span>
+        }
     </p>
 </div>
 
-<div id="terminal" class="font-monospace bg-dark text-light" style="max-height: 75vh; overflow-y: auto;">
-    <p class="m-0 px-1">Executing first command ...</p>
-    <p class="m-0 px-1">Result <span class="text-success">OK</span></p>
-    <p class="m-0 px-1">&nbsp;</p>
-    <p class="m-0 px-1">Executing a very long second command, a command so long that it can't fit on a single, and so it needs to wrap to the second line' ...</p>
-    <p class="m-0 px-1">&nbsp;</p>
-    <p class="m-0 px-1 py-2">Are you sure you want to do this ? <button class="btn btn-success btn-sm">yes</button> <button class="btn btn-outline-danger btn-sm">no</button></p>
-    <p class="m-0 px-1">Executing a very long second command, a command so long th0at it can't fit on a single, and so it needs to wrap to the second line' ...</p>
-    <p class="m-0 px-1">&nbsp;</p>
-    <p class="m-0 px-1 py-2">Please select a namespace for this installation:<br/> <input class="form-control bg-dark text-light" type="text" value="notebooks" style="width: 400px; display:inline;"> <button id="okbutton" class="btn btn-success btn-sm" @onclick="OKButtonClick">OK</button></p>
-    <p class="m-0 px-1">Next command is executing ...</p>
-    <p class="m-0 px-1">&nbsp;</p>
-    <p class="m-0 px-1">This is a table:</p>
-    <div class="m-0 px-1">
-    <table class="table table-dark table-striped table-hover table-bordered border-light">
-        <thead>
-            <tr>
-                <th scope="col">#</th>
-                <th scope="col">First</th>
-                <th scope="col">Last</th>
-                <th scope="col">Handle</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <th scope="row">1</th>
-                <td>Mark</td>
-                <td>Otto</td>
-                <td>@@mdo</td>
-            </tr>
-            <tr>
-                <th scope="row">2</th>
-                <td>Jacob</td>
-                <td>Thornton</td>
-                <td>@@fat</td>
-            </tr>
-            <tr>
-                <th scope="row">3</th>
-                <td colspan="2">Larry the Bird</td>
-                <td>@@twitter</td>
-            </tr>
-            </tbody>
-    </table>
+@if (commandsUIState != null)
+{
+    <div id="terminal" class="font-monospace bg-dark text-light" style="max-height: 75vh; overflow-y: auto;">
+    @foreach(var uiElementInfo in commandsUIState.Elements)
+    {
+        @if(uiElementInfo.Type == WebUIElementType.Line)
+        {
+            @if (!String.IsNullOrEmpty(uiElementInfo.Text))
+            {
+                <p class="m-0 px-1">@uiElementInfo.Text</p>
+            }
+            else
+            {
+                <p class="m-0 px-1">&nbsp;</p>
+            }
+        }
+        @if(uiElementInfo.Type == WebUIElementType.Table)
+        {
+            <div class="m-0 px-1">
+                <table class="table table-dark table-striped table-hover table-bordered border-light">
+                    <thead>
+                        <tr>                            
+                        @foreach(var columnTitle in uiElementInfo.TableInfo.Columns)
+                        {
+                            <th scope="col">@columnTitle</th>
+                        }
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach(var row in uiElementInfo.TableInfo.Rows)
+                    {
+                        <tr>
+                        @foreach(var cellValue in row)
+                        {
+                            <td>@cellValue</td>
+                        }
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <p class="m-0 px-1">&nbsp;</p> 
+        }
+        @if(uiElementInfo.Type == WebUIElementType.InstallStep)
+        {
+            <p class="m-0 px-1 bg-light text-dark">@uiElementInfo.Text</p>
+            <p class="m-0 px-1">&nbsp;</p>
+        }
+        @if(uiElementInfo.Type == WebUIElementType.Command)
+        {
+             <p class="m-0 px-1">@uiElementInfo.Text</p>
+             @if(!uiElementInfo.CommandResult.HasValue)
+             {
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Executing...</span>
+                </div>
+             }
+             else
+             {
+                 if(uiElementInfo.CommandResult.Value)
+                 {
+                    <p class="m-0 px-1"><span class="text-success">OK</span></p>
+                 }
+                 else
+                 {
+                    <p class="m-0 px-1"><span class="text-danger">ERROR</span></p>
+                 }
+                 if(!String.IsNullOrEmpty(uiElementInfo.CommandResultInfo))
+                 {
+                     <p class="m-0 px-1">@uiElementInfo.CommandResultInfo</p>
+                 }
+                 if(!String.IsNullOrEmpty(uiElementInfo.CommandResultError))
+                 {
+                     <p class="m-0 px-1">@uiElementInfo.CommandResultError</p>
+                 }                 
+                 <p class="m-0 px-1">&nbsp;</p>
+             }
+        }
+        @if(uiElementInfo.Type == WebUIElementType.CommandWithProgress)
+        {
+            var percent = (int)(uiElementInfo.CommandProgress / uiElementInfo.LongRunningCommand.MaxValue * 100);
+
+            <div class="m-0 px-1 d-flex align-items-center">
+              <div class="mr-3">
+                <span>@uiElementInfo.LongRunningCommand.Description</span>
+              </div>
+              <div class="flex-grow-1">
+                <div class="progress">
+                  <div class="progress-bar" role="progressbar" style="width: @(percent)%;" aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100">
+                    @percent%
+                  </div>
+                </div>
+              </div>
+              <div class="ml-3">
+                <span>@uiElementInfo.CommandProgress / @uiElementInfo.LongRunningCommand.MaxValue @uiElementInfo.LongRunningCommand.Unit</span>
+              </div>
+            </div>
+
+            @if(uiElementInfo.CommandResult.HasValue)
+            {
+                if(uiElementInfo.CommandResult.Value)
+                {
+                <p class="m-0 px-1"><span class="text-success">OK</span></p>
+                }
+                else
+                {
+                <p class="m-0 px-1"><span class="text-danger">ERROR</span></p>
+                }
+                <p class="m-0 px-1">&nbsp;</p>
+            }
+        }
+        @if(uiElementInfo.Type == WebUIElementType.CommandError)
+        {
+            <p class="m-0 px-1"><span class="text-danger">Unexpected ERROR:</span></p>
+            <p class="m-0 px-1">@uiElementInfo.CommandResultError</p>
+            <p class="m-0 px-1">&nbsp;</p>     
+        }
+        @if(uiElementInfo.Type == WebUIElementType.ChoiceQuestion)
+        {
+            if (!uiElementInfo.SendChoiceAnswer.Task.IsCompleted)
+            {
+                var yesClass = "btn-outline-success";
+                if (uiElementInfo.DefaultChoiceAnswer == true)
+                {
+                    yesClass = "btn-success";
+                }
+                var noClass = "btn-outline-danger";
+                if (uiElementInfo.DefaultChoiceAnswer == false)
+                {
+                    noClass = "btn-danger";
+                }
+                <p class="m-0 px-1 py-2">@uiElementInfo.Text <button @ref="OkButtonRef" class="btn @(yesClass) btn-sm" @onclick="() => uiElementInfo.SendChoiceAnswer.SetResult(true)">yes</button> <button @ref="NoButtonRef" class="btn @(noClass) btn-sm" @onclick="() => uiElementInfo.SendChoiceAnswer.SetResult(false)">no</button></p>
+            }
+            else
+            {
+                if (!uiElementInfo.SendChoiceAnswer.Task.Result == true)
+                {
+                    <p class="m-0 px-1 py-2">@uiElementInfo.Text <span class="text-success">yes</span></p>
+                }
+                else
+                {
+                    <p class="m-0 px-1 py-2">@uiElementInfo.Text <span class="text-danger">no</span></p>
+                }
+            }
+            <p class="m-0 px-1">&nbsp;</p> 
+        }
+        @if(uiElementInfo.Type == WebUIElementType.AdminScriptQuestion)
+        {
+            <p class="m-0 px-1 py-2">@uiElementInfo.Text</p>
+            <p class="m-0 px-1">---</p> 
+            <pre class="m-0 px-1">@uiElementInfo.ScriptContent</pre> 
+            <p class="m-0 px-1">---</p> 
+            if (!uiElementInfo.SendChoiceAnswer.Task.IsCompleted)
+            {
+                <p class="m-0 px-1 py-2">OK to execute this script as admin? <button @ref="OkButtonRef" class="btn btn-success btn-sm" @onclick="() => uiElementInfo.SendChoiceAnswer.SetResult(true)">yes</button> <button @ref="NoButtonRef" class="btn btn-outline-danger btn-sm" @onclick="() => uiElementInfo.SendChoiceAnswer.SetResult(false)">no</button></p>
+            }
+            else
+            {
+                if (!uiElementInfo.SendChoiceAnswer.Task.Result == true)
+                {
+                    <p class="m-0 px-1 py-2"><span class="text-success">OK</span> to execute this script as admin</p>
+                }
+                else
+                {
+                    <p class="m-0 px-1 py-2"><span class="text-danger">Not OK</span> to execute this script as admin</p>
+                }
+            }
+            <p class="m-0 px-1">&nbsp;</p> 
+        }
+        @if(uiElementInfo.Type == WebUIElementType.InputQuestion)
+        {
+            if (!uiElementInfo.SendInputAnswer.Task.IsCompleted)
+            {
+                InputValue = @uiElementInfo.DefaultInputAnswer;
+                <p class="m-0 px-1 py-2">@uiElementInfo.Text <br/> <input class="form-control bg-dark text-light" type="text" @bind-value=InputValue @bind-value:event="oninput" style="width: 400px; display:inline;"> <button @ref="OkButtonRef" class="btn btn-success btn-sm" @onclick="() => uiElementInfo.SendInputAnswer.SetResult(InputValue)">OK</button></p>
+            }
+            else
+            {
+                <p class="m-0 px-1 py-2">@uiElementInfo.Text : @uiElementInfo.SendInputAnswer.Task.Result</p>
+            }
+            <p class="m-0 px-1">&nbsp;</p> 
+        }        
+    }
     </div>
-</div>
+}
 
 <div class="mt-4">
     <p>
@@ -72,27 +222,57 @@
 </div>
 
 @code {
+
+    private WebCommandsUI commandsUIState; 
+
     [Parameter]
     public string command { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (!String.IsNullOrEmpty(command)) 
+        {
+            var args = command.Split(' ','\t','\n','\r','\f');
+            commandsUIState = new WebCommandsUI(StateHasChanged);
+            ConsoleApp.Run(args, WebAppServices, commandsUIState);
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await ScrollTerminalToBottom();
-        await SetFocusOn("okbutton");
+        var lastUIElementInfo = commandsUIState.Elements.LastOrDefault();
+        if (lastUIElementInfo != null)
+        {
+            if (lastUIElementInfo.Type == WebUIElementType.ChoiceQuestion || lastUIElementInfo.Type == WebUIElementType.AdminScriptQuestion)
+            {
+                if (lastUIElementInfo.DefaultChoiceAnswer == true)
+                {
+                    await SetFocusOn(OkButtonRef);
+                }
+                if (lastUIElementInfo.DefaultChoiceAnswer == false)
+                {
+                    await SetFocusOn(NoButtonRef);
+                }
+            }
+            else if (lastUIElementInfo.Type == WebUIElementType.InputQuestion)
+            {
+                await SetFocusOn(OkButtonRef);
+            }
+        }
     }
 
-    private async Task OKButtonClick()
-    {
-        await JSRuntime.InvokeVoidAsync("alert", "OK button click");
-    }
+    private ElementReference OkButtonRef;
+    private ElementReference NoButtonRef;
+    private string InputValue;
 
-    private async Task SetFocusOn(string htmlElementName)
+    private async Task SetFocusOn(ElementReference buttonRef)
     {
-        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{htmlElementName}').focus();");
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{buttonRef.Id}').focus();");
     }
 
     private async Task ScrollTerminalToBottom()
     {
-        await JSRuntime.InvokeVoidAsync("eval", $"var scrollableDiv = document.getElementById('terminal'); scrollableDiv.scrollTop = scrollableDiv.scrollHeight;");
+        await JSRuntime.InvokeVoidAsync("eval", "var scrollableDiv = document.getElementById('terminal'); if(scrollableDiv !== null) { scrollableDiv.scrollTop = scrollableDiv.scrollHeight; }");
     }
 }

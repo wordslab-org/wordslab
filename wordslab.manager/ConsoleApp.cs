@@ -6,31 +6,19 @@ using System.ComponentModel;
 using wordslab.manager.console;
 using wordslab.manager.console.host;
 using wordslab.manager.console.app;
+using Microsoft.Extensions.DependencyInjection;
 
 public static class ConsoleApp
 {
     public static readonly Version Version = new Version(0, 9, 1);
 
-    public static int Run(string[] args, WebApplicationBuilder builder)
+    public static int Run(string[] args, IServiceCollection appServices, ICommandsUI ui)
     {
         // Bridge ASP.NET dependency injection system with Spectre.Console dependency injection system
-        var spectreServices = new TypeRegistrar(builder.Services);
-        spectreServices.RegisterInstance(typeof(WebApplicationBuilder), builder);
+        var spectreServices = new TypeRegistrar(appServices);
+        spectreServices.RegisterInstance(typeof(ICommandsUI), ui);
 
         // Initialize and run a Spectre.Console console app
-        spectreServices.RegisterInstance(typeof(ICommandsUI), new ConsoleCommandsUI());
-        var commandApp = new CommandApp<ManagerCommand>(spectreServices);
-        commandApp.Configure(config => ConfigureCommands(config));
-        return commandApp.Run(args);
-    }
-
-    public static int InvokeFromAnotherUI(string[] args, IServiceCollection services, ICommandsUI ui)
-    {
-        // Bridge the calling app dependency injection system with Spectre.Console dependency injection system
-        var spectreServices = new TypeRegistrar(services);
-
-        // Initialize and run a Spectre.Console app with a custom UI
-        spectreServices.RegisterInstance(typeof(ICommandsUI), ui);
         var commandApp = new CommandApp<ManagerCommand>(spectreServices);
         commandApp.Configure(config => ConfigureCommands(config));
         return commandApp.Run(args);
@@ -119,12 +107,8 @@ public static class ConsoleApp
 
     public class ManagerCommand : Command<ManagerCommand.Settings>
     {
-        private WebApplicationBuilder builder;
-
-        public ManagerCommand(WebApplicationBuilder builder)
-        {
-            this.builder = builder;
-        }
+        public ManagerCommand()
+        { }
 
         public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
         {
@@ -142,26 +126,31 @@ public static class ConsoleApp
 
     private class TypeRegistrar : ITypeRegistrar
     {
-        private readonly IServiceCollection _builder;
+        private readonly IServiceCollection _services;
 
-        public TypeRegistrar(IServiceCollection builder)
+        public TypeRegistrar(IServiceCollection appServices)
         {
-            _builder = builder;
+            // Cloning app services collection to manage an independent scope
+            _services = new ServiceCollection();
+            foreach (var service in appServices)
+            {
+                _services.Add(service);
+            }
         }
 
         public ITypeResolver Build()
         {
-            return new TypeResolver(_builder.BuildServiceProvider());
+            return new TypeResolver(_services.BuildServiceProvider());
         }
 
         public void Register(Type service, Type implementation)
         {
-            _builder.AddSingleton(service, implementation);
+            _services.AddSingleton(service, implementation);
         }
 
         public void RegisterInstance(Type service, object implementation)
         {
-            _builder.AddSingleton(service, implementation);
+            _services.AddSingleton(service, implementation);
         }
 
         public void RegisterLazy(Type service, Func<object> func)
@@ -171,7 +160,7 @@ public static class ConsoleApp
                 throw new ArgumentNullException(nameof(func));
             }
 
-            _builder.AddSingleton(service, (provider) => func());
+            _services.AddSingleton(service, (provider) => func());
         }
     }
 

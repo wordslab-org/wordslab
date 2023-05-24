@@ -26,7 +26,11 @@ public static class WebApp
 
         // Register VirtualMachinesManager service
 
-        builder.Services.AddScoped<VirtualMachinesManager>();    
+        builder.Services.AddScoped<VirtualMachinesManager>();
+
+        // The application services are needed in WebConsole.razor
+
+        builder.Services.AddSingleton<IServiceCollection>(sp => builder.Services);
 
         // Initialize the web application host
 

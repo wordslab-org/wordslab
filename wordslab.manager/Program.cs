@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using wordslab.manager;
+using wordslab.manager.console;
 using wordslab.manager.storage;
 
 [assembly: InternalsVisibleToAttribute("wordslab.manager.test")]
@@ -61,7 +62,7 @@ try
     // Start a console application if launched with any other command
     else
     {        
-        return ConsoleApp.Run(args, builder);
+        return ConsoleApp.Run(args, builder.Services, new ConsoleCommandsUI());
     }
 }
 catch (Exception ex)
