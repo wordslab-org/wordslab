@@ -22,7 +22,7 @@ public static class WebApp
 
         builder.Services.AddRazorPages();
         builder.Services.Configure<RazorPagesOptions>(options => options.RootDirectory = "/web/Pages");
-        builder.Services.AddServerSideBlazor();
+        builder.Services.AddServerSideBlazor()/*.AddCircuitOptions(e => { e.DetailedErrors = true; })*/;
 
         // Register VirtualMachinesManager service
 

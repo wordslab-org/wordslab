@@ -159,7 +159,7 @@
             }
             else
             {
-                if (!uiElementInfo.SendChoiceAnswer.Task.Result == true)
+                if (uiElementInfo.SendChoiceAnswer.Task.Result == true)
                 {
                     <p class="m-0 px-1 py-2">@uiElementInfo.Text <span class="text-success">yes</span></p>
                 }
@@ -244,20 +244,20 @@
         var lastUIElementInfo = commandsUIState.Elements.LastOrDefault();
         if (lastUIElementInfo != null)
         {
-            if (lastUIElementInfo.Type == WebUIElementType.ChoiceQuestion || lastUIElementInfo.Type == WebUIElementType.AdminScriptQuestion)
+            if ((lastUIElementInfo.Type == WebUIElementType.ChoiceQuestion || lastUIElementInfo.Type == WebUIElementType.AdminScriptQuestion) && !lastUIElementInfo.SendChoiceAnswer.Task.IsCompleted)
             {
                 if (lastUIElementInfo.DefaultChoiceAnswer == true)
                 {
-                    await SetFocusOn(OkButtonRef);
+                    await OkButtonRef.FocusAsync();
                 }
                 if (lastUIElementInfo.DefaultChoiceAnswer == false)
                 {
-                    await SetFocusOn(NoButtonRef);
+                    await NoButtonRef.FocusAsync();
                 }
             }
-            else if (lastUIElementInfo.Type == WebUIElementType.InputQuestion)
+            else if (lastUIElementInfo.Type == WebUIElementType.InputQuestion && !lastUIElementInfo.SendInputAnswer.Task.IsCompleted)
             {
-                await SetFocusOn(OkButtonRef);
+                await OkButtonRef.FocusAsync();
             }
         }
     }
@@ -265,11 +265,6 @@
     private ElementReference OkButtonRef;
     private ElementReference NoButtonRef;
     private string InputValue;
-
-    private async Task SetFocusOn(ElementReference buttonRef)
-    {
-        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{buttonRef.Id}').focus();");
-    }
 
     private async Task ScrollTerminalToBottom()
     {
