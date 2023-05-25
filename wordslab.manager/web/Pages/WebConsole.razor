@@ -107,7 +107,7 @@
             var percent = (int)(uiElementInfo.CommandProgress / uiElementInfo.LongRunningCommand.MaxValue * 100);
 
             <div class="m-0 px-1 d-flex align-items-center">
-              <div class="mr-3">
+              <div class="me-3">
                 <span>@uiElementInfo.LongRunningCommand.Description</span>
               </div>
               <div class="flex-grow-1">
@@ -117,7 +117,7 @@
                   </div>
                 </div>
               </div>
-              <div class="ml-3">
+              <div class="ms-3">
                 <span>@uiElementInfo.CommandProgress / @uiElementInfo.LongRunningCommand.MaxValue @uiElementInfo.LongRunningCommand.Unit</span>
               </div>
             </div>
@@ -208,6 +208,17 @@
         }        
     }
     </div>
+
+    <div class="mt-2">
+    @if(commandsUIState.State == WebCommandsState.Running)
+    {
+        <p>In progress - Command running since @commandsUIState.ExecutionTime ...</p>
+    }
+    else if(commandsUIState.State == WebCommandsState.Executed)
+    {
+        <p>Done - Command executed in @commandsUIState.ExecutionTime.</p>
+    }
+    </div>
 }
 
 <div class="mt-4">
@@ -234,7 +245,12 @@
         {
             var args = command.Split(' ','\t','\n','\r','\f');
             commandsUIState = new WebCommandsUI(() => InvokeAsync(StateHasChanged));
-            Task.Run(() => ConsoleApp.Run(args, WebAppServices, commandsUIState));
+            Task.Run(() =>
+            {
+                commandsUIState.Start();
+                ConsoleApp.Run(args, WebAppServices, commandsUIState);
+                commandsUIState.Stop();
+            });
         }
     }
 

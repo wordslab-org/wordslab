@@ -1,5 +1,12 @@
 ﻿namespace wordslab.manager.web
 {
+    public enum WebCommandsState
+    {
+        NotStarted,
+        Running,
+        Executed
+    }
+
     public class WebCommandsUI : ICommandsUI
     {
         private Action RefreshDisplay;
@@ -8,6 +15,38 @@
         { 
             RefreshDisplay = invokeAsyncStateHasChanged;
         }
+
+        public WebCommandsState State { get; private set; }
+
+        private DateTime startTime;
+        private DateTime? stopTime;
+
+        public void Start()
+        {
+            startTime = DateTime.Now;
+            stopTime = null;
+            State = WebCommandsState.Running;
+            RefreshDisplay();
+        }
+
+        public void Stop()
+        {
+            stopTime = DateTime.Now;
+            State = WebCommandsState.Executed;
+            RefreshDisplay();
+        }
+
+        public string ExecutionTime { get { 
+                if (State == WebCommandsState.NotStarted)
+                {
+                    return string.Empty;
+                } 
+                else 
+                {
+                    var duration = stopTime.HasValue ? stopTime.Value - startTime : DateTime.Now - startTime;
+                    return duration.ToString("mm\\:ss");
+                }
+        } }
 
         public List<WebUIElementInfo> Elements = new List<WebUIElementInfo>();
 
