@@ -27,7 +27,7 @@ namespace wordslab.manager.vm
             }
             else
             {
-                installUI.DisplayCommandResult(cmd1, false);
+                installUI.DisplayCommandResult(cmd1, true);
             }
 
             HostMachineConfig machineConfig = null;

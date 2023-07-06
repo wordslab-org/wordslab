@@ -369,7 +369,7 @@ namespace wordslab.manager.vm.qemu
             var candidateVolumesArray = new List<os.DriveInfo>[] { candidateVolumesForCluster, candidateVolumesForData, candidateVolumesForBackup };
             foreach (var (storageLocation, currentDirectory, candidateVolumes) in storageLocations.Zip(currentDirectories, candidateVolumesArray))
             {
-                var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} [{(di.IsSSD ? "SDD" : "HDD")}] [{di.FreeSpaceMB / 1000f:F1} GB free]"));
+                var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} [{(di.IsSSD ? "SSD" : "HDD")}] [{di.FreeSpaceMB / 1000f:F1} GB free]"));
                 var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));
                 var defaultPath = currentPathIsOK ? currentDirectory : null;
                 var storageDescription = storageDescriptions[(int)storageLocation];

@@ -69,7 +69,7 @@
         }
         @if(uiElementInfo.Type == WebUIElementType.InstallStep)
         {
-            <p class="m-0 px-1 bg-light text-dark">@uiElementInfo.Text</p>
+            <p class="m-0 px-1 bg-light text-dark lead">@uiElementInfo.Text</p>
             <p class="m-0 px-1">&nbsp;</p>
         }
         @if(uiElementInfo.Type == WebUIElementType.Command)
@@ -197,8 +197,11 @@
         {
             if (!uiElementInfo.SendInputAnswer.Task.IsCompleted)
             {
-                InputValue = @uiElementInfo.DefaultInputAnswer;
-                <p class="m-0 px-1 py-2">@uiElementInfo.Text <br/> <input class="form-control bg-dark text-light" type="text" @bind-value=InputValue @bind-value:event="oninput" style="width: 400px; display:inline;"> <button @ref="OkButtonRef" class="btn btn-success btn-sm" @onclick="() => uiElementInfo.SendInputAnswer.SetResult(InputValue)">OK</button></p>
+                if (InputValue == null)
+                {
+                    InputValue = @uiElementInfo.DefaultInputAnswer;
+                }
+                    <p class="m-0 px-1 py-2">@uiElementInfo.Text <br /> <input class="form-control bg-dark text-light" type="text" @bind-value=InputValue style="width: 400px; display:inline;"> <button @ref="OkButtonRef" class="btn btn-success btn-sm" @onclick="() => { uiElementInfo.SendInputAnswer.SetResult(InputValue); InputValue = null; }">OK</button></p>
             }
             else
             {

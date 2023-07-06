@@ -15,7 +15,6 @@
     <None Remove="scripts\os\Windows\uninstall-openssh.ps1" />
     <None Remove="scripts\os\Wsl\install-wsl.ps1" />
     <None Remove="scripts\os\Wsl\update-wsl.ps1" />
-    <None Remove="web\Shared\WebProcessUI.razor.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -76,7 +75,6 @@
     <Content Include="scripts\vm\k3s\wordslab-k3s-start.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="web\Shared\WebProcessUI.razor.txt" />
     <Content Include="web\wwwroot\css\bootstrap\bootstrap.min.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

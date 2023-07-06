@@ -329,16 +329,19 @@ namespace wordslab.manager.vm.wsl
                     {
                         // Extract nerdctl executable from the downloaded tar file
                         var nerdctlExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "nerdctl");
-                        var buildctlExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "buildctl");
-                        var buildkitdExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "buildkitd");
-                        var nerdctlTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.nerdctlFileName);
-                        var nerdctlTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "nerdctl-temp");
-                        Directory.CreateDirectory(nerdctlTmpDir);
-                        HostStorage.ExtractTarFile(nerdctlTarFile, nerdctlTmpDir);
-                        File.Move(Path.Combine(nerdctlTmpDir, "bin", "nerdctl"), nerdctlExecutablePath);
-                        File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildctl"), buildctlExecutablePath);
-                        File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildkitd"), buildkitdExecutablePath);
-                        Directory.Delete(nerdctlTmpDir, true);
+                        if (!File.Exists(nerdctlExecutablePath))
+                        {
+                            var buildctlExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "buildctl");
+                            var buildkitdExecutablePath = Path.Combine(hostStorage.DownloadCacheDirectory, "buildkitd");
+                            var nerdctlTarFile = Path.Combine(hostStorage.DownloadCacheDirectory, VirtualMachine.nerdctlFileName);
+                            var nerdctlTmpDir = Path.Combine(hostStorage.DownloadCacheDirectory, "nerdctl-temp");
+                            Directory.CreateDirectory(nerdctlTmpDir);
+                            HostStorage.ExtractTarFile(nerdctlTarFile, nerdctlTmpDir);
+                            File.Move(Path.Combine(nerdctlTmpDir, "bin", "nerdctl"), nerdctlExecutablePath);
+                            File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildctl"), buildctlExecutablePath);
+                            File.Move(Path.Combine(nerdctlTmpDir, "bin", "buildkitd"), buildkitdExecutablePath);
+                            Directory.Delete(nerdctlTmpDir, true);
+                        }
 
                         var nerdctlExecFile = new FileInfo(nerdctlExecutablePath);
                         nerdctlExecutableOK = nerdctlExecFile.Exists && nerdctlExecFile.Length == VirtualMachine.nerdctlExecutableDiskSize;
@@ -371,7 +374,7 @@ namespace wordslab.manager.vm.wsl
             var candidateVolumesArray = new List<os.DriveInfo>[] { candidateVolumesForCluster, candidateVolumesForData, candidateVolumesForBackup };
             foreach (var (storageLocation, currentDirectory, candidateVolumes) in storageLocations.Zip(currentDirectories, candidateVolumesArray))
             {
-                var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} {di.FreeSpaceMB / 1000f:F1} GB free {(di.IsSSD ? "(SDD)" : "")}"));
+                var volumeCandidates = String.Join(", ", candidateVolumes.Select(di => $"{di.DrivePath} {di.FreeSpaceMB / 1000f:F1} GB free {(di.IsSSD ? "(SSD)" : "")}"));
                 var subdirectory = HostStorage.GetSubdirectoryFor(storageLocation);
                 string defaultPath = null;
                 var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));

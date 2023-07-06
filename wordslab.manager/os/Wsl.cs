@@ -616,7 +616,21 @@ namespace wordslab.manager.os
                 }
                 if(config.pageReporting.HasValue)
                 {
-                    WriteBoolean(sw, "pageReporting", config.pageReporting.Value);
+                    // https://github.com/microsoft/WSL/releases/tag/1.1.7
+                    var pageReportingIsSupported = true;
+                    var status = Wsl.status();
+                    if(status.IsMicrosoftStoreVersion)
+                    {
+                        var version = Wsl.version();
+                        if (version.WslStoreVersion >= new Version(1,1,7))
+                        {
+                            pageReportingIsSupported = false;
+                        }
+                    }
+                    if (pageReportingIsSupported)
+                    {
+                        WriteBoolean(sw, "pageReporting", config.pageReporting.Value);
+                    }
                 }
                 if (config.guiApplications.HasValue)
                 {
