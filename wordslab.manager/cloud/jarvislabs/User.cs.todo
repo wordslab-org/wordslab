@@ -1,0 +1,120 @@
+﻿namespace wordslab.manager.cloud.jarvislabs
+{
+    public class User
+    {
+        public static string Token { get; set; }
+        public static string UserId { get; set; }
+
+        public static List<Instance> GetInstances(string status = null)
+        {
+            // Placeholder for the HTTP POST call
+            var resp = Post(new { jwt = Token, user_id = UserId }, "fetch");
+            var instances = new List<Instance>();
+
+            foreach (var o in resp)
+            {
+                foreach (var key in o.Keys)
+                {
+                    var instO = o[key];
+                    var inst = new Instance(
+                        instO["gpu_type"],
+                        instO["num_gpus"],
+                        instO["hdd"],
+                        instO["framework_id"],
+                        instO["url"],
+                        instO["machine_id"],
+                        instO["tboard_url"],
+                        instO["ssh_str"],
+                        instO["status"],
+                        instO["name"],
+                        instO["storage_occupied"],
+                        instO["is_reserved"],
+                        instO["duration"],
+                        instO["frequency"]
+                    );
+                    instances.Add(inst);
+                }
+            }
+
+            if (status != null)
+            {
+                string[] validStatuses = { "running", "paused", "resuming", "pausing" };
+                if (!Array.Exists(validStatuses, element => element == status.ToLower()))
+                {
+                    throw new Exception("Invalid Status");
+                }
+                instances.RemoveAll(o => o.Status.ToLower() != status.ToLower());
+            }
+
+            return instances;
+        }
+
+        public static Instance GetInstance(string instanceId = null)
+        {
+            if (string.IsNullOrEmpty(instanceId))
+            {
+                throw new ArgumentException("Pass a valid instance/machine id");
+            }
+
+            var instances = GetInstances().FindAll(instance => instance.MachineId == instanceId);
+
+            return instances.Count > 0 ? instances[0] : null;
+        }
+
+        public static Dictionary<string, object> AddScript(string scriptPath, string scriptName)
+        {
+            // Placeholder for the HTTP POST call
+            var files = new { /* implementation */ };
+            var resp = JsonConvert.DeserializeObject<Dictionary<string, object>>(PostFiles(files, "addscript"));
+
+            if ((bool)resp["success"])
+            {
+                return new Dictionary<string, object>
+            {
+                { "success", true },
+                { "script_id", resp["script_id"] }
+            };
+            }
+            else
+            {
+                return new Dictionary<string, object>
+            {
+                { "success", false },
+                { "error_message", resp["error_message"] }
+            };
+            }
+        }
+
+        public static object DeleteScript(string scriptId)
+        {
+            // Placeholder for the HTTP POST call
+            return Post(new { jwt = Token, id = scriptId, user_id = UserId }, "delscript");
+        }
+
+        public static object GetScript()
+        {
+            // Placeholder for the HTTP POST call
+            return Post(new { jwt = Token, user_id = UserId }, "getscript");
+        }
+
+        public static void UpdateScript(string scriptId, string scriptPath, string scriptName)
+        {
+            // Placeholder for the HTTP POST call
+            var files = new { /* implementation */ };
+            var resp = JsonConvert.DeserializeObject<Dictionary<string, object>>(PostFiles(files, "updatescript"));
+            // Process response here if necessary
+        }
+
+        private static string Post(object payload, string endpoint)
+        {
+            // TODO: Implement HTTP POST here and return the response
+            return "";
+        }
+
+        private static string PostFiles(object files, string endpoint)
+        {
+            // TODO: Implement HTTP POST for files here and return the response
+            return "";
+        }
+    }
+}

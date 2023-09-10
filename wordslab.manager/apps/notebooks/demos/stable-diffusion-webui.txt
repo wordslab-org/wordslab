@@ -1,0 +1,62 @@
+﻿cd /workspace
+git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui && cd stable-diffusion-webui
+python3.10 -m venv venv
+
+mkdir -p models/Stable-diffusion
+
+wget -P models/Stable-diffusion https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors
+wget -P models/Stable-diffusion https://huggingface.co/stabilityai/stable-diffusion-xl-refiner-1.0/resolve/main/sd_xl_refiner_1.0.safetensors
+
+./webui.sh -f --no-download-sd-model -f --listen --port 7860 --subpath notebooks/gradio --xformers --no-half-vae
+
+(--medvram ?)
+
+--
+
+wsl -d wordslab-dev-cluster
+
+vi wordslab-notebooks-gpu-app.yaml
+
+>>>
+  routes:
+  - match: PathPrefix(`/notebooks`)
+    kind: Rule
+    services:
+    - name: wordslab-notebooks-service
+      port: 8888
+  - match: PathPrefix(`/notebooks/gradio`)
+    kind: Rule
+    services:
+    - name: wordslab-gradio-service
+      port: 7860
+    middlewares:
+      - name: wordslab-stripprefix-gradio
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: wordslab-stripprefix-gradio
+spec:
+  stripPrefix:
+    prefixes:
+      - /notebooks/gradio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordslab-gradio-service
+  labels:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7860
+      targetPort: 7860
+      protocol: TCP
+  selector:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+<<<
+
+kubectl apply -f wordslab-notebooks-gpu-app.yaml -n notebooks

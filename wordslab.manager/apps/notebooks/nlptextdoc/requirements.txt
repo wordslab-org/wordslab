@@ -1,0 +1,9 @@
+pandas[parquet,feather,compression]>=2.0.0
+
+spacy[cuda-autodetect,transformers,lookups]>=3.5.0
+https://github.com/explosion/spacy-models/releases/download/fr_dep_news_trf-3.5.0/fr_dep_news_trf-3.5.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/fr_core_news_md-3.5.0/fr_core_news_md-3.5.0-py3-none-any.whl
+
+fasttext
+
+datasets

@@ -62,8 +62,15 @@ namespace wordslab.manager.vm
                 // Database state: instance starting / running
                 else
                 {
-                    // State is inconsistent, fix the database state
-                    Kill(RunningInstance, $"A running process for virtual machine '{Name}' was not found: it was killed outside of wordslab manager");
+                    if (RunningInstance.State == VirtualMachineState.Starting && DateTime.Now.Subtract(RunningInstance.StartTimestamp).TotalMinutes < 15)
+                    {
+                        // Do nothing, a virtual machine could take up to 15 minutes for its first start
+                    }
+                    else
+                    {
+                        // State is inconsistent, fix the database state
+                        Kill(RunningInstance, $"A running process for virtual machine '{Name}' was not found: it was killed outside of wordslab manager");
+                    }
                 }
                 RunningInstance = null;
             }
@@ -191,7 +198,6 @@ namespace wordslab.manager.vm
             // Create and register VM instance
             var vmInstance = new VirtualMachineInstance(Name, Config, computeStartArguments, gpuStartArguments, warnings);
             configStore.AddVirtualMachineInstance(vmInstance);
-            configStore.SaveChanges();
             return vmInstance;
         }
 

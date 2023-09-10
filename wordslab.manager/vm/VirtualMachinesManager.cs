@@ -271,7 +271,6 @@ namespace wordslab.manager.vm
             {
                 // Create and register VM config
                 configStore.AddVirtualMachineConfig(vmConfig);
-                configStore.SaveChanges();
             }
             else
             {
@@ -326,7 +325,6 @@ namespace wordslab.manager.vm
                 {
                     configStore.RemoveVirtualMachineConfig(vmNameNotFoundOnDisk);
                 }
-                configStore.SaveChanges();
             }
 
             // Initialize VirtualMachine objects

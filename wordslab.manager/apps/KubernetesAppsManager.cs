@@ -355,7 +355,6 @@ namespace wordslab.manager.apps
                 
                 var appDeployment = new KubernetesAppDeployment(vm.Name, deploymentNamespace, app);
                 configStore.AddAppDeployment(appDeployment);
-                configStore.SaveChanges();
                 ui.DisplayCommandResult(cmd3, true);
 
                 // 4. Wait until all application entrypoints are ready, for one minute max

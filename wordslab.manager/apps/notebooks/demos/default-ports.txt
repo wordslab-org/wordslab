@@ -1,0 +1,5 @@
+﻿jupyterlab default port: 8888
+gradio default port: 7860
+fastapi&django default port: 8000
+streamlit default port: 8501
+flask default port: 5000

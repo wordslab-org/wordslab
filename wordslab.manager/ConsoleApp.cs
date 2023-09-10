@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 public static class ConsoleApp
 {
-    public static readonly Version Version = new Version(0, 9, 1);
+    public static readonly Version Version = new Version(0, 9, 2);
 
     public static int Run(string[] args, IServiceCollection appServices, ICommandsUI ui)
     {

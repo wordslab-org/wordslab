@@ -24,10 +24,6 @@ public static class WebApp
         builder.Services.Configure<RazorPagesOptions>(options => options.RootDirectory = "/web/Pages");
         builder.Services.AddServerSideBlazor()/*.AddCircuitOptions(e => { e.DetailedErrors = true; })*/;
 
-        // Register VirtualMachinesManager service
-
-        builder.Services.AddScoped<VirtualMachinesManager>();
-
         // The application services are needed in WebConsole.razor
 
         builder.Services.AddSingleton<IServiceCollection>(sp => builder.Services);

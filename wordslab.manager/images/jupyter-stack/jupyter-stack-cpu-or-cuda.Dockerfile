@@ -6,7 +6,7 @@
 # --build-arg TARGET="cpu"
 # --build-arg TARGET="cuda"
 ARG TARGET=cpu
-ARG BASE_IMAGE_VERSION=0.1.13-22.04.2
+ARG BASE_IMAGE_VERSION=0.1.14-22.04.1
 ARG BASE_IMAGE=ghcr.io/wordslab-org/lambda-stack-$TARGET:$BASE_IMAGE_VERSION
 
 FROM $BASE_IMAGE
@@ -16,7 +16,7 @@ LABEL org.opencontainers.image.source https://github.com/wordslab-org/wordslab
 RUN git clone https://github.com/jupyter/docker-stacks.git /var/cache/docker-stacks
 
 # ------------------------------------------------------------
-# https://github.com/jupyter/docker-stacks/tree/main/docker-stacks-foundation
+# https://github.com/jupyter/docker-stacks/tree/main/images/docker-stacks-foundation
 
 # Fix: https://github.com/hadolint/hadolint/wiki/DL4006
 # Fix: https://github.com/koalaman/shellcheck/wiki/SC3014
@@ -54,7 +54,7 @@ RUN sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' ${HOME}/.bashrc
 RUN mkdir -p /workspace
 
 # ------------------------------------------------------------
-# https://github.com/jupyter/docker-stacks/tree/main/base-notebook
+# https://github.com/jupyter/docker-stacks/blob/main/images/base-notebook/Dockerfile
 
 # Install all OS dependencies for notebook server that starts but lacks all
 # features (e.g., download as all possible file formats)
@@ -72,8 +72,15 @@ RUN apt-get update --yes && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # JupyterLab source extensions require Node.js to rebuild JupyterLab and activate the extension
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
+ENV NODE_MAJOR=18
+RUN apt-get update --yes && \
+    apt-get install -y ca-certificates curl gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update --yes && \
+    apt-get install nodejs -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install Jupyter Notebook, Lab, and Hub
 # Generate a notebook server config
@@ -84,12 +91,15 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 RUN pip install \
     'notebook' \
     'jupyterhub' \
-    'jupyterlab' \
+    'jupyterlab==3.6.5' \
     'ipywidgets' && \
     jupyter notebook --generate-config && \
     npm cache clean --force && \
     jupyter lab clean && \
     rm -rf "${HOME}/.cache/yarn"
+
+# TODO: we need to pin jupyterlab to version 3.6.5 above because jupyterlab-git doesn't support v4 yet
+# https://github.com/jupyterlab/jupyterlab-git/issues/1245
 
 # JUPYTER SERVER startup parameters can be customized through environment variables
 # - Jupyter URL:  http://127.0.0.1:${JUPYTER_PORT}${JUPYTER_BASE_URL}/lab?token=${JUPYTER_TOKEN}
@@ -142,7 +152,7 @@ HEALTHCHECK  --interval=5s --timeout=3s --start-period=5s --retries=3 \
     http://127.0.0.1:${JUPYTER_PORT}${JUPYTER_BASE_URL}/api || exit 1
 
 # ------------------------------------------------------------
-# https://github.com/jupyter/docker-stacks/tree/main/minimal-notebook
+# https://github.com/jupyter/docker-stacks/blob/main/images/minimal-notebook/Dockerfile
 
 # Install all OS dependencies for fully functional notebook server
 RUN apt-get update --yes && \
@@ -179,23 +189,17 @@ RUN mkdir -p ${HOME}/.local/lib/R/etc && \
 # JupyterLab templates: https://github.com/finos/jupyterlab_templates
 RUN pip install jupyterlab_templates && \
     jupyter labextension install jupyterlab_templates && \
-    jupyter serverextension enable --py jupyterlab_templates && \
+    jupyter server extension enable --py jupyterlab_templates && \
     npm cache clean --force && jupyter lab clean && rm -rf "${HOME}/.cache/yarn"
 
 # [Notebook code editor]
 # Language Server Protocol: https://github.com/jupyter-lsp/jupyterlab-lsp
 # RUN pip install jupyterlab-lsp 'python-lsp-server[all]'
-
-# [Notebook debugger]
-# JupyterLab debugger: https://github.com/jupyterlab/debugger
-RUN jupyter labextension install @jupyterlab/debugger && \
-    npm cache clean --force && jupyter lab clean && rm -rf "${HOME}/.cache/yarn"
+# TODO: try again when enabling jupterlab v4
 
 # [Notebook versioning]
 # Git: https://github.com/jupyterlab/jupyterlab-git
 RUN pip install jupyterlab-git && \
-# Jupytext (save notebooks as text): https://pypi.org/project/jupytext/
-    pip install jupytext && \
 # Jupyter Notebook Diff and Merge tools: https://github.com/jupyter/nbdime
     pip install nbdime
 
@@ -203,12 +207,7 @@ RUN pip install jupyterlab-git && \
 # Execution time: https://github.com/deshaw/jupyterlab-execute-time
 RUN pip install jupyterlab_execute_time && \
  # NVDashboard: https://github.com/rapidsai/jupyterlab-nvdashboard
-    pip install bokeh==2.4.1 jupyterlab-nvdashboard==0.8.0a18
-    # TO DO : move to a stable version when available
-    # jupyterlab-nvdashboard is not a jupyter server extension. The loading of the extension is managed by jupyter-server-proxy.
-    # https://github.com/rapidsai/jupyterlab-nvdashboard/commit/3bb5dde75bedb98360ae309880adf4153ad65501
-    # bokeh v3 is not supported, use bokeh=2.4.1
-    # https://github.com/rapidsai/jupyterlab-nvdashboard/issues/139
+    pip install jupyterlab-nvdashboard
 
 # [Notebook visualisation]
 # Matplotlib: https://github.com/matplotlib/ipympl
@@ -246,27 +245,75 @@ jupyter lab -ServerApp.base_url="${JUPYTER_BASE_URL}" -ServerApp.port=${JUPYTER_
 
 # Create Python virtual environments for specific projects
 RUN echo -e '\
-projectname=$1\n\
-# Create project directory\n\
-mkdir -p /workspace/$projectname\n\
-cd /workspace/$projectname\n\
-# Create virtual environment\n\
-python -m venv --system-site-packages --prompt $projectname .venv\n\
+if [ -z "$1" ]; then\n\
+    echo "Please provide at least one argument to create a workspace project directory and its associated virtual environment."\n\
+    echo "New project in /workspace/myprojectdir : create-workspace-project myprojectdir"\n\
+    echo "Github repo in /workspace/fastbook     : create-workspace-project https://github.com/fastai/fastbook.git"\n\
+    echo "Github repo in /workspace/myprojectdir : create-workspace-project https://github.com/fastai/fastbook.git myprojectdir"\n\
+    exit 1\n\
+fi\n\
+if [[ $1 == *.git ]]; then\n\
+    git_url=$1\n\
+    if [ ! -z "$2" ]; then\n\
+        dir_name=$2\n\
+    else\n\
+        dir_name=$(basename $1 .git)\n\
+    fi\n\
+else\n\
+    git_url=""\n\
+    dir_name=$1\n\
+fi\n\
+if [ -d "/workspace/$dir_name" ]; \n\
+    echo "Directory /workspace/$dir_name already exists: please choose another project name"\n\
+    exit 1\n\
+fi\n\
+echo "Creating project directory: /workspace/$dir_name"\n\
+mkdir -p /workspace/$dir_name\n\
+cd /workspace/$dir_name\n\
+if [ ! -z "$git_url" ]; then\n\
+    echo "Cloning git repository: $git_url"\n\
+    git clone $git_url /workspace/$dir_name\n\
+else\n\
+    git init 2> /dev/null\n\
+fi\n\
+echo ".venv" >> .gitignore\n\
+git add .gitignore\n\
+echo "Creating a virtual environment and Jupyter kernel for project: $dir_name"\n\
+python -m venv --system-site-packages --prompt $dir_name .venv\n\
 source .venv/bin/activate\n\
-touch requirements.txt\n\
-# Create specific Jupyter kernel for this project\n\
-python -m ipykernel install --user --name=$projectname\n\
-# To exit from the virtual environment :\n\
-# deactivate\n\
+python -m ipykernel install --user --name=$dir_name\n\
+if [ -f "requirements.txt" ]; then\n\
+    echo "Installing the dependencies listed in requirements.txt"\n\
+    pip install -r requirements.txt\n\
+else\n\
+    touch requirements.txt\n\
+    git add requirements.txt\n\
+fi\n\
+if [ -f "setup_environment.sh" ]; then\n\
+    echo "Executing the custom script setup_environment.sh"\n\
+    . ./setup_environment.sh\n\
+else\n\
+    touch setup_environment.sh\n\
+    git add setup_environment.sh\n\
+fi\n\
+echo "Virtual environment is ready for project $dir_name"\n\
 ' > /usr/local/bin/create-workspace-project && chmod u+x /usr/local/bin/create-workspace-project && \
 echo -e '\
-projectname=$1\n\
-# Delete specific Jupyter kernel for this project\n\
-jupyter kernelspec uninstall $projectname\n\
-# Exit from the virtual environment :\n\
-deactivate\n\
-# Delete project directory\n\
-rm -rf /workspace/$projectname\n\
+if [ -z "$1" ]; then\n\
+    echo "Please provide the name of the workspace project directory you want to delete."\n\
+    echo "Delete project in /workspace/myprojectdir : delete-workspace-project myprojectdir"\n\
+    exit 1\n\
+else\n\
+    dir_name=$1\n\
+fi\n\
+if [ ! -d "/workspace/$dir_name" ]; then\n\
+    echo "Directory /workspace/$dir_name not found: please choose another project name"\n\
+    exit 1\n\
+fi\n\
+echo "Deleting the Jupyter kernel for project: $dir_name"\n\
+jupyter kernelspec uninstall $dir_name\n\
+echo "Deleting the workspace project directory: /workspace/$dir_name"\n\
+rm -rf /workspace/$dir_name\n\
 ' > /usr/local/bin/delete-workspace-project && chmod u+x /usr/local/bin/delete-workspace-project
 
 # Configure container startup

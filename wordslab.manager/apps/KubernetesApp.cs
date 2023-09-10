@@ -78,6 +78,12 @@ namespace wordslab.manager.apps
 
         public static async Task ParseYamlFileContent(KubernetesAppSpec app, bool loadContainersMetadata = false, ConfigStore configStore = null)
         {
+            // Do nothing if the app spec was already parsed
+            if(app.IngressRoutes.Count > 0 || app.Services.Count > 0 || app.PersistentVolumes.Count > 0)
+            {
+                return;
+            }
+
             // Used only while parsing the YAML file
             var serviceReferences = new Dictionary<string, HashSet<string>>();
             var pvcReferences = new Dictionary<string, HashSet<string>>();

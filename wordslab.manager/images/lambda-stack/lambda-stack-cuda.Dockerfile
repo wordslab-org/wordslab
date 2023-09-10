@@ -20,7 +20,7 @@ RUN apt-get update && \
 
 # Install Deep learning software stack from Lambda Labs (CUDA)
 
-ENV LAMBDA_STACK_CUDA_VERSION="0.1.13~22.04.2"
+ENV LAMBDA_STACK_CUDA_VERSION="0.1.14~22.04.1"
 
 RUN apt-get update && \
 	DEBIAN_FRONTEND=noninteractive \

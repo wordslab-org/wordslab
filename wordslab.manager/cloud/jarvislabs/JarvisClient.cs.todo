@@ -1,0 +1,67 @@
+﻿using System.Text.Json;
+using System.Text;
+
+namespace wordslab.manager.cloud.jarvislabs
+{
+    public class JarvisClient
+    {
+        static readonly HttpClient httpClient = new HttpClient();
+        static readonly string url = "https://backendprod.jarvislabs.ai:8000/";
+
+        static async Task Main(string[] args)
+        {
+            // Sample usage
+            var data = new { key = "value" };
+            var response = await Post(data, "someFunction");
+            Console.WriteLine(response);
+
+            // For posting files, you'll need additional code
+            // var files = new Dictionary<string, string>(); // You can fill in file information here
+            // var fileResponse = await PostFiles(files, "someFileFunction");
+            // Console.WriteLine(fileResponse);
+        }
+
+        public static async Task<string> Post(object data, string func)
+        {
+            var encodedBody = JsonSerializer.Serialize(data);
+            var content = new StringContent(encodedBody, Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = await httpClient.PostAsync(url + func, content);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseData = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<string>(responseData);  // Change the return type if needed
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (TaskCanceledException e)
+            {
+                Console.WriteLine(e);
+                return null;
+            }
+        }
+
+        // Uncomment the below code to handle file upload
+        /*
+        public static async Task<string> PostFiles(Dictionary<string, string> files, string func)
+        {
+            using var form = new MultipartFormDataContent();
+
+            foreach (var file in files)
+            {
+                var fileContent = new ByteArrayContent(System.IO.File.ReadAllBytes(file.Value));
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("multipart/form-data");
+                form.Add(fileContent, file.Key, file.Value);
+            }
+
+            var response = await httpClient.PostAsync(url + func, form);
+            return await response.Content.ReadAsStringAsync();
+        }
+        */
+    }
+}

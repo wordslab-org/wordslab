@@ -8,14 +8,16 @@ metadata:
   annotations:
     wordslab.org/namespace-default: "notebooks"
     wordslab.org/title: "Jupyterlab notebooks (GPU)"
-    wordslab.org/description: "Ubuntu 22.04, Cuda 11.8, Python 3.10, Pytorch 1.13 & Tensorflow 2.11, Jupyterlab 3.6.1"
-    wordslab.org/version: "jupyterlab-3.6.3-lambda-0.1.13-22.04.2"
-    wordslab.org/date: "04/10/2023"
+    wordslab.org/description: "Ubuntu 22.04, Cuda 12.2, Python 3.10, Pytorch 2.0 & Tensorflow 2.13, Jupyterlab 3.6"
+    wordslab.org/version: "jupyterlab-3.6.5-lambda-0.1.14-22.04.1"
+    wordslab.org/date: "09/10/2023"
     wordslab.org/homepage: "https://www.wordslab.org/"
     wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml"
     wordslab.org/author: "https://github.com/wordslab-org"
     wordslab.org/license: "Apache License Version 2.0"
     wordslab.org/ingressroute-path: "/lab | Jupyterlab interactive development environment"
+    wordslab.org/ingressroute-path1: "/gradio | Web user interface launched from Jupyterlab on port 7860"
+    wordslab.org/ingressroute-path2: "/fastapi | API endpoint launched from Jupyterlab on port 8000"
 spec:
   entryPoints:
     - web
@@ -25,6 +27,38 @@ spec:
     services:
     - name: wordslab-notebooks-service
       port: 8888
+  - match: PathPrefix(`/$$namespace$$/gradio`)
+    kind: Rule
+    services:
+    - name: wordslab-gradio-service
+      port: 7860
+    middlewares:
+      - name: wordslab-stripprefix-gradio
+  - match: PathPrefix(`/$$namespace$$/fastapi`)
+    kind: Rule
+    services:
+    - name: wordslab-fastapi-service
+      port: 8000
+    middlewares:
+      - name: wordslab-stripprefix-fastapi
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: wordslab-stripprefix-gradio
+spec:
+  stripPrefix:
+    prefixes:
+      - /$$namespace$$/gradio
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: wordslab-stripprefix-fastapi
+spec:
+  stripPrefix:
+    prefixes:
+      - /$$namespace$$/fastapi
 ---
 apiVersion: v1
 kind: Service
@@ -40,6 +74,40 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+  selector:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordslab-gradio-service
+  labels:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7860
+      targetPort: 7860
+      protocol: TCP
+  selector:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordslab-fastapi-service
+  labels:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
   selector:
     wordslab.org/app: wordslab-notebooks
     wordslab.org/component: jupyterlab
@@ -101,7 +169,7 @@ spec:
     spec:
       containers:
       - name: wordslab-jupyter-stack-container
-        image: ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.3-lambda-0.1.13-22.04.2
+        image: ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.5-lambda-0.1.14-22.04.1
         ports:
         - name: http
           containerPort: 8888
@@ -153,6 +221,14 @@ spec:
 # https://www.tensorflow.org/hub/caching?hl=fr
         - name: TFHUB_CACHE_DIR
           value: /models/tfhub_modules"
+        - name: GRADIO_BASE_URL
+          value: "/$$namespace$$/gradio"
+        - name: GRADIO_PORT
+          value: "7860"
+        - name: FASTAPI_BASE_URL
+          value: "/$$namespace$$/fastapi"
+        - name: FASTAPI_PORT
+          value: "8000"
         volumeMounts:
           - name: dshm
             mountPath: /dev/shm

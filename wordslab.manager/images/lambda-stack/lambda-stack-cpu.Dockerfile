@@ -10,7 +10,7 @@ WORKDIR $HOME
 
 # Install Deep learning software stack from Lambda Labs (CPU)
 
-ENV LAMBDA_STACK_CPU_VERSION="0.1.13~22.04.2"
+ENV LAMBDA_STACK_CPU_VERSION="0.1.14~22.04.1"
 
 RUN apt-get update && \
 	DEBIAN_FRONTEND=noninteractive \

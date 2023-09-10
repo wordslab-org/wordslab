@@ -1,0 +1,117 @@
+﻿using System.Text.Json;
+
+namespace wordslab.manager.cloud.jarvislabs
+{
+    public class Instance
+    {
+        // Class properties
+        public string GpuType { get; set; }
+        public int NumGpus { get; set; }
+        public int Hdd { get; set; }
+        public int FrameworkId { get; set; }
+        public string Url { get; set; }
+        public int MachineId { get; set; }
+        public string TboardUrl { get; set; }
+        public string SshStr { get; set; }
+        public string Status { get; set; }
+        public string Name { get; set; }
+        public string Arguments { get; set; }
+        public string StorageOccupied { get; set; }
+        public string DockerUsername { get; set; }
+        public string DockerPassword { get; set; }
+        public bool IsReserved { get; set; }
+        public string Duration { get; set; }
+        public string Frequency { get; set; }
+
+        // Some global variables as in your Python script
+        // (in a production application, you might not use public static fields)
+        public static string Token;
+        public static string UserId;
+
+        // Constructor
+        public Instance(string gpuType, int numGpus, int hdd, int frameworkId,
+            string url, int machineId, string tboardUrl, string sshStr,
+            string status = "", string name = "", string arguments = "",
+            string storageOccupied = "", string dockerUsername = "", string dockerPassword = "",
+            bool isReserved = true, string duration = "hour", string frequency = "")
+        {
+            GpuType = gpuType;
+            NumGpus = numGpus;
+            Hdd = hdd;
+            FrameworkId = frameworkId;
+            Url = url;
+            MachineId = machineId;
+            TboardUrl = tboardUrl;
+            SshStr = sshStr;
+            Status = status;
+            Name = name;
+            StorageOccupied = storageOccupied;
+            DockerUsername = dockerUsername;
+            DockerPassword = dockerPassword;
+            Arguments = arguments;
+            IsReserved = isReserved;
+            Duration = duration;
+            Frequency = frequency;
+        }
+
+        // Methods
+        public async Task<Dictionary<string, object>> Pause()
+        {
+            var requestData = new Dictionary<string, object>
+        {
+            {"jwt", Token},
+            {"id", MachineId},
+            {"user_id", UserId}
+        };
+
+            var response = await Post(requestData, "pause");
+            if (response.ContainsKey("success") && (bool)response["success"])
+            {
+                this.Status = "Paused";
+            }
+            return response;
+        }
+
+        public async Task<Dictionary<string, object>> Destroy()
+        {
+            var requestData = new Dictionary<string, object>
+        {
+            {"jwt", Token},
+            {"id", MachineId},
+            {"user_id", UserId}
+        };
+
+            return await Post(requestData, "destroy");
+        }
+
+        public void UpdateInstanceMeta(Dictionary<string, object> req)
+        {
+            NumGpus = (int)req["gpus"];
+            GpuType = (string)req["gpu_type"];
+            Hdd = (int)req["hdd"];
+        }
+
+        // Implement the Resume method and other methods similar to the Python class
+        // ... 
+
+        public override string ToString()
+        {
+            return JsonSerializer.Serialize(this);
+        }
+
+        public static async Task<Instance> Create(/*... arguments here...*/)
+        {
+            // Similar to your Python `create` method
+            // ...
+
+            return new Instance(/* ... arguments here ... */);
+        }
+
+        // Assume that the Post method is implemented elsewhere
+        public static async Task<Dictionary<string, object>> Post(Dictionary<string, object> requestData, string function)
+        {
+            // Implementation here...
+            return new Dictionary<string, object>();
+        }
+    }
+}
