@@ -134,12 +134,6 @@ c.FileContentsManager.delete_to_trash = False\n\
 c.IPKernelApp.matplotlib = "inline"\n\
 \n\
 WORKSPACE_HOME = "/workspace"\n\
-try:\n\
-    if os.path.exists(WORKSPACE_HOME + "/templates"):\n\
-        c.JupyterLabTemplates.template_dirs = [WORKSPACE_HOME + "/templates"]\n\
-    c.JupyterLabTemplates.include_default = False\n\
-except Exception:\n\
-    pass\n\
 ' >> /etc/jupyter/jupyter_server_config.py && \
     # Legacy for Jupyter Notebook Server, see: [#1205](https://github.com/jupyter/docker-stacks/issues/1205)
     cp /etc/jupyter/jupyter_server_config.py /etc/jupyter/jupyter_notebook_config.py 
@@ -185,17 +179,11 @@ RUN mkdir -p ${HOME}/.local/lib/R/etc && \
 # Install useful JupyterLab extensions
 # https://saturncloud.io/blog/top-33-jupyterlab-extensions-2023/
 
-# [Notebook templates]
-# JupyterLab templates: https://github.com/finos/jupyterlab_templates
-RUN pip install jupyterlab_templates && \
-    jupyter labextension install jupyterlab_templates && \
-    jupyter server extension enable --py jupyterlab_templates && \
-    npm cache clean --force && jupyter lab clean && rm -rf "${HOME}/.cache/yarn"
-
 # [Notebook code editor]
 # Language Server Protocol: https://github.com/jupyter-lsp/jupyterlab-lsp
 # RUN pip install jupyterlab-lsp 'python-lsp-server[all]'
-# TODO: try again when enabling jupterlab v4
+
+# TODO: try again enabling LSP when upgrading to Jupyterlab v4
 
 # [Notebook versioning]
 # Git: https://github.com/jupyterlab/jupyterlab-git
@@ -205,9 +193,11 @@ RUN pip install jupyterlab-git && \
 
 # [Notebook perf monitoring]
 # Execution time: https://github.com/deshaw/jupyterlab-execute-time
-RUN pip install jupyterlab_execute_time && \
+RUN pip install jupyterlab_execute_time==2.3.1 && \
  # NVDashboard: https://github.com/rapidsai/jupyterlab-nvdashboard
     pip install jupyterlab-nvdashboard
+
+# TODO: we need to pin jupyterlab_execute_time to version 2.3.1 until we upgrade to Jup
 
 # [Notebook visualisation]
 # Matplotlib: https://github.com/matplotlib/ipympl
