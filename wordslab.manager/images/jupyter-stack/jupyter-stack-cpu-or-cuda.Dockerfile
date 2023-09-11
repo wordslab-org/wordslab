@@ -109,7 +109,7 @@ ENV JUPYTER_TOKEN=""
 
 # Currently need to have both jupyter_notebook_config and jupyter_server_config to support classic and lab
 RUN mkdir -p /etc/jupyter && \
-    cp /var/cache/docker-stacks/base-notebook/jupyter_server_config.py /etc/jupyter/ && \
+    cp /var/cache/docker-stacks/images/base-notebook/jupyter_server_config.py /etc/jupyter/ && \
     # Allow root execution and remote access in a Kubernetes setup
     # https://jupyter-server.readthedocs.io/en/stable/other/full-config.html
     echo -e '\
@@ -179,7 +179,7 @@ RUN update-alternatives --install /usr/bin/nano nano /bin/nano-tiny 10
 
 # Add R mimetype option to specify how the plot returns from R to the browser
 RUN mkdir -p ${HOME}/.local/lib/R/etc && \
-    cp /var/cache/docker-stacks/minimal-notebook/Rprofile.site ${HOME}/.local/lib/R/etc/
+    cp /var/cache/docker-stacks/images/minimal-notebook/Rprofile.site ${HOME}/.local/lib/R/etc/
 
 # ------------------------------------------------------------
 # Install useful JupyterLab extensions
