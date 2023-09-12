@@ -37,7 +37,8 @@ namespace wordslab.manager.apps
 
         private static Dictionary<string, Type> traefikTypeMap = new Dictionary<string, Type>()
         {
-            { "traefik.containo.us/v1alpha1/IngressRoute", typeof(TraefikV1alpha1IngressRoute) }
+            { "traefik.containo.us/v1alpha1/IngressRoute", typeof(TraefikV1alpha1IngressRoute) },
+            { "traefik.containo.us/v1alpha1/Middleware", typeof(TraefikV1alpha1Middleware) },
         };
 
         private static readonly HttpClient httpClient = new HttpClient();
@@ -79,7 +80,7 @@ namespace wordslab.manager.apps
         public static async Task ParseYamlFileContent(KubernetesAppSpec app, bool loadContainersMetadata = false, ConfigStore configStore = null)
         {
             // Do nothing if the app spec was already parsed
-            if(app.IngressRoutes.Count > 0 || app.Services.Count > 0 || app.PersistentVolumes.Count > 0)
+            if (app.IngressRoutes.Count > 0 || app.Services.Count > 0 || app.PersistentVolumes.Count > 0)
             {
                 return;
             }
@@ -378,7 +379,7 @@ namespace wordslab.manager.apps
                 if (podSpec.Containers != null && loadContainersMetadata)
                 {
                     foreach (var container in podSpec.Containers)
-                    {                        
+                    {
                         if (!String.IsNullOrEmpty(container.Image))
                         {
                             var imageName = ContainerImage.NormalizeImageName(container.Image);
@@ -392,7 +393,7 @@ namespace wordslab.manager.apps
                             {
                                 containerImage = await ContainerImage.GetMetadataFromCacheOrFromRegistryAsync(imageName, configStore);
                                 app.ContainerImages.Add(containerImage);
-                                if(app is KubernetesAppInstall && !containerImage.UsedByKubernetesApps.Any(containerApp => containerApp.YamlFileHash == app.YamlFileHash))
+                                if (app is KubernetesAppInstall && !containerImage.UsedByKubernetesApps.Any(containerApp => containerApp.YamlFileHash == app.YamlFileHash))
                                 {
                                     containerImage.UsedByKubernetesApps.Add((KubernetesAppInstall)app);
                                 }
@@ -552,6 +553,39 @@ namespace wordslab.manager.apps
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Middleware is the CRD implementation of a Traefik Middleware.
+        /// </summary>
+        public class TraefikV1alpha1Middleware : IKubernetesObject<V1ObjectMeta>
+        {
+            // https://doc.traefik.io/traefik/reference/dynamic-configuration/kubernetes-crd/
+
+            /// <summary>
+            /// APIVersion defines the versioned schema of this representation of an object. 
+            /// Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values.
+            /// More info: 
+            /// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            /// </summary>
+            [JsonPropertyName("apiVersion")]
+            public string ApiVersion { get; set; }
+
+            /// <summary>
+            /// Kind is a string value representing the REST resource this object represents.
+            /// Servers may infer this from the endpoint the client submits requests to. 
+            /// Cannot be updated.In CamelCase. More info: 
+            /// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            /// </summary>
+            [JsonPropertyName("kind")]
+            public string Kind { get; set; }
+
+            /// <summary>
+            /// Standard object's metadata. More info:
+            /// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+            /// </summary>
+            [JsonPropertyName("metadata")]
+            public V1ObjectMeta Metadata { get; set; }
         }
     }
 }

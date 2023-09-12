@@ -321,7 +321,7 @@ if(VmManager.ListLocalVMs().Count == 0)
     {
         VmManager = new VirtualMachinesManager(HostStorage, ConfigStore);
 
-        _timer = new System.Timers.Timer(5000); // 5000 milliseconds = 5 seconds
+        _timer = new System.Timers.Timer(30000); // 30000 milliseconds = 30 seconds
         _timer.Elapsed += OnTimerElapsed;
         _timer.AutoReset = true;
         _timer.Start();
@@ -331,9 +331,16 @@ if(VmManager.ListLocalVMs().Count == 0)
 
     private void OnTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
     {
-        if (!operationInProgress)
+        if (ConfigStore != null)
         {
-            InvokeAsync(() => StateHasChanged());
+            try
+            {
+                if (ConfigStore.Database!=null &&  !operationInProgress)
+                {
+                    InvokeAsync(() => StateHasChanged());
+                }
+            }
+            catch(Exception) {}
         }
     }
 

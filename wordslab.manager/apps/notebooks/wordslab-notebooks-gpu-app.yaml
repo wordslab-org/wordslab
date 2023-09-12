@@ -46,6 +46,9 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: wordslab-stripprefix-gradio
+  labels:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
 spec:
   stripPrefix:
     prefixes:
@@ -55,6 +58,9 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: wordslab-stripprefix-fastapi
+  labels:
+    wordslab.org/app: wordslab-notebooks
+    wordslab.org/component: jupyterlab
 spec:
   stripPrefix:
     prefixes:
