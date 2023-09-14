@@ -15,12 +15,12 @@ WORKDIR $HOME
 # which would be in conflict the nvidia driver passed through from the host by nvidia-container-runtime.
 # Without this fix, you get the following error when trying to launch the container: 
 # nvidia-container-cli: mount error: file creation failed: ... /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1: file exists: unknown
-RUN echo -e "\
+RUN /bin/bash -c 'echo -e "\
 Package: libcuda1-dummy\n\
 Maintainer: Lambda Labs <software@lambdalabs.com>\n\
 Version: 12.2\n\
 Provides: libcuda1 (= 535)\n\
- , libcuda-5.0-\n\
+ , libcuda-5.0-1\n\
  , libcuda-5.5-1\n\
  , libcuda-6.0-1\n\
  , libcuda-6.5-1\n\
@@ -45,8 +45,8 @@ Provides: libcuda1 (= 535)\n\
  , libcuda-12.0-1\n\
  , libcuda-12.1-1\n\
  , libcuda-12.2-1\n\
- , libnvidia-ml1 (= 535)\
-" > /var/cache/lambda-stack/control
+ , libnvidia-ml1 (= 535)\n\
+" > /var/cache/lambda-stack/control'
 
 RUN apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get install --yes equivs && \
