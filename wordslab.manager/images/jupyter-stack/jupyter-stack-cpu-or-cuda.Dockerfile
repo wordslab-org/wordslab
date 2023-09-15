@@ -89,6 +89,7 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 # Do all this in a single RUN command to avoid duplicating all of the
 # files across image layers when the permissions change
 RUN pip install \
+    'traitlets==5.9.0' \
     'notebook' \
     'jupyterhub' \
     'jupyterlab==3.6.5' \
@@ -100,6 +101,8 @@ RUN pip install \
 
 # TODO: we need to pin jupyterlab to version 3.6.5 above because jupyterlab-git doesn't support v4 yet
 # https://github.com/jupyterlab/jupyterlab-git/issues/1245
+# TODO: we need to pin traitlets to version 5.9.0 because of a bug in 5.10.0 when using notebook v6.5.5
+# https://github.com/microsoft/azuredatastudio/issues/24443
 
 # JUPYTER SERVER startup parameters can be customized through environment variables
 # - Jupyter URL:  http://127.0.0.1:${JUPYTER_PORT}${JUPYTER_BASE_URL}/lab?token=${JUPYTER_TOKEN}
