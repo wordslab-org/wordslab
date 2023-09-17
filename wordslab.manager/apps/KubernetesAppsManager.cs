@@ -220,9 +220,9 @@ namespace wordslab.manager.apps
                         if (downloadSize > 0)
                         {
                             var imageInfo = appInstall.ContainerImages[i];
-                            var c = new LongRunningCommand($"{imageInfo.Name}", downloadSize, "Bytes",
+                            var c = new LongRunningCommand($"{imageInfo.Name}", downloadSize/1024/1024, "MB",
                                 displayProgress => Kubernetes.DownloadImageInContentStoreWithProgress(imageInfo, vm, timeoutSec:3600,
-                                        progressHandler: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded)),
+                                        progressHandler: (totalFileSize, totalBytesDownloaded, progressPercentage) => displayProgress(totalBytesDownloaded/1024/1024)),
                                 displayResult => displayResult(true)
                                 );
                             downloadCommands.Add(c);

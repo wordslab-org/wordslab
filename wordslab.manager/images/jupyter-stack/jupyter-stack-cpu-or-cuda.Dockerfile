@@ -137,8 +137,11 @@ c.FileContentsManager.delete_to_trash = False\n\
 c.IPKernelApp.matplotlib = "inline"\n\
 \n\
 WORKSPACE_HOME = "/workspace"\n\
+\n\
+c.LabApp.default_url = "/lab/tree/tutorials/welcome.ipynb"\n\
 ' >> /etc/jupyter/jupyter_server_config.py && \
-    # Legacy for Jupyter Notebook Server, see: [#1205](https://github.com/jupyter/docker-stacks/issues/1205)
+    
+# Legacy for Jupyter Notebook Server, see: [#1205](https://github.com/jupyter/docker-stacks/issues/1205)
     cp /etc/jupyter/jupyter_server_config.py /etc/jupyter/jupyter_notebook_config.py 
 
 # HEALTHCHECK documentation: https://docs.docker.com/engine/reference/builder/#healthcheck
@@ -256,7 +259,7 @@ else\n\
     git_url=""\n\
     dir_name=$1\n\
 fi\n\
-if [ -d "/workspace/$dir_name" ]; \n\
+if [ -d "/workspace/$dir_name" ]; then\n\
     echo "Directory /workspace/$dir_name already exists: please choose another project name"\n\
     exit 1\n\
 fi\n\
@@ -304,10 +307,13 @@ if [ ! -d "/workspace/$dir_name" ]; then\n\
     exit 1\n\
 fi\n\
 echo "Deleting the Jupyter kernel for project: $dir_name"\n\
-jupyter kernelspec uninstall $dir_name\n\
+jupyter kernelspec uninstall -y $dir_name\n\
 echo "Deleting the workspace project directory: /workspace/$dir_name"\n\
 rm -rf /workspace/$dir_name\n\
 ' > /usr/local/bin/delete-workspace-project && chmod u+x /usr/local/bin/delete-workspace-project
+
+# Download tutorials for this image
+RUN /usr/local/bin/create-workspace-project https://github.com/wordslab-org/wordslab-notebooks-tutorials.git tutorials
 
 # Configure container startup
 ENTRYPOINT ["tini", "-g", "--"]
