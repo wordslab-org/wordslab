@@ -8,16 +8,16 @@ metadata:
   annotations:
     wordslab.org/namespace-default: "notebooks"
     wordslab.org/title: "Jupyterlab notebooks (GPU)"
-    wordslab.org/description: "Ubuntu 22.04, Cuda 12.2, Python 3.10, Pytorch 2.0 & Tensorflow 2.13, Jupyterlab 3.6"
-    wordslab.org/version: "jupyterlab-3.6.5-lambda-0.1.14-22.04.1"
-    wordslab.org/date: "09/10/2023"
+    wordslab.org/description: "Ubuntu 22.04, Cuda 12.2, Python 3.10, Pytorch 2.0 / Tensorflow 2.13 / JAX 0.4 / scikit-learn 0.23, Jupyterlab 3.6"
+    wordslab.org/version: "jupyterlab-3.6.5-lambda-0.1.14-22.04.1_2"
+    wordslab.org/date: "09/17/2023"
     wordslab.org/homepage: "https://www.wordslab.org/"
     wordslab.org/source: "https://github.com/wordslab-org/wordslab/tree/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml"
     wordslab.org/author: "https://github.com/wordslab-org"
     wordslab.org/license: "Apache License Version 2.0"
-    wordslab.org/ingressroute-path: "/lab | Jupyterlab interactive development environment"
-    wordslab.org/ingressroute-path1: "/gradio | Web user interface launched from Jupyterlab on port 7860"
-    wordslab.org/ingressroute-path2: "/fastapi | API endpoint launched from Jupyterlab on port 8000"
+    wordslab.org/ingressroute-path: "/lab | Jupyterlab"
+    wordslab.org/ingressroute-path1: "/gradio | Web interface (port 7860)"
+    wordslab.org/ingressroute-path2: "/fastapi | API endpoint (port 8000)"
 spec:
   entryPoints:
     - web
@@ -175,7 +175,7 @@ spec:
     spec:
       containers:
       - name: wordslab-jupyter-stack-container
-        image: ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.5-lambda-0.1.14-22.04.1
+        image: ghcr.io/wordslab-org/jupyter-stack-cuda:jupyterlab-3.6.5-lambda-0.1.14-22.04.1_2
         ports:
         - name: http
           containerPort: 8888
