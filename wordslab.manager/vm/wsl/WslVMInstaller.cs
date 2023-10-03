@@ -1,4 +1,5 @@
-﻿using wordslab.manager.config;
+﻿using Spectre.Console.Rendering;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 
@@ -6,7 +7,7 @@ namespace wordslab.manager.vm.wsl
 {
     public static class WslVMInstaller
     {
-        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, ICommandsUI ui)
+        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, ICommandsUI ui, bool useDefaultConfig=false)
         {
             try
             {
@@ -62,7 +63,14 @@ namespace wordslab.manager.vm.wsl
                 ui.DisplayCommandResult(c4, hasNvidiaGPU, hasNvidiaGPU ? null : "Could not find any GPU on this machine using the nvidia-smi command");
                 if (hasNvidiaGPU)
                 {
-                    userWantsVMWithGPU = await ui.DisplayQuestionAsync("Do you want to allow the local virtual machines to access your Nvidia GPU(s) ?");
+                    if (useDefaultConfig)
+                    {
+                        userWantsVMWithGPU = true;
+                    }
+                    else
+                    {
+                        userWantsVMWithGPU = await ui.DisplayQuestionAsync("Do you want to allow the local virtual machines to access your Nvidia GPU(s) ?");
+                    }
                 }
                 machineConfig.CanUseGPUs = true;
                 if (userWantsVMWithGPU)
@@ -148,9 +156,13 @@ namespace wordslab.manager.vm.wsl
                     var useInstallCommand = Wsl.IsWindowsVersionOKForInstallCommand();
                     var scriptToExecute = useInstallCommand ? Wsl.install_script(hostStorage.ScriptsDirectory) : Windows.EnableWindowsSubsystemForLinux_script(hostStorage.ScriptsDirectory);
 
-                    var enableWsl = await ui.DisplayAdminScriptQuestionAsync(
-                            "Activating Windows Virtual Machine Platform and Windows Subsystem for Linux requires ADMIN privileges. Are you OK to execute the following script as admin ?",
-                            scriptToExecute);
+                    bool enableWsl = true;
+                    if (!useDefaultConfig)
+                    {
+                        enableWsl = await ui.DisplayAdminScriptQuestionAsync(
+                                    "Activating Windows Virtual Machine Platform and Windows Subsystem for Linux requires ADMIN privileges. Are you OK to execute the following script as admin ?",
+                                    scriptToExecute);
+                    }
                     if (!enableWsl)
                     {
                         return null;
@@ -186,14 +198,14 @@ namespace wordslab.manager.vm.wsl
                 if (version.IsMicrosoftStoreVersion &&
                     (version.WslStoreVersion >= minBugVersion && version.WslStoreVersion <= maxBugVersion))
                 {
-                    var c15b = ui.DisplayCommandLaunch($"WSL Store version {version.WslStoreVersion} contains a bug: updating Windows Subsystem to the latest stable version");
+                    var c15b = ui.DisplayCommandLaunch($"WSL Store version {version.WslStoreVersion} contains a bug: updating Windows Subsystem for Linux to the latest stable version");
                     Wsl.update(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory);
                     ui.DisplayCommandResult(c15b, true);
 
                     version = Wsl.version();
                     if (version.WslStoreVersion <= maxBugVersion)
                     {
-                        var c16b = ui.DisplayCommandLaunch($"WSL Store version {version.WslStoreVersion} still contains the bug: updating Windows Subsystem to the latest pre-release version");
+                        var c16b = ui.DisplayCommandLaunch($"WSL Store version {version.WslStoreVersion} still contains the bug: updating Windows Subsystem for Linux to the latest pre-release version");
                         Wsl.update(hostStorage.ScriptsDirectory, hostStorage.LogsDirectory, installPreRelease: true);
                         ui.DisplayCommandResult(c16b, true);
                     }
@@ -243,12 +255,12 @@ namespace wordslab.manager.vm.wsl
                     return null;
                 }
 
-                await ConfigureHostStorage(hostStorage, ui, machineConfig, minVmSpec, drivesInfo);
+                await ConfigureHostStorage(hostStorage, ui, machineConfig, minVmSpec, drivesInfo, useDefaultConfig);
 
                 // 5. Configure a sandbox to host the local virtual machines
 
                 ui.DisplayInstallStep(5, 6, "Configure a sandbox to host the local virtual machines");
-                await ConfigureHostSandbox(ui, machineConfig, minVmSpec);
+                await ConfigureHostSandbox(ui, machineConfig, minVmSpec, useDefaultConfig);
 
                 // 6. Download VM software images
                 bool alpineImageOK = true;
@@ -363,7 +375,7 @@ namespace wordslab.manager.vm.wsl
             }
         }
 
-        private static async Task ConfigureHostStorage(HostStorage hostStorage, ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
+        private static async Task ConfigureHostStorage(HostStorage hostStorage, ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo, bool useDefaultConfig=false)
         {
             var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
             var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
@@ -383,7 +395,11 @@ namespace wordslab.manager.vm.wsl
                     defaultPath = currentDirectory.Substring(0, currentDirectory.Length - subdirectory.Length);
                 }
                 var storageDescription = storageDescriptions[(int)storageLocation];
-                var targetPath = await ui.DisplayInputQuestionAsync($"Choose a base directory to store the {storageDescription} (a subdirectory '{subdirectory}' will be created). Candidate volumes: {volumeCandidates}", defaultPath);
+                var targetPath = defaultPath;
+                if (defaultPath == null || !useDefaultConfig)
+                {
+                    targetPath = await ui.DisplayInputQuestionAsync($"Choose a base directory to store the {storageDescription} (a subdirectory '{subdirectory}' will be created). Candidate volumes: {volumeCandidates}", defaultPath);
+                }
                 if (!targetPath.Equals(defaultPath))
                 {
                     hostStorage.MoveConfigurableDirectoryTo(storageLocation, targetPath);
@@ -394,26 +410,44 @@ namespace wordslab.manager.vm.wsl
             machineConfig.BackupPath = hostStorage.BackupDirectory;
         }
 
-        private static async Task ConfigureHostSandbox(ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
+        private static async Task ConfigureHostSandbox(ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, bool useDefaultConfig=false)
         {
             var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             var recVmSpec = vmSpecs.RecommendedVMSpec;
             var maxVmSpec = vmSpecs.MaximumVMSpecOnThisMachine;
 
-            machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
-            machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
+            if (useDefaultConfig)
+            {
+                machineConfig.Processors = maxVmSpec.Compute.Processors;
+                machineConfig.MemoryGB = maxVmSpec.Compute.MemoryGB;
 
-            machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
-            machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
-            machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", (Storage.GetDriveInfoFromPath(machineConfig.BackupPath).FreeSpaceMB / 1000).ToString()));
+                machineConfig.VirtualMachineClusterSizeGB = maxVmSpec.Storage.ClusterDiskSizeGB;
+                machineConfig.VirtualMachineDataSizeGB = maxVmSpec.Storage.DataDiskSizeGB;
+                machineConfig.BackupSizeGB = VMRequirements.MIN_HOST_BACKUPDIR_GB;
 
-            // NO SSH port with WSL on Windows
-            // machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestion($"Default SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
-            machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
-            machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
-            machineConfig.CanExposeHttpOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster http port from other machines on the local network");
-            machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
-            machineConfig.CanExposeHttpsOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster https port from other machines on the local network");
+                machineConfig.KubernetesPort = VMRequirements.DEFAULT_HOST_Kubernetes_PORT;
+                machineConfig.HttpPort = VMRequirements.DEFAULT_HOST_HttpIngress_PORT;
+                machineConfig.CanExposeHttpOnLAN = true;
+                machineConfig.HttpsPort = VMRequirements.DEFAULT_HOST_HttpsIngress_PORT;
+                machineConfig.CanExposeHttpsOnLAN = true;
+            }
+            else
+            {
+                machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
+                machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
+
+                machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
+                machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
+                machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", (Storage.GetDriveInfoFromPath(machineConfig.BackupPath).FreeSpaceMB / 1000).ToString()));
+
+                // NO SSH port with WSL on Windows
+                // machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestion($"Default SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
+                machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
+                machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
+                machineConfig.CanExposeHttpOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster http port from other machines on the local network");
+                machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
+                machineConfig.CanExposeHttpsOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster https port from other machines on the local network");
+            }
         }
 
 
@@ -445,7 +479,7 @@ namespace wordslab.manager.vm.wsl
             return hostConfig;
         }
 
-        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, ICommandsUI ui)
+        public static async Task<VirtualMachineConfig> CreateVirtualMachine(VirtualMachineConfig vmConfig, HostMachineConfig hostConfig, HostStorage hostStorage, ICommandsUI ui, bool useDefaultConfig=false)
         {
             try
             {
@@ -492,11 +526,11 @@ namespace wordslab.manager.vm.wsl
                 var needToUpdateWslConfig = wslConfig.NeedsToBeUpdatedForVmSpec(hostConfig.Processors, hostConfig.MemoryGB);
 
                 var updateWslConfig = false;
-                if (needToUpdateWslConfig)
+                if (needToUpdateWslConfig && ! useDefaultConfig)
                 {
                     updateWslConfig = await ui.DisplayQuestionAsync($"Do you confirm you want to update the Windows Subsystem for Linux configuration to match your host sandbox configuration: {hostConfig.Processors} processors, {hostConfig.MemoryGB} GB memory ? This will affect all WSL distributions launched from your Windows account, not only wordslab.");
                 }
-                if (updateWslConfig && Wsl.IsRunning())
+                if (updateWslConfig && Wsl.IsRunning() && ! useDefaultConfig)
                 {
                     updateWslConfig = await ui.DisplayQuestionAsync("All WSL distributions currently running will be stopped: please make sure you take all the necessary measures for a graceful shutdown before continuing. Are you ready now ?");
                 }

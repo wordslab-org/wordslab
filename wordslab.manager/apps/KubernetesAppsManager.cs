@@ -178,7 +178,7 @@ namespace wordslab.manager.apps
             return true;
         }
 
-        public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, ICommandsUI ui)
+        public async Task<KubernetesAppInstall> DownloadKubernetesApp(VirtualMachine vm, string yamlFileUrl, ICommandsUI ui, bool useDefaultConfig=false)
         {
             try
             {
@@ -206,7 +206,11 @@ namespace wordslab.manager.apps
 
                 if(appInstall.RemainingDownloadSize > 0)
                 {
-                    var confirmInstall = await ui.DisplayQuestionAsync($"Do you confirm you want to download {needToDownload} in virtual machine {vm.Name}?");
+                    var confirmInstall = true;
+                    if (!useDefaultConfig)
+                    {
+                        confirmInstall = await ui.DisplayQuestionAsync($"Do you confirm you want to download {needToDownload} in virtual machine {vm.Name}?");
+                    }
                     if (!confirmInstall)
                     {
                         return null;
@@ -309,7 +313,7 @@ namespace wordslab.manager.apps
             }
         }
 
-        public async Task<KubernetesAppDeployment> DeployKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, ICommandsUI ui)
+        public async Task<KubernetesAppDeployment> DeployKubernetesApp(KubernetesAppInstall app, VirtualMachine vm, ICommandsUI ui, bool useDefaultConfig=false)
         {
             string namespaceCreated = null;
             try
@@ -329,7 +333,11 @@ namespace wordslab.manager.apps
                 DisplayKubernetesAppInstall(app, ui);
 
                 // 2. Choose a namespace
-                var deploymentNamespace = await ui.DisplayInputQuestionAsync($"Choose a namespace for this deployment of application {app.Name} in virtual machine {vm.Name}", app.NamespaceDefault);
+                var deploymentNamespace = app.NamespaceDefault;
+                if (!useDefaultConfig)
+                {
+                    deploymentNamespace = await ui.DisplayInputQuestionAsync($"Choose a namespace for this deployment of application {app.Name} in virtual machine {vm.Name}", app.NamespaceDefault);
+                }
 
                 var cmd2 = ui.DisplayCommandLaunch($"Checking if namespace {deploymentNamespace} is still free to use in virtual machine {vm.Name} ...");
                 var namespaces = Kubernetes.GetAllNamespaces(vm);
@@ -358,7 +366,7 @@ namespace wordslab.manager.apps
                 ui.DisplayCommandResult(cmd3, true);
 
                 // 4. Wait until all application entrypoints are ready, for one minute max
-                var cmd4 = ui.DisplayCommandLaunch($"The application {app.Name} is starting: this may take up to one minute ...");
+                var cmd4 = ui.DisplayCommandLaunch($"The application {app.Name} is starting: this may take several minutes ...");
                 var successful = await WaitForKubernetesAppEntryPoints(appDeployment, vm);
                 appDeployment.Started();
                 configStore.SaveChanges();

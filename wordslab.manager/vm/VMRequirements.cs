@@ -15,23 +15,23 @@ namespace wordslab.manager.vm
 
         public const int MIN_HOST_RESERVED_PROCESSORS = 2;
         public const int MIN_HOST_RESERVED_MEMORY_GB = 2;
-        public const int MIN_HOST_RESERVED_STORAGE_GB = 2;
+        public const int MIN_HOST_RESERVED_STORAGE_GB = 5;
 
-        public const int MIN_HOST_DOWNLOADDIR_GB = 1;
+        public const int MIN_HOST_DOWNLOADDIR_GB = 2;
         public const int MIN_HOST_BACKUPDIR_GB = 2;
 
         public const int MIN_VM_PROCESSORS = 2;
-        public const int MIN_VM_MEMORY_GB = 2;
-        public const string MIN_VM_GPUMODEL = "NVIDIA GeForce GTX 1050";
-        public const int MIN_VM_GPUMEMORY_GB = 4;
+        public const int MIN_VM_MEMORY_GB = 4;
+        public const string MIN_VM_GPUMODEL = "NVIDIA GeForce GTX 1060";
+        public const int MIN_VM_GPUMEMORY_GB = 6;
         public const int MIN_VM_CLUSTERDISK_GB = 5;
         public const int MIN_VM_DATADISK_GB = 1;
 
         public const int REC_VM_PROCESSORS = 6;
         public const int REC_VM_MEMORY_GB = 12;
-        public const string REC_VM_GPUMODEL = "NVIDIA GeForce RTX 2060";
-        public const int REC_VM_GPUMEMORY_GB = 6;
-        public const int REC_VM_CLUSTERDISK_GB = 10;
+        public const string REC_VM_GPUMODEL = "NVIDIA GeForce RTX 3070";
+        public const int REC_VM_GPUMEMORY_GB = 8;
+        public const int REC_VM_CLUSTERDISK_GB = 25;
         public const int REC_VM_DATADISK_GB = 25;
 
         public const int DEFAULT_HOST_SSH_PORT = 3022;

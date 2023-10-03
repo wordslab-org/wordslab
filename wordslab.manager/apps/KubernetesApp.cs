@@ -33,8 +33,7 @@ namespace wordslab.manager.apps
 
         // Built-in wordslab apps
         public const string WORDSLAB_NOTEBOOKS_GPU_APP_URL = "https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/apps/notebooks/wordslab-notebooks-gpu-app.yaml";
-        public const string WORDSLAB_NOTEBOOKS_CPU_APP_URL = "https://raw.githubusercontent.com/wordslab-org/wordslab/main/wordslab.manager/apps/notebooks/wordslab-notebooks-cpu-app.yaml";
-
+        
         private static Dictionary<string, Type> traefikTypeMap = new Dictionary<string, Type>()
         {
             { "traefik.containo.us/v1alpha1/IngressRoute", typeof(TraefikV1alpha1IngressRoute) },

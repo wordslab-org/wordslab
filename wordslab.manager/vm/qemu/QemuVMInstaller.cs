@@ -1,4 +1,5 @@
-﻿using wordslab.manager.config;
+﻿using Microsoft.EntityFrameworkCore.Storage;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.vm.wsl;
@@ -10,7 +11,7 @@ namespace wordslab.manager.vm.qemu
         // Note: before calling this method
         // - you must configure HostStorage directories location
         // - you must ask the user if they want to use a GPU
-        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, ICommandsUI ui)
+        public static async Task<HostMachineConfig> ConfigureHostMachine(HostStorage hostStorage, ICommandsUI ui, bool useDefaultConfig=false)
         {
             try
             {
@@ -66,7 +67,14 @@ namespace wordslab.manager.vm.qemu
                 ui.DisplayCommandResult(c4, hasNvidiaGPU, hasNvidiaGPU ? null : "Could not find any GPU on this machine using the nvidia-smi command");
                 if (hasNvidiaGPU)
                 {
-                    userWantsVMWithGPU = await ui.DisplayQuestionAsync("Do you want to allow the local virtual machines to access your Nvidia GPU(s) ?");
+                    if (useDefaultConfig)
+                    {
+                        userWantsVMWithGPU = true;
+                    }
+                    else
+                    {
+                        userWantsVMWithGPU = await ui.DisplayQuestionAsync("Do you want to allow the local virtual machines to access your Nvidia GPU(s) ?");
+                    }
                 }
                 machineConfig.CanUseGPUs = true;
                 if (userWantsVMWithGPU)
@@ -253,12 +261,12 @@ namespace wordslab.manager.vm.qemu
                     return null;
                 }
 
-                await ConfigureHostStorage(hostStorage, ui, machineConfig, minVmSpec, drivesInfo);
+                await ConfigureHostStorage(hostStorage, ui, machineConfig, minVmSpec, drivesInfo, useDefaultConfig);
 
                 // 5. Configure a sandbox to host the local virtual machines
 
                 ui.DisplayInstallStep(5, 6, "Configure a sandbox to host the local virtual machines");
-                await ConfigureHostSandbox(ui, machineConfig, minVmSpec);
+                await ConfigureHostSandbox(ui, machineConfig, minVmSpec, useDefaultConfig);
 
                 // 6. Download VM software images
                 bool ubuntuImageOK = true;
@@ -358,7 +366,7 @@ namespace wordslab.manager.vm.qemu
             }
         }
 
-        private static async Task ConfigureHostStorage(HostStorage hostStorage, ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo)
+        private static async Task ConfigureHostStorage(HostStorage hostStorage, ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, Dictionary<string, os.DriveInfo> drivesInfo, bool useDefaultConfig=false)
         {
             var storageLocations = new StorageLocation[] { StorageLocation.VirtualMachineCluster, StorageLocation.VirtualMachineData, StorageLocation.Backup };
             var storageDescriptions = new string[] { "cluster software", "user data", "backups" };
@@ -373,8 +381,12 @@ namespace wordslab.manager.vm.qemu
                 var currentPathIsOK = candidateVolumes.Any(di => currentDirectory.StartsWith(di.DrivePath));
                 var defaultPath = currentPathIsOK ? currentDirectory : null;
                 var storageDescription = storageDescriptions[(int)storageLocation];
-                var targetPath = await ui.DisplayInputQuestionAsync($"Choose a base directory to store the {storageDescription} (a subdirectory {HostStorage.GetSubdirectoryFor(StorageLocation.VirtualMachineCluster)} will be created). Candidate volumes: ${volumeCandidates})", defaultPath);
-                if (!targetPath.Equals(currentDirectory))
+                var targetPath = defaultPath;
+                if (defaultPath == null || !useDefaultConfig)
+                {
+                    await ui.DisplayInputQuestionAsync($"Choose a base directory to store the {storageDescription} (a subdirectory {HostStorage.GetSubdirectoryFor(StorageLocation.VirtualMachineCluster)} will be created). Candidate volumes: ${volumeCandidates})", defaultPath);
+                }
+                if (!targetPath.Equals(defaultPath))
                 {
                     hostStorage.MoveConfigurableDirectoryTo(storageLocation, targetPath);
                 }
@@ -384,25 +396,44 @@ namespace wordslab.manager.vm.qemu
             machineConfig.BackupPath = hostStorage.BackupDirectory;
         }
 
-        private static async Task ConfigureHostSandbox(ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec)
+        private static async Task ConfigureHostSandbox(ICommandsUI ui, HostMachineConfig machineConfig, VirtualMachineSpec minVmSpec, bool useDefaultConfig=false)
         {
             var vmSpecs = VMRequirements.GetRecommendedVMSpecs();
             var recVmSpec = vmSpecs.RecommendedVMSpec;
             var maxVmSpec = vmSpecs.MaximumVMSpecOnThisMachine;
 
-            machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
-            machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
+            if (useDefaultConfig)
+            {
+                machineConfig.Processors = maxVmSpec.Compute.Processors;
+                machineConfig.MemoryGB = maxVmSpec.Compute.MemoryGB;
 
-            machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
-            machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
-            machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", (Storage.GetDriveInfoFromPath(machineConfig.BackupPath).FreeSpaceMB / 1000).ToString()));
+                machineConfig.VirtualMachineClusterSizeGB = maxVmSpec.Storage.ClusterDiskSizeGB;
+                machineConfig.VirtualMachineDataSizeGB = maxVmSpec.Storage.DataDiskSizeGB;
+                machineConfig.BackupSizeGB = VMRequirements.MIN_HOST_BACKUPDIR_GB;
 
-            machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
-            machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
-            machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
-            machineConfig.CanExposeHttpOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster http port from other machines on the local network");
-            machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
-            machineConfig.CanExposeHttpsOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster https port from other machines on the local network");
+                machineConfig.SSHPort = VMRequirements.DEFAULT_HOST_SSH_PORT;
+                machineConfig.KubernetesPort = VMRequirements.DEFAULT_HOST_Kubernetes_PORT;
+                machineConfig.HttpPort = VMRequirements.DEFAULT_HOST_HttpIngress_PORT;
+                machineConfig.CanExposeHttpOnLAN = true;
+                machineConfig.HttpsPort = VMRequirements.DEFAULT_HOST_HttpsIngress_PORT;
+                machineConfig.CanExposeHttpsOnLAN = true;
+            }
+            else
+            {
+                machineConfig.Processors = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum number of processors (min {minVmSpec.Compute.Processors}, max {maxVmSpec.Compute.Processors}, recommended {recVmSpec.Compute.Processors})", maxVmSpec.Compute.Processors.ToString()));
+                machineConfig.MemoryGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum memory in GB (min {minVmSpec.Compute.MemoryGB}, max {maxVmSpec.Compute.MemoryGB}, recommended {recVmSpec.Compute.MemoryGB})", maxVmSpec.Compute.MemoryGB.ToString()));
+
+                machineConfig.VirtualMachineClusterSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of cluster software in GB (min {minVmSpec.Storage.ClusterDiskSizeGB}, max {maxVmSpec.Storage.ClusterDiskSizeGB}, recommended {recVmSpec.Storage.ClusterDiskSizeGB})", maxVmSpec.Storage.ClusterDiskSizeGB.ToString()));
+                machineConfig.VirtualMachineDataSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of user data in GB (min {minVmSpec.Storage.DataDiskSizeGB}, max {maxVmSpec.Storage.DataDiskSizeGB}, recommended {recVmSpec.Storage.DataDiskSizeGB})", maxVmSpec.Storage.DataDiskSizeGB.ToString()));
+                machineConfig.BackupSizeGB = Int32.Parse(await ui.DisplayInputQuestionAsync($"Maximum size of backups in GB (min {VMRequirements.MIN_HOST_BACKUPDIR_GB})", (Storage.GetDriveInfoFromPath(machineConfig.BackupPath).FreeSpaceMB / 1000).ToString()));
+
+                machineConfig.SSHPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default SSH port forwarded on host machine", VMRequirements.DEFAULT_HOST_SSH_PORT.ToString()));
+                machineConfig.KubernetesPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster admin port forwarded on host machine", VMRequirements.DEFAULT_HOST_Kubernetes_PORT.ToString()));
+                machineConfig.HttpPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster http port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpIngress_PORT.ToString()));
+                machineConfig.CanExposeHttpOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster http port from other machines on the local network");
+                machineConfig.HttpsPort = Int32.Parse(await ui.DisplayInputQuestionAsync($"Default cluster https port forwarded on host machine", VMRequirements.DEFAULT_HOST_HttpsIngress_PORT.ToString()));
+                machineConfig.CanExposeHttpsOnLAN = await ui.DisplayQuestionAsync($"Allow access to cluster https port from other machines on the local network");
+            }
         }
 
 

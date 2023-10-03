@@ -31,6 +31,9 @@ public static class ConsoleApp
             .WithDescription("Launch the wordslab manager web application");
         // ---
 
+        config.AddCommand<InstallCommand>("install")
+            .WithDescription("Install a built-in wordslab application with all the default parameters");
+
         config.AddBranch("host", config =>
         {
             config.SetDescription("Manage wordslab virtual machines on your host machine");

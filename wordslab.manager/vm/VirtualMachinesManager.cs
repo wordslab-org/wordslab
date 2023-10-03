@@ -1,4 +1,5 @@
-﻿using wordslab.manager.config;
+﻿using Spectre.Console.Rendering;
+using wordslab.manager.config;
 using wordslab.manager.os;
 using wordslab.manager.storage;
 using wordslab.manager.vm.qemu;
@@ -17,7 +18,7 @@ namespace wordslab.manager.vm
             this.configStore = configStore;
         }
 
-        public async Task<HostMachineConfig> ConfigureHostMachine(ICommandsUI installUI)
+        public async Task<HostMachineConfig> ConfigureHostMachine(ICommandsUI installUI, bool useDefaultConfig=false)
         {
             var cmd1 = installUI.DisplayCommandLaunch($"Checking if host machine {OS.GetMachineName()} is already configured");
             if (configStore.HostMachineConfig != null)
@@ -33,11 +34,11 @@ namespace wordslab.manager.vm
             HostMachineConfig machineConfig = null;
             if (OS.IsWindows)
             {
-                machineConfig = await WslVMInstaller.ConfigureHostMachine(hostStorage, installUI);
+                machineConfig = await WslVMInstaller.ConfigureHostMachine(hostStorage, installUI, useDefaultConfig);
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
-                machineConfig = await QemuVMInstaller.ConfigureHostMachine(hostStorage, installUI);
+                machineConfig = await QemuVMInstaller.ConfigureHostMachine(hostStorage, installUI, useDefaultConfig);
             }
             if (machineConfig != null)
             {
@@ -249,7 +250,7 @@ namespace wordslab.manager.vm
             }
         }
 
-        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, ICommandsUI installUI)
+        public async Task<VirtualMachine> CreateLocalVM(VirtualMachineConfig vmConfig, ICommandsUI installUI, bool useDefaultConfig=false)
         {
             installUI.DisplayInstallStep(2, 2, $"Create the new virtual machine: {vmConfig.Name}");
 
@@ -259,7 +260,7 @@ namespace wordslab.manager.vm
             // Create the virtual machine on disk
             if (OS.IsWindows)
             {
-                vmConfig = await WslVMInstaller.CreateVirtualMachine(vmConfig, configStore.HostMachineConfig, hostStorage, installUI);
+                vmConfig = await WslVMInstaller.CreateVirtualMachine(vmConfig, configStore.HostMachineConfig, hostStorage, installUI, useDefaultConfig);
             }
             else if (OS.IsLinux || OS.IsMacOS)
             {
